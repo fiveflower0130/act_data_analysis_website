@@ -1,0 +1,15 @@
+# 統一換行符（Windows Server 環境）
+* text=auto eol=lf
+
+# 二進位檔案不轉換
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.svg binary
+*.pdf binary
+*.woff binary
+*.woff2 binary
+*.ttf binary
+*.eot binary

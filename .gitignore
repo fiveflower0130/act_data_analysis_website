@@ -1,0 +1,32 @@
+# GitHub Copilot 設定
+.github/
+
+# VS Code 編輯器設定
+.vscode/
+
+# 環境變數
+.env
+.env.dev
+.env.prod
+.env.local
+.env.*.local
+
+# macOS 系統檔案
+.DS_Store
+
+# 應用程式日誌
+logs/
+
+# 測試覆蓋率
+coverage/
+
+# 編譯輸出
+dist/
+
+# Node.js
+node_modules/
+
+# Python
+__pycache__/
+*.pyc
+.venv/

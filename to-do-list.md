@@ -10,7 +10,8 @@
 
 | # | 狀態 | 問題描述 | 位置 |
 |---|------|----------|------|
-| 1 | 🔄 | 前端技術選型確認（框架、狀態管理、UI Library、HTTP client） | 規劃階段 |
+| 1 | ✅ | 前端技術選型確認（React 18 + TypeScript + Vite + Zustand + Ant Design + ECharts + Cytoscape.js） | 規劃階段 |
+| 16 | 🔄 | Windows Server 2022 Node.js 環境安裝（nvm-windows + Node LTS） | Server 環境 |
 
 ---
 
@@ -18,7 +19,7 @@
 
 | # | 狀態 | 問題描述 | 位置 |
 |---|------|----------|------|
-| 2 | ⬜ | 專案初始化（Vite + Vue3 / React 等框架 scaffold） | 根目錄 |
+| 2 | ⬜ | 專案初始化（Vite + React 18 + TypeScript scaffold） | 根目錄 |
 | 3 | ⬜ | 設計系統建立（色彩、字型、Lucide Icon 套用） | `src/styles/` |
 | 4 | ⬜ | 路由規劃與全域版面（Navbar / Sidebar / Layout） | `src/layouts/` |
 | 5 | ⬜ | 認證模組（Login 頁、JWT 管理、路由守衛） | `src/features/auth/` |
@@ -54,3 +55,5 @@
 | 日期 | 項目 | 變更內容 | 負責人 |
 |------|------|----------|--------|
 | 2026-05-29 | 全部 | 建立 to-do-list.md 初始版本 | Dante |
+| 2026-05-29 | #1 | 技術選型確認：React 18 + TypeScript + Vite + Zustand + Ant Design + ECharts + Cytoscape.js | Dante |
+| 2026-05-29 | #16 | 新增：Windows Server 2022 環境安裝項目（nvm-windows + Node LTS + IIS 部署規劃） | Dante |

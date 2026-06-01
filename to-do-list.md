@@ -1,6 +1,6 @@
 # ACT Failure Analysis System Frontend — 待辦事項清單
 
-> 最後更新：2026-06-01
+> 最後更新：2026-06-01（16:52）
 > 分析工具：GitHub Copilot
 > 說明：本文件記錄前端專案的待辦事項，依優先度分類管理，並於每次變更後同步更新狀態與修改紀錄。
 
@@ -70,4 +70,5 @@
 | 2026-06-01 | #18~#20, #4, #5 | ✅ 完成：Axios client（JWT interceptor）、authStore、React Router、MainLayout、LoginPage，build 驗證通過 | Dante |
 | 2026-06-01 | #5 | ✅ 修正：LoginPage UI（移除紅色星號、加入 icon prefix）、422 錯誤（LoginRequest.user_no）、401 錯誤（ApiResponse<T> 型別修正） | Dante |
 | 2026-06-01 | #21 | 新增並 ✅ 完成：Vitest 測試環境建立，25 個測試（Logger 10 + authStore 7 + LoginPage 8），全部通過 | Dante |
-| 2026-06-01 | #22 | 新增並 ✅ 完成：Logger 10 個單元測試（addLog / clearLogs / ring buffer / downloadLogs） | Dante |
+| 2026-06-01 | 文件 | 建立 docs/decisions/design-decisions-qa.md，補齊所有技術決策討論紀錄（框架選型、部署方式、IIS vs Nginx 等 12 個條目） | Dante |
+| 2026-06-01 | 文件 | 更新 project-docs.instructions.md，新增設計決策 QA 管理規範 | Dante |

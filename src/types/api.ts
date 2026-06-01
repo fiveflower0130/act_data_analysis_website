@@ -24,7 +24,7 @@ export type UserRole = 'viewer' | 'engineer' | 'admin';
 
 /** 登入 Request */
 export interface LoginRequest {
-  employee_id: string;
+  user_no: string;
   password: string;
 }
 

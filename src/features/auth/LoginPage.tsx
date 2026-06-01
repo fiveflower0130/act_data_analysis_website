@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Form, Input, Button, Card, Typography, Alert } from 'antd';
+import { Activity } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import useAuthStore from '../../stores/authStore';
 import { tokens } from '../../styles/tokens';
@@ -7,7 +8,7 @@ import { tokens } from '../../styles/tokens';
 const { Title, Text } = Typography;
 
 interface LoginFormValues {
-  employee_id: string;
+  user_no: string;
   password: string;
 }
 
@@ -19,10 +20,10 @@ const LoginPage = () => {
   const handleSubmit = async (values: LoginFormValues) => {
     setErrorMsg(null);
     try {
-      await login(values.employee_id, values.password);
+      await login(values.user_no, values.password);
       navigate('/dashboard', { replace: true });
     } catch {
-      setErrorMsg('工號或密碼錯誤，請再試一次。');
+      setErrorMsg('帳號或密碼錯誤，請再試一次。');
     }
   };
 
@@ -38,18 +39,28 @@ const LoginPage = () => {
     >
       <Card
         style={{
-          width: 400,
+          width: 420,
           background: tokens.colors.surface,
           border: `1px solid ${tokens.colors.border}`,
           borderRadius: tokens.spacing.cardRadius,
+          padding: '8px 4px',
         }}
       >
-        <div style={{ textAlign: 'center', marginBottom: 32 }}>
-          <Title level={3} style={{ color: tokens.colors.textPrimary, marginBottom: 4 }}>
-            ACT Failure Analysis
+        {/* Logo + 標題 */}
+        <div style={{ textAlign: 'center', marginBottom: 28 }}>
+          <Activity
+            size={48}
+            color={tokens.colors.primary}
+            strokeWidth={1.5}
+            style={{ marginBottom: 12 }}
+          />
+          <Title level={3} style={{ color: tokens.colors.textPrimary, marginBottom: 4, marginTop: 0 }}>
+            ACT Data Analytics AI
           </Title>
-          <Text style={{ color: tokens.colors.textMuted }}>請使用工號與密碼登入</Text>
+          <Text style={{ color: tokens.colors.textMuted }}>5920 智慧分析系統</Text>
         </div>
+
+        <div style={{ borderTop: `1px solid ${tokens.colors.border}`, marginBottom: 24 }} />
 
         {errorMsg && (
           <Alert
@@ -60,24 +71,51 @@ const LoginPage = () => {
           />
         )}
 
-        <Form layout="vertical" onFinish={handleSubmit} disabled={isLoading}>
+        <Form
+          layout="vertical"
+          onFinish={handleSubmit}
+          disabled={isLoading}
+          requiredMark={false}
+        >
           <Form.Item
-            label={<Text style={{ color: tokens.colors.textSecondary }}>工號</Text>}
-            name="employee_id"
-            rules={[{ required: true, message: '請輸入工號' }]}
+            label={<Text style={{ color: tokens.colors.textSecondary }}>帳號 / Username</Text>}
+            name="user_no"
+            rules={[{ required: true, message: '請輸入帳號' }]}
           >
-            <Input placeholder="請輸入工號" size="large" autoComplete="username" />
+            <Input
+              size="large"
+              placeholder="輸入您的帳號"
+              autoComplete="username"
+              prefix={
+                <img
+                  src="/user.png"
+                  alt="user"
+                  style={{ width: 16, height: 16, opacity: 0.5 }}
+                />
+              }
+            />
           </Form.Item>
 
           <Form.Item
-            label={<Text style={{ color: tokens.colors.textSecondary }}>密碼</Text>}
+            label={<Text style={{ color: tokens.colors.textSecondary }}>密碼 / Password</Text>}
             name="password"
             rules={[{ required: true, message: '請輸入密碼' }]}
           >
-            <Input.Password placeholder="請輸入密碼" size="large" autoComplete="current-password" />
+            <Input.Password
+              size="large"
+              placeholder="輸入您的密碼"
+              autoComplete="current-password"
+              prefix={
+                <img
+                  src="/lock.png"
+                  alt="lock"
+                  style={{ width: 16, height: 16, opacity: 0.5 }}
+                />
+              }
+            />
           </Form.Item>
 
-          <Form.Item style={{ marginBottom: 0 }}>
+          <Form.Item style={{ marginBottom: 0, marginTop: 8 }}>
             <Button
               type="primary"
               htmlType="submit"
@@ -85,7 +123,7 @@ const LoginPage = () => {
               block
               loading={isLoading}
             >
-              登入
+              登入 Login
             </Button>
           </Form.Item>
         </Form>

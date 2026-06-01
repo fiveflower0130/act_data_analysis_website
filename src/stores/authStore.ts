@@ -30,13 +30,17 @@ const useAuthStore = create<AuthState>()(
       login: async (employeeId, password) => {
         set({ isLoading: true });
         try {
-          const { data } = await apiLogin({ employee_id: employeeId, password });
-          localStorage.setItem('access_token', data.access_token);
+          // response.data = ApiResponse<LoginResponse>，token 在 .data.data
+          const { data: loginResp } = await apiLogin({ user_no: employeeId, password });
+          const token = loginResp.data!.access_token;
+          localStorage.setItem('access_token', token);
           // 取得完整 UserInfo
-          const { data: userInfo } = await getMe();
-          set({ token: data.access_token, user: userInfo, isLoading: false });
+          const { data: meResp } = await getMe();
+          const userInfo = meResp.data!;
+          set({ token, user: userInfo, isLoading: false });
           addLog({ level: 'info', module: 'authStore', stack: ['login'], msg: `登入成功：${userInfo.display_name}`, user: userInfo.user_no });
         } catch (err) {
+          localStorage.removeItem('access_token');
           set({ isLoading: false });
           addLog({ level: 'error', module: 'authStore', stack: ['login'], msg: err });
           throw err;
@@ -56,11 +60,11 @@ const useAuthStore = create<AuthState>()(
 
         set({ isLoading: true });
         try {
-          const { data } = await getMe();
-          set({ token, user: data, isLoading: false });
-          addLog({ level: 'debug', module: 'authStore', stack: ['restore-session'], msg: `Session 恢復：${data.display_name}`, user: data.user_no });
+          const { data: meResp } = await getMe();
+          const userInfo = meResp.data!;
+          set({ token, user: userInfo, isLoading: false });
+          addLog({ level: 'debug', module: 'authStore', stack: ['restore-session'], msg: `Session 恢復：${userInfo.display_name}`, user: userInfo.user_no });
         } catch {
-          // token 已失效
           localStorage.removeItem('access_token');
           set({ token: null, user: null, isLoading: false });
         }

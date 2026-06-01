@@ -1,6 +1,6 @@
 # ACT Failure Analysis System Frontend — 待辦事項清單
 
-> 最後更新：2026-05-29
+> 最後更新：2026-06-01
 > 分析工具：GitHub Copilot
 > 說明：本文件記錄前端專案的待辦事項，依優先度分類管理，並於每次變更後同步更新狀態與修改紀錄。
 
@@ -26,7 +26,9 @@
 | 19 | ✅ | Zustand auth store（token 管理、user info、login/logout actions） | `src/stores/authStore.ts` |
 | 20 | ✅ | React Router v6 設定 + 路由守衛（未登入 redirect to /login） | `src/router/index.tsx` |
 | 4 | ✅ | 全域版面骨架（Navbar 64px + Left Sidebar 320px + Center content） | `src/layouts/` |
-| 5 | ✅ | 認證模組（Login 頁、JWT 流程、路由守衛整合） | `src/features/auth/` |
+| 5 | ✅ | 認證模組（Login 頁、JWT 流程、路由守衛整合、UI 修正） | `src/features/auth/` |
+| 21 | ⬜ | 建立測試環境（Vitest + Testing Library）並撰寫 auth 模組單元測試 | `src/` |
+| 22 | ⬜ | 撰寫 Logger 模組單元測試 | `src/utils/logging/` |
 
 ---
 
@@ -66,3 +68,6 @@
 | 2026-05-29 | #3 | ✅ 完成：tokens.ts、antdTheme.ts、index.css 設計系統建立，build 驗證通過 | Dante |
 | 2026-05-29 | #17 | 新增並 ✅ 完成：Logger 模組（browser-compatible，ring buffer 2000 筆，sessionStorage 持久化，downloadLogs/getLogBuffer/clearLogs） | Dante |
 | 2026-06-01 | #18~#20, #4, #5 | ✅ 完成：Axios client（JWT interceptor）、authStore、React Router、MainLayout、LoginPage，build 驗證通過 | Dante |
+| 2026-06-01 | #5 | ✅ 修正：LoginPage UI（移除紅色星號、加入 icon prefix）、422 錯誤（LoginRequest.user_no）、401 錯誤（ApiResponse<T> 型別修正） | Dante |
+| 2026-06-01 | #21 | 新增：建立測試環境（Vitest + Testing Library）並撰寫 auth 模組單元測試 | — |
+| 2026-06-01 | #22 | 新增：撰寫 Logger 模組單元測試 | — |

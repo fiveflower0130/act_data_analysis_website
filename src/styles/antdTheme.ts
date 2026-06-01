@@ -12,15 +12,15 @@ export const antdTheme: ThemeConfig = {
     colorLink: colors.primaryLight,
 
     // 背景
-    colorBgBase: colors.bgBase,
-    colorBgContainer: colors.bgCard,
-    colorBgElevated: colors.bgCard,
-    colorBgLayout: colors.bgBase,
-    colorBgSpotlight: colors.bgBorder,
+    colorBgBase: colors.base,
+    colorBgContainer: colors.card,
+    colorBgElevated: colors.card,
+    colorBgLayout: colors.base,
+    colorBgSpotlight: colors.border,
 
     // 邊線
-    colorBorder: colors.bgBorder,
-    colorBorderSecondary: colors.bgBorder,
+    colorBorder: colors.border,
+    colorBorderSecondary: colors.border,
 
     // 文字
     colorText: colors.textPrimary,
@@ -49,38 +49,38 @@ export const antdTheme: ThemeConfig = {
     Layout: {
       headerBg: '#0D1E30',
       siderBg: '#0D1E30',
-      bodyBg: colors.bgBase,
+      bodyBg: colors.base,
       headerHeight: spacing.navbarHeight,
     },
     Menu: {
-      darkItemBg: colors.bgSidebar,
-      darkSubMenuItemBg: colors.bgSidebar,
-      darkItemSelectedBg: colors.bgBorder,
-      darkItemHoverBg: colors.bgCard,
+      darkItemBg: colors.surface,
+      darkSubMenuItemBg: colors.surface,
+      darkItemSelectedBg: colors.border,
+      darkItemHoverBg: colors.card,
     },
     Table: {
       headerBg: '#0D1E30',
-      rowHoverBg: colors.bgBorder,
-      borderColor: colors.bgBorder,
+      rowHoverBg: colors.border,
+      borderColor: colors.border,
     },
     Card: {
-      colorBgContainer: colors.bgCard,
+      colorBgContainer: colors.card,
     },
     Input: {
-      colorBgContainer: colors.bgCard,
+      colorBgContainer: colors.card,
       activeBorderColor: colors.primary,
     },
     Select: {
-      colorBgContainer: colors.bgCard,
-      colorBgElevated: colors.bgCard,
+      colorBgContainer: colors.card,
+      colorBgElevated: colors.card,
     },
     Button: {
       colorPrimary: colors.primary,
       algorithm: true,
     },
     Modal: {
-      contentBg: colors.bgCard,
-      headerBg: colors.bgCard,
+      contentBg: colors.card,
+      headerBg: colors.card,
     },
     Tabs: {
       inkBarColor: colors.primary,
@@ -89,7 +89,7 @@ export const antdTheme: ThemeConfig = {
       itemHoverColor: colors.primaryLight,
     },
     Badge: {
-      colorBgContainer: colors.bgCard,
+      colorBgContainer: colors.card,
     },
   },
 };

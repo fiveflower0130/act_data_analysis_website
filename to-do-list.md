@@ -22,11 +22,11 @@
 | 2 | ✅ | 專案初始化（Vite + React 18 + TypeScript scaffold + 所有依賴安裝） | 根目錄 |
 | 3 | ✅ | 設計系統建立（色彩 Token、Ant Design 暗色主題、全域 CSS） | `src/styles/` |
 | 17 | ✅ | Logger 模組實作（瀏覽器相容，ring buffer + sessionStorage + 下載功能） | `src/utils/logging/` |
-| 18 | ⬜ | Axios client（JWT Bearer interceptor + 統一錯誤處理 + logger 整合） | `src/api/client.ts` |
-| 19 | ⬜ | Zustand auth store（token 管理、user info、login/logout actions） | `src/stores/authStore.ts` |
-| 20 | ⬜ | React Router v6 設定 + 路由守衛（未登入 redirect to /login） | `src/router/index.tsx` |
-| 4 | ⬜ | 全域版面骨架（Navbar 64px + Left Sidebar 320px + Center content） | `src/layouts/` |
-| 5 | ⬜ | 認證模組（Login 頁、JWT 流程、路由守衛整合） | `src/features/auth/` |
+| 18 | ✅ | Axios client（JWT Bearer interceptor + 統一錯誤處理 + logger 整合） | `src/api/client.ts` |
+| 19 | ✅ | Zustand auth store（token 管理、user info、login/logout actions） | `src/stores/authStore.ts` |
+| 20 | ✅ | React Router v6 設定 + 路由守衛（未登入 redirect to /login） | `src/router/index.tsx` |
+| 4 | ✅ | 全域版面骨架（Navbar 64px + Left Sidebar 320px + Center content） | `src/layouts/` |
+| 5 | ✅ | 認證模組（Login 頁、JWT 流程、路由守衛整合） | `src/features/auth/` |
 
 ---
 
@@ -65,4 +65,4 @@
 | 2026-05-29 | #2 | ✅ 完成：Vite scaffold（react-ts），所有 production 依賴安裝，src/ 目錄結構建立 | Dante |
 | 2026-05-29 | #3 | ✅ 完成：tokens.ts、antdTheme.ts、index.css 設計系統建立，build 驗證通過 | Dante |
 | 2026-05-29 | #17 | 新增並 ✅ 完成：Logger 模組（browser-compatible，ring buffer 2000 筆，sessionStorage 持久化，downloadLogs/getLogBuffer/clearLogs） | Dante |
-| 2026-05-29 | #18~#20 | 新增：Axios client、Zustand auth store、React Router（待實作） | Dante |
+| 2026-06-01 | #18~#20, #4, #5 | ✅ 完成：Axios client（JWT interceptor）、authStore、React Router、MainLayout、LoginPage，build 驗證通過 | Dante |

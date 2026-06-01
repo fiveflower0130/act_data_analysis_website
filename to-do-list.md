@@ -27,8 +27,8 @@
 | 20 | ✅ | React Router v6 設定 + 路由守衛（未登入 redirect to /login） | `src/router/index.tsx` |
 | 4 | ✅ | 全域版面骨架（Navbar 64px + Left Sidebar 320px + Center content） | `src/layouts/` |
 | 5 | ✅ | 認證模組（Login 頁、JWT 流程、路由守衛整合、UI 修正） | `src/features/auth/` |
-| 21 | ⬜ | 建立測試環境（Vitest + Testing Library）並撰寫 auth 模組單元測試 | `src/` |
-| 22 | ⬜ | 撰寫 Logger 模組單元測試 | `src/utils/logging/` |
+| 21 | ✅ | 建立測試環境（Vitest + Testing Library）並撰寫 auth 模組單元測試 | `tests/` |
+| 22 | ✅ | 撰寫 Logger 模組單元測試 | `tests/unit/logging.test.ts` |
 
 ---
 
@@ -69,5 +69,5 @@
 | 2026-05-29 | #17 | 新增並 ✅ 完成：Logger 模組（browser-compatible，ring buffer 2000 筆，sessionStorage 持久化，downloadLogs/getLogBuffer/clearLogs） | Dante |
 | 2026-06-01 | #18~#20, #4, #5 | ✅ 完成：Axios client（JWT interceptor）、authStore、React Router、MainLayout、LoginPage，build 驗證通過 | Dante |
 | 2026-06-01 | #5 | ✅ 修正：LoginPage UI（移除紅色星號、加入 icon prefix）、422 錯誤（LoginRequest.user_no）、401 錯誤（ApiResponse<T> 型別修正） | Dante |
-| 2026-06-01 | #21 | 新增：建立測試環境（Vitest + Testing Library）並撰寫 auth 模組單元測試 | — |
-| 2026-06-01 | #22 | 新增：撰寫 Logger 模組單元測試 | — |
+| 2026-06-01 | #21 | 新增並 ✅ 完成：Vitest 測試環境建立，25 個測試（Logger 10 + authStore 7 + LoginPage 8），全部通過 | Dante |
+| 2026-06-01 | #22 | 新增並 ✅ 完成：Logger 10 個單元測試（addLog / clearLogs / ring buffer / downloadLogs） | Dante |

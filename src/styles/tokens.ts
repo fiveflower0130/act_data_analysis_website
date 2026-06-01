@@ -4,10 +4,10 @@
  */
 export const colors = {
   // 背景層次
-  bgBase: '#0A1929',      // 主背景
-  bgSidebar: '#0D1E30',   // 側欄背景
-  bgCard: '#112240',      // 卡片 / 浮層
-  bgBorder: '#1E3A5F',    // 邊線 / 分隔 / hover 背景
+  base: '#0A1929',        // 主背景（原 bgBase）
+  surface: '#0D1E30',     // 側欄 / Navbar 背景（原 bgSidebar）
+  card: '#112240',        // 卡片 / 浮層（原 bgCard）
+  border: '#1E3A5F',      // 邊線 / 分隔（原 bgBorder）
 
   // 藍色主調
   primary: '#1E88E5',     // CTA 按鈕、互動重點
@@ -61,3 +61,7 @@ export const spacing = {
   cardRadius: 12,
   uploadZoneRadius: 14,
 } as const;
+
+/** 全域 Token bundle，方便單一 import */
+export const tokens = { colors, typography, spacing } as const;
+

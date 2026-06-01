@@ -22,6 +22,12 @@ export const ApiErrorCode = {
 /** 使用者角色 */
 export type UserRole = 'viewer' | 'engineer' | 'admin';
 
+/** 登入 Request */
+export interface LoginRequest {
+  user_no: string;
+  password: string;
+}
+
 /** 登入 Response */
 export interface LoginResponse {
   access_token: string;

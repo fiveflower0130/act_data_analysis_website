@@ -52,9 +52,16 @@ apiClient.interceptors.response.use(
     const url = error.config?.url ?? 'unknown';
 
     if (status === 401) {
-      // Token 失效或未登入 → 清除本地 token，由 Router 守衛處理跳轉
       localStorage.removeItem('access_token');
       addLog({ level: 'warn', module: 'api', stack: ['response', '401'], msg: `未授權，已清除 token (${url})` });
+      // 呼叫 authStore.logout() 以清除 Zustand state，使 PrivateRoute 重新導向 /login
+      // 使用動態 import 避免 client ↔ authStore ↔ api/auth ↔ client 循環依賴
+      import('../stores/authStore').then(({ default: useAuthStore }) => {
+        // 僅在有登入狀態時才觸發（避免 /auth/login 本身的 401 也觸發 logout）
+        if (useAuthStore.getState().token) {
+          useAuthStore.getState().logout();
+        }
+      });
     } else if (status === 403) {
       addLog({ level: 'warn', module: 'api', stack: ['response', '403'], msg: `權限不足 (${url})` });
     } else if (status && status >= 500) {

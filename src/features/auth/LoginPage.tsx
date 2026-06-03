@@ -2,8 +2,11 @@ import { useState } from 'react';
 import { Form, Input, Button, Card, Typography, Alert } from 'antd';
 import { Activity } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { AxiosError } from 'axios';
 import useAuthStore from '../../stores/authStore';
 import { tokens } from '../../styles/tokens';
+import { ApiErrorCode } from '../../types/api';
+import type { ApiResponse } from '../../types/api';
 
 const { Title, Text } = Typography;
 
@@ -22,8 +25,21 @@ const LoginPage = () => {
     try {
       await login(values.user_no, values.password);
       navigate('/dashboard', { replace: true });
-    } catch {
-      setErrorMsg('帳號或密碼錯誤，請再試一次。');
+    } catch (err) {
+      const axiosErr = err as AxiosError<ApiResponse<unknown>>;
+
+      if (!axiosErr.response) {
+        // 完全沒有收到回應 → 後端服務無法連線
+        setErrorMsg('無法連線到伺服器，請確認網路或稍後再試。');
+      } else {
+        const apiCode = axiosErr.response.data?.code;
+        if (apiCode === ApiErrorCode.LdapError) {
+          setErrorMsg('LDAP 服務連線異常，請聯絡系統管理員。');
+        } else {
+          // 401 / 422 / 其他 → 帳號或密碼錯誤
+          setErrorMsg('帳號或密碼錯誤，請再試一次。');
+        }
+      }
     }
   };
 

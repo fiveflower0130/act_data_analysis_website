@@ -119,3 +119,42 @@ export interface StackingDieLayer {
   unity_no: string;
   is_substrate: boolean;
 }
+
+/** /data/search 回應中各測項的超規詳情 */
+export interface TestItemResult {
+  value: string;
+  fail_reason: string;
+  spec_max: string;
+  spec_min: string;
+  unit: string;
+}
+
+/** /data/search 回應中單一 DUT 的測試結果（含動態測項 key） */
+export type TestResultValueItem = {
+  serial_no: string;
+  site_id: number;
+  hbin: string;
+  flag: number;
+  real_time: string;
+} & Record<string, string | number | TestItemResult>;
+
+/** /data/search 回應中單一 Site 的資料 */
+export interface SiteSearchResult {
+  lot_info: LotSiteInfo;
+  test_result_value: TestResultValueItem[];
+}
+
+/** GET /api/v1/data/search 回應 */
+export interface SearchResult {
+  lot_id: string;
+  hbin: number;
+  execution_mode: string;
+  sites: SiteSearchResult[];
+}
+
+/** Dashboard 搜尋歷史記錄 */
+export interface SearchHistoryEntry {
+  lotId: string;
+  searchedAt: string; // ISO string（Zustand persist 序列化友好）
+  hasAnyFail: boolean; // 是否有任一 HBIN 有 fail 資料（用於顯示 正常/警告 badge）
+}

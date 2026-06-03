@@ -1,6 +1,6 @@
 # ACT Failure Analysis System Frontend — 待辦事項清單
 
-> 最後更新：2026-06-01（16:52）
+> 最後更新：2026-06-03（11:30）
 > 分析工具：GitHub Copilot
 > 說明：本文件記錄前端專案的待辦事項，依優先度分類管理，並於每次變更後同步更新狀態與修改紀錄。
 
@@ -36,8 +36,9 @@
 
 | # | 狀態 | 問題描述 | 位置 |
 |---|------|----------|------|
-| 6 | ⬜ | 主儀表板頁（LOT 搜尋、Fail Mode 篩選） | `src/features/dashboard/` |
-| 7 | ⬜ | Fail Sample List 表格元件 | `src/features/analysis/` |
+| 6 | 🔄 | 主儀表板頁（LOT 搜尋 + 歷史記錄 + Fail Mode 篩選 + 版面 1:4 佈局 + 4 個圖表佔位元件） | `src/features/dashboard/` |
+| 7 | ✅ | Fail Sample List 表格元件（固定高度 520px CSS override、統計至標題右側、showSizeChanger=false、Badge 統一綠色） | `src/features/dashboard/components/FailSampleList.tsx` |
+| 23 | ⬜ | 撰寫 Dashboard 模組單元測試（dashboardStore、FailSampleList） | `tests/unit/` |
 | 8 | ⬜ | Fail Sample on Tray 圖表元件 | `src/features/analysis/` |
 | 9 | ⬜ | Fail Die / Fail Die Rate 圖表元件 | `src/features/analysis/` |
 | 10 | ⬜ | Fail Ball 圖表元件 | `src/features/analysis/` |
@@ -71,4 +72,8 @@
 | 2026-06-01 | #5 | ✅ 修正：LoginPage UI（移除紅色星號、加入 icon prefix）、422 錯誤（LoginRequest.user_no）、401 錯誤（ApiResponse<T> 型別修正） | Dante |
 | 2026-06-01 | #21 | 新增並 ✅ 完成：Vitest 測試環境建立，25 個測試（Logger 10 + authStore 7 + LoginPage 8），全部通過 | Dante |
 | 2026-06-01 | 文件 | 建立 docs/decisions/design-decisions-qa.md，補齊所有技術決策討論紀錄（框架選型、部署方式、IIS vs Nginx 等 12 個條目） | Dante |
-| 2026-06-01 | 文件 | 更新 project-docs.instructions.md，新增設計決策 QA 管理規範 | Dante |
+| 2026-06-09 | #6, #7 | 🔄 開始實作 Dashboard 頁（Dante-feat-dashboard 分支）：dashboardStore、Analysis API、SearchPanel、SearchHistory、DashboardHeader、FailSampleList、PlaceholderChart、ResultsPanel、DashboardPage 全部完成，Build + 25 Tests 通過 | Dante |
+| 2026-06-09 | 修正 | 修正 dashboardStore addLog 呼叫格式錯誤、authStore MOCK_USER 欄位缺漏、logging.test.ts global 型別錯誤、vite.config.ts defineConfig 來源錯誤 | Dante |
+| 2026-06-03 | #7 | ✅ 完成：FailSampleList UI 細節優化（CSS 固定高度 520px、統計資訊移至 Card title right、showSizeChanger=false、SearchHistory Badge 統一綠色、版面 1:4 佈局、ResultsPanel 140px 中層） | Dante |
+| 2026-06-03 | #6 | 🔄 DashboardPage 版面細節修正（ResultsPanel 移至中層、主內容 left 25% FailSampleList + right 75% 2×2 chart grid） | Dante |
+| 2026-06-03 | #23 | 新增：待撰寫 Dashboard 模組單元測試 | Dante |

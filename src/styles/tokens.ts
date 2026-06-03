@@ -10,7 +10,7 @@ export const colors = {
   border: '#1E3A5F',      // 邊線 / 分隔（原 bgBorder）
 
   // 藍色主調
-  primary: '#1E88E5',     // CTA 按鈕、互動重點
+  primary: '#1c6bd3',     // CTA 按鈕、互動重點
   primaryLight: '#42A5F5',// Active 狀態、強調文字
   primaryMuted: '#90CAF9',// Secondary 文字、Tab 未選中
   primaryGhost: '#4A6B8A',// Placeholder、Caption、Muted

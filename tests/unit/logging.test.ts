@@ -81,8 +81,10 @@ describe('Logger — downloadLogs', () => {
   it('buffer 有資料時應觸發下載', () => {
     const createObjectURL = vi.fn(() => 'blob:mock-url');
     const revokeObjectURL = vi.fn();
-    global.URL.createObjectURL = createObjectURL;
-    global.URL.revokeObjectURL = revokeObjectURL;
+    (globalThis as unknown as Record<string, unknown>).URL = {
+      createObjectURL,
+      revokeObjectURL,
+    };
 
     const mockAnchor = { href: '', download: '', click: vi.fn(), style: {} };
     vi.spyOn(document, 'createElement').mockReturnValue(mockAnchor as unknown as HTMLElement);
@@ -97,7 +99,7 @@ describe('Logger — downloadLogs', () => {
 
   it('buffer 為空時應記錄 warn 並不觸發下載', () => {
     const createObjectURL = vi.fn();
-    global.URL.createObjectURL = createObjectURL;
+    (globalThis as unknown as Record<string, unknown>).URL = { createObjectURL };
 
     downloadLogs();
 

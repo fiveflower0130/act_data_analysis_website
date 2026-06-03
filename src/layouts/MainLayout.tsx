@@ -1,10 +1,10 @@
 import { Layout, Avatar, Dropdown, Typography, Space } from 'antd';
-import { LogOut, User } from 'lucide-react';
+import { LogOut, User, Activity } from 'lucide-react';
 import { Outlet, useNavigate } from 'react-router-dom';
 import useAuthStore from '../stores/authStore';
 import { tokens } from '../styles/tokens';
 
-const { Header, Sider, Content } = Layout;
+const { Header, Content } = Layout;
 const { Text } = Typography;
 
 const MainLayout = () => {
@@ -42,9 +42,12 @@ const MainLayout = () => {
           zIndex: 100,
         }}
       >
-        <Text strong style={{ color: tokens.colors.textPrimary, fontSize: 18, letterSpacing: 1 }}>
-          ACT Failure Analysis System
-        </Text>
+        <Space align="center" size={8}>
+          <Activity size={20} color={tokens.colors.primary} strokeWidth={1.5} />
+          <Text strong style={{ color: tokens.colors.textPrimary, fontSize: 18, letterSpacing: 1 }}>
+            ACT Failure Analysis AI
+          </Text>
+        </Space>
 
         <Dropdown menu={{ items: userMenuItems }} placement="bottomRight">
           <Space style={{ cursor: 'pointer' }}>
@@ -60,30 +63,10 @@ const MainLayout = () => {
         </Dropdown>
       </Header>
 
-      <Layout>
-        {/* ── Left Sidebar ── */}
-        <Sider
-          width={320}
-          style={{
-            background: tokens.colors.surface,
-            borderRight: `1px solid ${tokens.colors.border}`,
-            overflowY: 'auto',
-          }}
-        >
-          {/* Sidebar 內容由各功能頁自行注入，目前為空 */}
-        </Sider>
-
-        {/* ── Center Content ── */}
-        <Content
-          style={{
-            padding: 24,
-            background: tokens.colors.base,
-            overflowY: 'auto',
-          }}
-        >
-          <Outlet />
-        </Content>
-      </Layout>
+      {/* ── Page Content（各功能頁自行管理左右欄佈局）── */}
+      <Content style={{ flex: 1, overflow: 'hidden', display: 'flex' }}>
+        <Outlet />
+      </Content>
     </Layout>
   );
 };

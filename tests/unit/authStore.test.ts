@@ -17,10 +17,15 @@ import { login as mockLogin, getMe as mockGetMe } from '../../src/api/auth';
 
 const MOCK_TOKEN = 'mock-jwt-token-abc123';
 const MOCK_USER = {
+  user_id: 'uuid-001',
   user_no: 'E001',
   display_name: '測試用戶',
   role: 'viewer' as const,
   email: 'test@example.com',
+  department: 'IT',
+  division: 'TEST',
+  is_active: true,
+  last_login_at: '2026-01-01T00:00:00Z',
 };
 
 describe('authStore', () => {

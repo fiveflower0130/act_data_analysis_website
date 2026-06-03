@@ -1,6 +1,6 @@
 # ACT Failure Analysis System Frontend — 待辦事項清單
 
-> 最後更新：2026-06-03（11:30）
+> 最後更新：2026-06-03（13:30）
 > 分析工具：GitHub Copilot
 > 說明：本文件記錄前端專案的待辦事項，依優先度分類管理，並於每次變更後同步更新狀態與修改紀錄。
 
@@ -77,3 +77,4 @@
 | 2026-06-03 | #7 | ✅ 完成：FailSampleList UI 細節優化（CSS 固定高度 520px、統計資訊移至 Card title right、showSizeChanger=false、SearchHistory Badge 統一綠色、版面 1:4 佈局、ResultsPanel 140px 中層） | Dante |
 | 2026-06-03 | #6 | 🔄 DashboardPage 版面細節修正（ResultsPanel 移至中層、主內容 left 25% FailSampleList + right 75% 2×2 chart grid） | Dante |
 | 2026-06-03 | #23 | 新增：待撰寫 Dashboard 模組單元測試 | Dante |
+| 2026-06-03 | 文件 | 建立 docs/api/frontend-contract.md（前端 API 使用合約），更新 project-docs.instructions.md 加入 API 合約管理規範 | Dante |

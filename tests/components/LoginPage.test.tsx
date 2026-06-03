@@ -3,7 +3,9 @@ import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { ConfigProvider } from 'antd';
+import { AxiosError } from 'axios';
 import LoginPage from '../../src/features/auth/LoginPage';
+import { ApiErrorCode } from '../../src/types/api';
 
 // Mock useAuthStore（用 vi.fn 讓各測試可用 mockReturnValue 覆蓋）
 const mockLogin = vi.fn();
@@ -104,8 +106,21 @@ describe('LoginPage', () => {
   // ─── 登入失敗 ─────────────────────────────────────────────────────────────
 
   describe('登入失敗', () => {
-    it('應顯示錯誤訊息，且不導向', async () => {
-      mockLogin.mockRejectedValue(new Error('401 Unauthorized'));
+    /** 建立帶有 response 的 AxiosError mock */
+    const makeAxiosError = (status: number, code?: number): AxiosError => {
+      const err = new AxiosError('request failed');
+      err.response = {
+        status,
+        data: { code: code ?? 0, message: '', data: null },
+        headers: {},
+        config: {} as never,
+        statusText: String(status),
+      };
+      return err;
+    };
+
+    it('帳號或密碼錯誤（401）→ 應顯示對應錯誤訊息，且不導向', async () => {
+      mockLogin.mockRejectedValue(makeAxiosError(401, ApiErrorCode.Unauthorized));
       renderLoginPage();
 
       await userEvent.type(screen.getByPlaceholderText('輸入您的帳號'), 'E001');
@@ -114,6 +129,34 @@ describe('LoginPage', () => {
 
       await waitFor(() => {
         expect(screen.getByText('帳號或密碼錯誤，請再試一次。')).toBeInTheDocument();
+      });
+      expect(mockNavigate).not.toHaveBeenCalled();
+    });
+
+    it('LDAP 服務異常（code 1005）→ 應顯示 LDAP 錯誤訊息', async () => {
+      mockLogin.mockRejectedValue(makeAxiosError(422, ApiErrorCode.LdapError));
+      renderLoginPage();
+
+      await userEvent.type(screen.getByPlaceholderText('輸入您的帳號'), 'E001');
+      await userEvent.type(screen.getByPlaceholderText('輸入您的密碼'), 'any-password');
+      await userEvent.click(screen.getByRole('button', { name: /登入/i }));
+
+      await waitFor(() => {
+        expect(screen.getByText('LDAP 服務連線異常，請聯絡系統管理員。')).toBeInTheDocument();
+      });
+      expect(mockNavigate).not.toHaveBeenCalled();
+    });
+
+    it('後端服務無法連線（無 response）→ 應顯示伺服器連線錯誤訊息', async () => {
+      mockLogin.mockRejectedValue(new AxiosError('Network Error'));
+      renderLoginPage();
+
+      await userEvent.type(screen.getByPlaceholderText('輸入您的帳號'), 'E001');
+      await userEvent.type(screen.getByPlaceholderText('輸入您的密碼'), 'any-password');
+      await userEvent.click(screen.getByRole('button', { name: /登入/i }));
+
+      await waitFor(() => {
+        expect(screen.getByText('無法連線到伺服器，請確認網路或稍後再試。')).toBeInTheDocument();
       });
       expect(mockNavigate).not.toHaveBeenCalled();
     });

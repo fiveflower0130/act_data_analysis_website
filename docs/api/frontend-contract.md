@@ -3,7 +3,7 @@
 > **文件說明**：本文件為前端視角的 API 使用合約，記錄前端目前實際呼叫的 API 端點、TypeScript 介面定義、
 > 發現的問題，以及待後端提供的新 API 需求。供前後端 agent 協作時快速對齊。
 >
-> **最後更新**：2026-06-03
+> **最後更新**：2026-06-03（後端 P1-1 LDAP 錯誤區分 + P1-2 Refresh Token 已完成）
 > **對應後端文件**：`api-contract.md`（後端主要規格來源）
 > **前端 API 層位置**：`src/api/`、`src/types/api.ts`
 
@@ -53,8 +53,9 @@ interface LoginRequest {
 ```typescript
 interface LoginResponse {
   access_token: string;
+  refresh_token: string;   // ⬅ 新增（P1-2）：Rolling Refresh Token，有效期 7 天
   token_type: 'bearer';
-  expires_in: number;   // 單位：秒
+  expires_in: number;   // 單位：秒（access token 有效期，預設 3600）
   user_no: string;
   display_name: string;
   role: 'viewer' | 'engineer' | 'admin';
@@ -62,7 +63,9 @@ interface LoginResponse {
 ```
 
 **前端處理**：
-- 成功 → 存入 `localStorage['access_token']`，呼叫 `GET /auth/me`
+- 成功 → 同時存入 `localStorage['access_token']` 和 `localStorage['refresh_token']`，呼叫 `GET /auth/me`
+- 失敗 401 + `code=1005` → 顯示「工號或密碼錯誤」
+- 失敗 503 + `code=1009` → 顯示「LDAP 服務異常，請稍後再試或聯繫管理員」（**不**觸發自動登出跳轉）
 - 失敗 422 → 欄位格式錯誤（已修正，原因：欄位名稱為 `user_no` 非 `employee_id`）
 
 ---
@@ -94,7 +97,42 @@ interface UserInfo {
 
 ---
 
-### 2.3 `GET /api/v1/analysis/fail-sample`
+### 2.3 `POST /api/v1/auth/refresh`（新增，P1-2）
+
+**用途**：使用 refresh token 換取新的 access token（Rolling 機制，同時換新 refresh token）。
+
+**Headers**：不需要 `Authorization`（使用 refresh token 本身驗證）
+
+**Request Body**：
+```typescript
+interface RefreshRequest {
+  refresh_token: string;
+}
+```
+
+**Response `data`**：
+```typescript
+interface RefreshResponse {
+  access_token: string;    // 新的 access token（有效期 60 分鐘）
+  refresh_token: string;   // 新的 refresh token（舊的同時失效，有效期 7 天）
+  expires_in: number;      // access token 有效秒數
+}
+```
+
+**前端處理策略**：
+1. **request interceptor**：偵測 access token 剩餘時間 < 5 分鐘，靜默呼叫此 endpoint 換新 token
+2. **401 response interceptor**：收到 401 後嘗試一次 refresh，成功則重試原請求；失敗才清除 localStorage 並跳轉登入頁
+3. 換新 token 後同時更新 `localStorage['access_token']` 和 `localStorage['refresh_token']`
+4. refresh 本身失敗（refresh token 過期或 401）→ 清除兩個 token，跳轉登入頁
+5. **登出**：清除 `localStorage['access_token']` 和 `localStorage['refresh_token']`
+
+**錯誤情況**：
+- refresh token 過期 / 無效 → HTTP 401，前端應跳轉登入頁
+- 帳號已停用 → HTTP 401 + `code=1001`
+
+---
+
+### 2.4 `GET /api/v1/analysis/fail-sample`
 
 **用途**：依 LOT ID + HBIN 取得 Fail Sample List 分析結果。
 
@@ -135,7 +173,7 @@ interface FailSampleItem {
 
 ---
 
-### 2.4 `GET /api/v1/data/search`（已定義，尚未使用）
+### 2.5 `GET /api/v1/data/search`（已定義，尚未使用）
 
 **用途**：依 LOT ID + HBIN 取得完整測試結果原始資料。
 
@@ -201,9 +239,10 @@ const ApiErrorCode = {
   Forbidden: 1002,
   NotFound: 1003,
   ValidationError: 1004,
-  LdapError: 1005,
+  LdapAuthFailed: 1005,     // 帳密錯誤（HTTP 401）
   FileFormatError: 1007,
   DatabaseError: 1008,
+  LdapServiceError: 1009,   // ⬅ 新增（P1-1）：LDAP 服務不可用（HTTP 503），顯示「請稍後再試」，不跳轉登入頁
 } as const;
 ```
 
@@ -213,7 +252,7 @@ const ApiErrorCode = {
 
 | 優先度 | 需求 | 說明 | 狀態 |
 |--------|------|------|------|
-| 🟠 P1 | **Token Refresh API** | 目前 token 過期後直接登出，需要後端提供 refresh token 機制（endpoint + 回應格式）。前後端正在討論設計方式。 | ⬜ 待後端確認 |
+| 🟠 P1 | **Token Refresh API** | 後端已完成（`POST /api/v1/auth/refresh`，Rolling Refresh Token）。前端需同步實作 refresh 邏輯（詳見 2.3 節）。 | ✅ 後端完成，**前端待實作** |
 | 🟡 P2 | **Fail Sample on Tray API** | 前端需要依 LOT ID 取得 Tray 規格（row × col）與每個 DUT 的 Tray 位置，用於繪製 Tray 網格圖 | ⬜ 待討論 |
 | 🟡 P2 | **Fail Die API** | 前端需要依 LOT ID 取得 Stacking Die 層次結構與每層的失效 Unity 資訊，用於繪製疊 Die 圖 | ⬜ 待討論 |
 | 🟡 P2 | **Fail Die Rate API** | 各層 Die 的失效率統計 | ⬜ 待討論 |
@@ -227,6 +266,7 @@ const ApiErrorCode = {
 |------|------|------|
 | 2026-06-01 | `POST /auth/login`：前端原以 `employee_id` 傳送工號，後端要求 `user_no`，導致 422 錯誤 | ✅ 已修正（前端改為 `user_no`） |
 | 2026-06-01 | `apiClient.post<LoginResponse>` 導致 `data.access_token` 取到 `undefined`；應使用 `ApiResponse<LoginResponse>` 包裝 | ✅ 已修正 |
+| 2026-06-03 | 後端 `POST /auth/login` Response 新增 `refresh_token` 欄位；錯誤代碼新增 `1009`（LDAP 服務不可用）；前端需同步更新 | ⬜ 前端待實作（P1-1 + P1-2） |
 
 ---
 

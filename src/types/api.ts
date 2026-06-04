@@ -14,9 +14,12 @@ export const ApiErrorCode = {
   Forbidden: 1002,
   NotFound: 1003,
   ValidationError: 1004,
-  LdapError: 1005,
+  /** LDAP 帳號驗證失敗（帳號或密碼錯誤），HTTP 401 */
+  LdapAuthFailed: 1005,
   FileFormatError: 1007,
   DatabaseError: 1008,
+  /** LDAP 服務不可用（連線失敗），HTTP 503 */
+  LdapServiceError: 1009,
 } as const;
 
 /** 使用者角色 */
@@ -31,11 +34,26 @@ export interface LoginRequest {
 /** 登入 Response */
 export interface LoginResponse {
   access_token: string;
+  /** Rolling Refresh Token，有效期 7 天（P1-2） */
+  refresh_token: string;
   token_type: 'bearer';
   expires_in: number;
   user_no: string;
   display_name: string;
   role: UserRole;
+}
+
+/** Refresh Token Request（P1-2） */
+export interface RefreshRequest {
+  refresh_token: string;
+}
+
+/** Refresh Token Response（P1-2） */
+export interface RefreshResponse {
+  access_token: string;
+  /** 新的 refresh token（舊的同時失效） */
+  refresh_token: string;
+  expires_in: number;
 }
 
 /** 當前使用者資訊 */

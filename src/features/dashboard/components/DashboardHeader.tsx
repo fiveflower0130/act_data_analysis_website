@@ -7,10 +7,10 @@ import { tokens } from '../../../styles/tokens';
 const { Text } = Typography;
 
 const HBIN_OPTIONS: { label: string; value: HBinValue }[] = [
-  { label: 'Short (: HBIN = 3)', value: 3 },
-  { label: 'Open (: HBIN = 2)', value: 2 },
-  { label: 'Leak (: HBIN = 4)', value: 4 },
-  { label: 'Function (: HBIN = 5)', value: 5 },
+  { label: 'Short', value: 3 },
+  { label: 'Open', value: 2 },
+  { label: 'Leak', value: 4 },
+  { label: 'Function', value: 5 },
 ];
 
 const DashboardHeader = () => {
@@ -30,7 +30,7 @@ const DashboardHeader = () => {
     >
       <Space size={12}>
         <Text strong style={{ color: tokens.colors.textPrimary, fontSize: 15 }}>
-          預測分析儀表板
+          Fail Mode
         </Text>
         <Select
           placeholder="選擇 Fail Mode"

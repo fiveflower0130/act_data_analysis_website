@@ -7,6 +7,7 @@ import useAuthStore from '../../stores/authStore';
 import { tokens } from '../../styles/tokens';
 import { ApiErrorCode } from '../../types/api';
 import type { ApiResponse } from '../../types/api';
+import addLog from '../../utils/logging';
 
 const { Title, Text } = Typography;
 
@@ -33,8 +34,10 @@ const LoginPage = () => {
         setErrorMsg('無法連線到伺服器，請確認網路或稍後再試。');
       } else {
         const apiCode = axiosErr.response.data?.code;
-        if (apiCode === ApiErrorCode.LdapError) {
-          setErrorMsg('LDAP 服務連線異常，請聯絡系統管理員。');
+        addLog({ level: 'error', module: 'handleSubmit', stack: ['loginPage'], msg: `登入失敗 apiCode: ${apiCode}`, user: values.user_no,});
+        if (apiCode === ApiErrorCode.LdapServiceError) {
+          // HTTP 503 + code=1009：LDAP 服務不可用（非帳密問題）
+          setErrorMsg('LDAP 服務異常，請稍後再試或聯繫管理員。');
         } else {
           // 401 / 422 / 其他 → 帳號或密碼錯誤
           setErrorMsg('帳號或密碼錯誤，請再試一次。');

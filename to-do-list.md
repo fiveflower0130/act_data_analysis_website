@@ -1,6 +1,6 @@
 # ACT Failure Analysis System Frontend — 待辦事項清單
 
-> 最後更新：2026-06-03（13:30）
+> 最後更新：2026-06-03（17:25）
 > 分析工具：GitHub Copilot
 > 說明：本文件記錄前端專案的待辦事項，依優先度分類管理，並於每次變更後同步更新狀態與修改紀錄。
 
@@ -22,7 +22,7 @@
 | 2 | ✅ | 專案初始化（Vite + React 18 + TypeScript scaffold + 所有依賴安裝） | 根目錄 |
 | 3 | ✅ | 設計系統建立（色彩 Token、Ant Design 暗色主題、全域 CSS） | `src/styles/` |
 | 17 | ✅ | Logger 模組實作（瀏覽器相容，ring buffer + sessionStorage + 下載功能） | `src/utils/logging/` |
-| 18 | ✅ | Axios client（JWT Bearer interceptor + 統一錯誤處理 + logger 整合） | `src/api/client.ts` |
+| 18 | ✅ | Axios client（JWT Bearer interceptor + Refresh Token 主動/被動刷新 + 統一錯誤處理 + logger 整合） | `src/api/client.ts` |
 | 19 | ✅ | Zustand auth store（token 管理、user info、login/logout actions） | `src/stores/authStore.ts` |
 | 20 | ✅ | React Router v6 設定 + 路由守衛（未登入 redirect to /login） | `src/router/index.tsx` |
 | 4 | ✅ | 全域版面骨架（Navbar 64px + Left Sidebar 320px + Center content） | `src/layouts/` |
@@ -77,4 +77,5 @@
 | 2026-06-03 | #7 | ✅ 完成：FailSampleList UI 細節優化（CSS 固定高度 520px、統計資訊移至 Card title right、showSizeChanger=false、SearchHistory Badge 統一綠色、版面 1:4 佈局、ResultsPanel 140px 中層） | Dante |
 | 2026-06-03 | #6 | 🔄 DashboardPage 版面細節修正（ResultsPanel 移至中層、主內容 left 25% FailSampleList + right 75% 2×2 chart grid） | Dante |
 | 2026-06-03 | #23 | 新增：待撰寫 Dashboard 模組單元測試 | Dante |
-| 2026-06-03 | 文件 | 建立 docs/api/frontend-contract.md（前端 API 使用合約），更新 project-docs.instructions.md 加入 API 合約管理規範 | Dante |
+| 2026-06-03 | #18, #19, #5 | ✅ 完成 P1-1 + P1-2：LdapServiceError(1009) 區分；LoginResponse 加 refresh_token；authStore login/logout 同步管理 refresh_token；client.ts 全面重寫 refresh 邏輯（主動刷新 < 5 min、被動 401 retry、並發佇列保護、forceLogout）；27 Tests 通過 | Dante |
+

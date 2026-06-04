@@ -133,8 +133,8 @@ describe('LoginPage', () => {
       expect(mockNavigate).not.toHaveBeenCalled();
     });
 
-    it('LDAP 服務異常（code 1005）→ 應顯示 LDAP 錯誤訊息', async () => {
-      mockLogin.mockRejectedValue(makeAxiosError(422, ApiErrorCode.LdapError));
+    it('LDAP 服務不可用（503 + code 1009）→ 應顯示 LDAP 服務錯誤訊息', async () => {
+      mockLogin.mockRejectedValue(makeAxiosError(503, ApiErrorCode.LdapServiceError));
       renderLoginPage();
 
       await userEvent.type(screen.getByPlaceholderText('輸入您的帳號'), 'E001');
@@ -142,7 +142,7 @@ describe('LoginPage', () => {
       await userEvent.click(screen.getByRole('button', { name: /登入/i }));
 
       await waitFor(() => {
-        expect(screen.getByText('LDAP 服務連線異常，請聯絡系統管理員。')).toBeInTheDocument();
+        expect(screen.getByText('LDAP 服務異常，請稍後再試或聯繫管理員。')).toBeInTheDocument();
       });
       expect(mockNavigate).not.toHaveBeenCalled();
     });

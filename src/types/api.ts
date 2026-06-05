@@ -121,6 +121,8 @@ export interface FailSampleResult {
   lot_id: string;
   hbin: number;
   test_program: string;
+  /** MongoDB 查得的 Fail DUT 總數（含 VDD），新增於 2026-06-06 */
+  total_qty: number;
   total_duts: number;
   fail_sample: FailSampleItem[];
 }

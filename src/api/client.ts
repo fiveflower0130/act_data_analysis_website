@@ -4,7 +4,9 @@ import type { ApiResponse, RefreshResponse } from '../types/api';
 
 // ─── 基本設定 ─────────────────────────────────────────────────────────────────
 
-const BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8001';
+// 開發模式：不設 BASE_URL，讓請求走 Vite proxy（/api → localhost:8001）
+// 生產模式：透過 VITE_API_BASE_URL 環境變數指定後端位址
+const BASE_URL = import.meta.env.VITE_API_BASE_URL ?? '';
 
 const apiClient = axios.create({
   baseURL: BASE_URL,

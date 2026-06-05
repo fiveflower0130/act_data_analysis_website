@@ -1,4 +1,4 @@
-import { List, Badge, Typography, Empty } from 'antd';
+import { Badge, Typography, Empty } from 'antd';
 import { Clock } from 'lucide-react';
 import useDashboardStore from '../../../stores/dashboardStore';
 import { tokens } from '../../../styles/tokens';
@@ -25,18 +25,19 @@ const SearchHistory = () => {
     <div style={{ padding: '0 16px' }}>
       <Text style={{ color: tokens.colors.textMuted, fontSize: 13 }}>搜尋記錄</Text>
       {/*時間顯示:YYYY-MM-DD HH:mm:ss */}
-      <List 
-        style={{ marginTop: 8 }}
-        dataSource={searchHistory}
-        renderItem={(entry) => {
+      <div style={{ marginTop: 8 }}>
+        {searchHistory.map((entry) => {
           const isActive = entry.lotId === currentLotId;
           const date = new Date(entry.searchedAt);
-          const timeStr = date.toLocaleTimeString('zh-TW', {year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit'});
-          //const timeStr = date.toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit', second: '2-digit' }); --- IGNORE ---
+          const timeStr = date.toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
 
           return (
-            <List.Item
+            <div
+              key={entry.lotId}
+              role="button"
+              tabIndex={0}
               onClick={() => selectFromHistory(entry.lotId)}
+              onKeyDown={(e) => e.key === 'Enter' && selectFromHistory(entry.lotId)}
               style={{
                 cursor: 'pointer',
                 padding: '8px 10px',
@@ -68,10 +69,10 @@ const SearchHistory = () => {
                   <Text style={{ color: tokens.colors.textMuted, fontSize: 11 }}>{timeStr}</Text>
                 </div>
               </div>
-            </List.Item>
+            </div>
           );
-        }}
-      />
+        })}
+      </div>
     </div>
   );
 };

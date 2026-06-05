@@ -1,6 +1,6 @@
 # ACT Failure Analysis System Frontend — 待辦事項清單
 
-> 最後更新：2026-06-03（17:25）
+> 最後更新：2026-06-05（11:58）
 > 分析工具：GitHub Copilot
 > 說明：本文件記錄前端專案的待辦事項，依優先度分類管理，並於每次變更後同步更新狀態與修改紀錄。
 
@@ -38,7 +38,8 @@
 |---|------|----------|------|
 | 6 | 🔄 | 主儀表板頁（LOT 搜尋 + 歷史記錄 + Fail Mode 篩選 + 版面 1:4 佈局 + 4 個圖表佔位元件） | `src/features/dashboard/` |
 | 7 | ✅ | Fail Sample List 表格元件（固定高度 520px CSS override、統計至標題右側、showSizeChanger=false、Badge 統一綠色） | `src/features/dashboard/components/FailSampleList.tsx` |
-| 23 | ⬜ | 撰寫 Dashboard 模組單元測試（dashboardStore、FailSampleList） | `tests/unit/` |
+| 24 | ✅ | ResultsPanel 分析文本實作（IO pin fail 統計、最高頻 die/ball 計算、平局全列、total_qty 型別同步） | `src/features/dashboard/components/ResultsPanel.tsx` |
+| 23 | ✅ | 撰寫 Dashboard 模組單元測試（dashboardStore 15 tests + analysisHelpers 15 tests） | `tests/unit/` |
 | 8 | ⬜ | Fail Sample on Tray 圖表元件 | `src/features/analysis/` |
 | 9 | ⬜ | Fail Die / Fail Die Rate 圖表元件 | `src/features/analysis/` |
 | 10 | ⬜ | Fail Ball 圖表元件 | `src/features/analysis/` |
@@ -78,4 +79,8 @@
 | 2026-06-03 | #6 | 🔄 DashboardPage 版面細節修正（ResultsPanel 移至中層、主內容 left 25% FailSampleList + right 75% 2×2 chart grid） | Dante |
 | 2026-06-03 | #23 | 新增：待撰寫 Dashboard 模組單元測試 | Dante |
 | 2026-06-03 | #18, #19, #5 | ✅ 完成 P1-1 + P1-2：LdapServiceError(1009) 區分；LoginResponse 加 refresh_token；authStore login/logout 同步管理 refresh_token；client.ts 全面重寫 refresh 邏輯（主動刷新 < 5 min、被動 401 retry、並發佇列保護、forceLogout）；27 Tests 通過 | Dante |
-
+| 2026-06-06 | #24 | ✅ 完成：ResultsPanel 分析文本實作。logic：io_fail_count = ball_name 非空的 FailSampleItem 數；Sentence 1 顯示 total_qty/io_fail_count；io_fail_count>0 才顯示 Sentence 2（最高頻 die+ball，並列全列）；total_qty=0 顯示「無對應資料」；FailSampleResult 新增 total_qty 欄位；27 Tests 通過 | Dante |
+| 2026-06-05 | 修正 | ✅ 修正 SearchHistory 使用已棄用的 antd List 元件 → 改用原生 div + map 實作 | Dante |
+| 2026-06-05 | 修正 | ✅ 修正頁面刷新後使用者名稱消失問題：MainLayout 加 useEffect，有 token 無 user 時呼叫 restoreSession() | Dante |
+| 2026-06-05 | 修正 | ✅ 修正外部機器 Network Error：vite.config.ts 加 Proxy（/api → localhost:8001），client.ts baseURL 改為空字串 | Dante |
+| 2026-06-05 | #23 | ✅ 完成：新增 dashboardStore 測試（15 tests）+ analysisHelpers 測試（15 tests）；總計 57 Tests 通過 | Dante |

@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { Layout, Avatar, Dropdown, Typography, Space } from 'antd';
 import { LogOut, User, Activity } from 'lucide-react';
 import { Outlet, useNavigate } from 'react-router-dom';
@@ -8,8 +9,17 @@ const { Header, Content } = Layout;
 const { Text } = Typography;
 
 const MainLayout = () => {
-  const { user, logout } = useAuthStore();
+  const { user, token, logout, restoreSession } = useAuthStore();
   const navigate = useNavigate();
+
+  // 頁面重整後，token 從 localStorage 恢復但 user 為 null，重新呼叫 /me 取得使用者資訊
+  useEffect(() => {
+    if (token && !user) {
+      restoreSession().catch(() => {
+        // restoreSession 內部已處理 logout，此處靜默即可
+      });
+    }
+  }, [token, user, restoreSession]);
 
   const handleLogout = () => {
     logout();

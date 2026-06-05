@@ -3,7 +3,7 @@
 > **文件說明**：本文件為前端視角的 API 使用合約，記錄前端目前實際呼叫的 API 端點、TypeScript 介面定義、
 > 發現的問題，以及待後端提供的新 API 需求。供前後端 agent 協作時快速對齊。
 >
-> **最後更新**：2026-06-03（P1-1 LDAP 錯誤區分 + P1-2 Refresh Token 前端已完成）
+> **最後更新**：2026-06-06（ResultsPanel 分析文本實作完成，total_qty 欄位已同步）
 > **對應後端文件**：`api-contract.md`（後端主要規格來源）
 > **前端 API 層位置**：`src/api/`、`src/types/api.ts`
 

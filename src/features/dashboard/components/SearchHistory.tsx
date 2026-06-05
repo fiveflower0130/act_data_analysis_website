@@ -23,8 +23,9 @@ const SearchHistory = () => {
 
   return (
     <div style={{ padding: '0 16px' }}>
-      <Text style={{ color: tokens.colors.textMuted, fontSize: 13 }}>搜尋記錄</Text>
-      {/*時間顯示:YYYY-MM-DD HH:mm:ss */}
+      <div style={{ marginTop: 8 }}>  
+        <Text style={{ color: tokens.colors.textPrimary, fontSize: 14 }}>Search History</Text>
+      </div> 
       <div style={{ marginTop: 8 }}>
         {searchHistory.map((entry) => {
           const isActive = entry.lotId === currentLotId;
@@ -66,7 +67,7 @@ const SearchHistory = () => {
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                   <Clock size={11} style={{ color: tokens.colors.textMuted }} />
-                  <Text style={{ color: tokens.colors.textMuted, fontSize: 11 }}>{timeStr}</Text>
+                  <Text style={{ color: tokens.colors.textMuted, fontSize: 10 }}>{timeStr}</Text>
                 </div>
               </div>
             </div>

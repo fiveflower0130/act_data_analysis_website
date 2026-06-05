@@ -18,7 +18,7 @@ const SearchPanel = () => {
 
   return (
     <div style={{ padding: '16px' }}>
-      <Text strong style={{ color: tokens.colors.textPrimary, fontSize: 13, letterSpacing: 0.5 }}>
+      <Text strong style={{ color: tokens.colors.textPrimary, fontSize: 14, letterSpacing: 0.5 }}> 
         Failure Lot Search
       </Text>
 

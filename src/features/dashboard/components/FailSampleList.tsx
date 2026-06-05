@@ -4,11 +4,10 @@ import type { ColumnsType } from 'antd/es/table';
 import useDashboardStore from '../../../stores/dashboardStore';
 import { HBinLabel } from '../../../types/api';
 import { tokens } from '../../../styles/tokens';
+import { useResponsiveTokens } from '../../../hooks/useResponsiveTokens';
 
 const { Text } = Typography;
 
-/** Table body 固定高度（px）*/
-const TABLE_SCROLL_Y = 520;
 const PAGE_SIZE = 20;
 
 /** 展開為單列資料（不含 rowSpan，分頁後再計算）*/
@@ -86,6 +85,8 @@ const COLUMNS: ColumnsType<TableRow> = [
 
 const FailSampleList = () => {
   const [page, setPage] = useState(1);
+  const responsive = useResponsiveTokens();
+  const tableScrollY = responsive.spacing.tableScrollY;
   const { currentLotId, currentHbin, isSearching, getCurrentFailSample } = useDashboardStore();
   const failSampleData = getCurrentFailSample();
 
@@ -160,7 +161,7 @@ const FailSampleList = () => {
        * CSS override：將 Ant Design Table body 從 max-height 改為固定 height，
        * 確保資料少或空值時 tbody 仍維持 TABLE_SCROLL_Y px，不縮減。
        */}
-      <style>{`.fsl-table-wrap .ant-table-body { height: ${TABLE_SCROLL_Y}px !important; }`}</style>
+      <style>{`.fsl-table-wrap .ant-table-body { height: ${tableScrollY}px !important; }`}</style>
 
       <div style={{ display: 'flex', flexDirection: 'column', height: '100%', gap: 6 }}>
         {/* Table 永遠渲染；空值狀態透過 locale.emptyText 顯示，不替換整個元件 */}
@@ -187,7 +188,7 @@ const FailSampleList = () => {
               pagination={false}
               size="small"
               bordered
-              scroll={{ y: TABLE_SCROLL_Y }}
+              scroll={{ y: tableScrollY }}
               locale={{
                 emptyText: (
                   <Empty

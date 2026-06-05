@@ -3,6 +3,7 @@ import { Download } from 'lucide-react';
 import useDashboardStore from '../../../stores/dashboardStore';
 import type { HBinValue } from '../../../types/api';
 import { tokens } from '../../../styles/tokens';
+import { useResponsiveTokens } from '../../../hooks/useResponsiveTokens';
 
 const { Text } = Typography;
 
@@ -15,6 +16,7 @@ const HBIN_OPTIONS: { label: string; value: HBinValue }[] = [
 
 const DashboardHeader = () => {
   const { currentHbin, currentLotId, setHbin } = useDashboardStore();
+  const responsive = useResponsiveTokens();
 
   return (
     <div
@@ -29,7 +31,7 @@ const DashboardHeader = () => {
       }}
     >
       <Space size={12}>
-        <Text strong style={{ color: tokens.colors.textPrimary, fontSize: 15 }}>
+        <Text strong style={{ color: tokens.colors.textPrimary, fontSize: responsive.typography.cardTitle }}>
           Fail Mode
         </Text>
         <Select
@@ -38,7 +40,7 @@ const DashboardHeader = () => {
           onChange={(val) => setHbin(val as HBinValue)}
           options={HBIN_OPTIONS}
           disabled={!currentLotId}
-          style={{ width: 200 }}
+          style={{ width: responsive.isMobile ? 160 : 200 }}
         />
       </Space>
 

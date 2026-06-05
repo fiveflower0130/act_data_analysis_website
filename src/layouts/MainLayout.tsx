@@ -3,6 +3,7 @@ import { Layout, Avatar, Dropdown, Typography, Space } from 'antd';
 import { LogOut, User, Activity } from 'lucide-react';
 import { Outlet, useNavigate } from 'react-router-dom';
 import useAuthStore from '../stores/authStore';
+import { useResponsiveTokens } from '../hooks/useResponsiveTokens';
 import { tokens } from '../styles/tokens';
 
 const { Header, Content } = Layout;
@@ -11,6 +12,7 @@ const { Text } = Typography;
 const MainLayout = () => {
   const { user, token, logout, restoreSession } = useAuthStore();
   const navigate = useNavigate();
+  const responsive = useResponsiveTokens();
 
   // 頁面重整後，token 從 localStorage 恢復但 user 為 null，重新呼叫 /me 取得使用者資訊
   useEffect(() => {
@@ -40,7 +42,8 @@ const MainLayout = () => {
       {/* ── Navbar ── */}
       <Header
         style={{
-          height: 64,
+          height: responsive.spacing.navbarHeight,
+          lineHeight: `${responsive.spacing.navbarHeight}px`,
           padding: '0 24px',
           background: tokens.colors.surface,
           borderBottom: `1px solid ${tokens.colors.border}`,
@@ -53,8 +56,12 @@ const MainLayout = () => {
         }}
       >
         <Space align="center" size={8}>
-          <Activity size={20} color={tokens.colors.primary} strokeWidth={1.5} />
-          <Text strong style={{ color: tokens.colors.textPrimary, fontSize: 18, letterSpacing: 1 }}>
+          <Activity size={responsive.isMobile ? 16 : 20} color={tokens.colors.primary} strokeWidth={1.5} />
+          <Text strong style={{ 
+              color: tokens.colors.textPrimary, 
+              fontSize: responsive.typography.sectionTitle,
+              letterSpacing: 1 
+            }}>
             ACT Failure Analysis AI
           </Text>
         </Space>
@@ -62,11 +69,11 @@ const MainLayout = () => {
         <Dropdown menu={{ items: userMenuItems }} placement="bottomRight">
           <Space style={{ cursor: 'pointer' }}>
             <Avatar
-              size={32}
-              icon={<User size={16} />}
+              size={responsive.isMobile ? 28 : 32}
+              icon={<User size={responsive.isMobile ? 14 : 16} />}
               style={{ background: tokens.colors.primary }}
             />
-            <Text style={{ color: tokens.colors.textPrimary }}>
+            <Text style={{ color: tokens.colors.textPrimary, fontSize: responsive.typography.body }}>
               {user?.display_name ?? user?.user_no ?? '使用者'}
             </Text>
           </Space>

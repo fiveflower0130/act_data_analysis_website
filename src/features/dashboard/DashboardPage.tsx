@@ -5,15 +5,18 @@ import DashboardHeader from './components/DashboardHeader';
 import FailSampleList from './components/FailSampleList';
 import PlaceholderChart from './components/PlaceholderChart';
 import ResultsPanel from './components/ResultsPanel';
+import { useResponsiveTokens } from '../../hooks/useResponsiveTokens';
 import { tokens } from '../../styles/tokens';
 
 const DashboardPage = () => {
+  const responsive = useResponsiveTokens();
+
   return (
-    <div style={{ display: 'flex', width: '100%', height: '100%', overflow: 'hidden', minWidth: 900 }}>
-      {/* ── 左功能欄（固定 280px）── */}
+    <div style={{ display: 'flex', width: '100%', height: '100%', overflow: 'hidden', minWidth: 800 }}>
+      {/* ── 左功能欄（響應式寬度）── */}
       <div
         style={{
-          width: 280,
+          width: responsive.spacing.sidebarWidth,
           flexShrink: 0,
           background: tokens.colors.surface,
           borderRight: `1px solid ${tokens.colors.border}`,
@@ -29,11 +32,11 @@ const DashboardPage = () => {
         </div>
       </div>
 
-      {/* ── 右功能欄（填滿剩餘，最小 620px）── */}
+      {/* ── 右功能欄（填滿剩餘，最小寬度跟隨響應式 sidebar）── */}
       <div
         style={{
           flex: 1,
-          minWidth: 620,
+          minWidth: 0,
           display: 'flex',
           flexDirection: 'column',
           overflow: 'hidden',
@@ -42,12 +45,12 @@ const DashboardPage = () => {
       >
         {/* Fail Mode 下拉 */}
         <DashboardHeader />
-        {/* 結果摘要（固定高度 140px）與上層間距12px */}
+        {/* 結果摘要（響應式高度）與上層間距12px */}
         <div
           style={{
-            height: 140,
+            height: responsive.spacing.resultsHeight,
             flexShrink: 0,
-            padding: '12px 12px 0px', //
+            padding: '12px 12px 0px',
           }}
         >
           <ResultsPanel />

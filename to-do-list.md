@@ -1,6 +1,6 @@
 # ACT Failure Analysis System Frontend — 待辦事項清單
 
-> 最後更新：2026-06-05（11:58）
+> 最後更新：2026-06-05（14:35）
 > 分析工具：GitHub Copilot
 > 說明：本文件記錄前端專案的待辦事項，依優先度分類管理，並於每次變更後同步更新狀態與修改紀錄。
 
@@ -37,9 +37,10 @@
 | # | 狀態 | 問題描述 | 位置 |
 |---|------|----------|------|
 | 6 | 🔄 | 主儀表板頁（LOT 搜尋 + 歷史記錄 + Fail Mode 篩選 + 版面 1:4 佈局 + 4 個圖表佔位元件） | `src/features/dashboard/` |
-| 7 | ✅ | Fail Sample List 表格元件（固定高度 520px CSS override、統計至標題右側、showSizeChanger=false、Badge 統一綠色） | `src/features/dashboard/components/FailSampleList.tsx` |
+| 7 | ✅ | Fail Sample List 表格元件（固定高度響應式 CSS override、統計至標題右側、showSizeChanger=false、Badge 統一綠色） | `src/features/dashboard/components/FailSampleList.tsx` |
 | 24 | ✅ | ResultsPanel 分析文本實作（IO pin fail 統計、最高頻 die/ball 計算、平局全列、total_qty 型別同步） | `src/features/dashboard/components/ResultsPanel.tsx` |
 | 23 | ✅ | 撰寫 Dashboard 模組單元測試（dashboardStore 15 tests + analysisHelpers 15 tests） | `tests/unit/` |
+| 25 | ✅ | 響應式版面設計（tokens 斷點/排版、useResponsiveTokens hook、所有頁面套用） | `src/styles/tokens.ts`、`src/hooks/`、各功能頁 |
 | 8 | ⬜ | Fail Sample on Tray 圖表元件 | `src/features/analysis/` |
 | 9 | ⬜ | Fail Die / Fail Die Rate 圖表元件 | `src/features/analysis/` |
 | 10 | ⬜ | Fail Ball 圖表元件 | `src/features/analysis/` |
@@ -84,3 +85,4 @@
 | 2026-06-05 | 修正 | ✅ 修正頁面刷新後使用者名稱消失問題：MainLayout 加 useEffect，有 token 無 user 時呼叫 restoreSession() | Dante |
 | 2026-06-05 | 修正 | ✅ 修正外部機器 Network Error：vite.config.ts 加 Proxy（/api → localhost:8001），client.ts baseURL 改為空字串 | Dante |
 | 2026-06-05 | #23 | ✅ 完成：新增 dashboardStore 測試（15 tests）+ analysisHelpers 測試（15 tests）；總計 57 Tests 通過 | Dante |
+| 2026-06-05 | #25 | ✅ 完成：響應式版面設計。tokens.ts 新增 tableScrollY/resultsHeight 欄位、修正 laptop 12.5px bug；useResponsiveTokens 補 isMobile/isTablet/isLaptop/isDesktop；MainLayout 修 lineHeight + sectionTitle；DashboardPage 修 sidebar width 未套用 bug；LoginPage/FailSampleList/DashboardHeader/ResultsPanel 全部套用響應式；57 Tests 通過 | Dante |

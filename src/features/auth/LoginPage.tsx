@@ -5,6 +5,7 @@ import { useNavigate } from 'react-router-dom';
 import { AxiosError } from 'axios';
 import useAuthStore from '../../stores/authStore';
 import { tokens } from '../../styles/tokens';
+import { useResponsiveTokens } from '../../hooks/useResponsiveTokens';
 import { ApiErrorCode } from '../../types/api';
 import type { ApiResponse } from '../../types/api';
 import addLog from '../../utils/logging';
@@ -19,6 +20,7 @@ interface LoginFormValues {
 const LoginPage = () => {
   const { login, isLoading } = useAuthStore();
   const navigate = useNavigate();
+  const responsive = useResponsiveTokens();
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   const handleSubmit = async (values: LoginFormValues) => {
@@ -58,10 +60,11 @@ const LoginPage = () => {
     >
       <Card
         style={{
-          width: 420,
+          width: responsive.isMobile ? '90vw' : 420,
+          maxWidth: 420,
           background: tokens.colors.surface,
           border: `1px solid ${tokens.colors.border}`,
-          borderRadius: tokens.spacing.cardRadius,
+          borderRadius: responsive.spacing.cardRadius,
           padding: '8px 4px',
         }}
       >

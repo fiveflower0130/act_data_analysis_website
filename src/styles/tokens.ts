@@ -10,7 +10,7 @@ export const colors = {
   border: '#1E3A5F',      // 邊線 / 分隔（原 bgBorder）
 
   // 藍色主調
-  primary: '#1E88E5',     // CTA 按鈕、互動重點
+  primary: '#1c6bd3',     // CTA 按鈕、互動重點
   primaryLight: '#42A5F5',// Active 狀態、強調文字
   primaryMuted: '#90CAF9',// Secondary 文字、Tab 未選中
   primaryGhost: '#4A6B8A',// Placeholder、Caption、Muted
@@ -29,38 +29,160 @@ export const colors = {
 } as const;
 
 /**
+ * 螢幕斷點（基於實際使用場景）
+ * - Mobile: < 768px
+ * - Tablet: 768px - 1024px
+ * - Laptop: 1024px - 1440px（筆電 1366x768 - 1440x900）
+ * - Desktop: >= 1440px（桌機 1920x1080 / 1280x720）
+ */
+export const BREAKPOINTS = {
+  mobile: 768,
+  tablet: 1024,
+  laptop: 1440,
+  desktop: 1920,
+} as const;
+
+export type ScreenSize = 'mobile' | 'tablet' | 'laptop' | 'desktop';
+
+/**
+ * 根據螢幕寬度判斷螢幕大小
+ */
+export function getScreenSize(screenWidth: number): ScreenSize {
+  if (screenWidth < BREAKPOINTS.mobile) return 'mobile';
+  if (screenWidth < BREAKPOINTS.tablet) return 'tablet';
+  if (screenWidth < BREAKPOINTS.laptop) return 'laptop';
+  return 'desktop';
+}
+
+/**
  * 字型 Token
  * 來源：ui-ux-design.instructions.md — 2.2 字型系統
  */
 export const typography = {
   fontFamily: "'Inter', 'Noto Sans TC', system-ui, sans-serif",
   size: {
-    pageTitle: '22px',
-    sectionTitle: '18px',
-    cardTitle: '15px',
-    contentTitle: '13px',
-    body: '12px',
-    caption: '11px',
-  },
+    pageTitle: '24px',      // 頁面主標題
+    sectionTitle: '18px',   // 區塊標題
+    cardTitle: '16px',      // 卡片標題
+    contentTitle: '14px',   // 內容標題
+    body: '12px',           // 內文
+    caption: '12px',        // 輔助說明（如表格說明文字、Badge 文字）
+  } as const satisfies Record<'pageTitle' | 'sectionTitle' | 'cardTitle' | 'contentTitle' | 'body' | 'caption', string>,
   weight: {
     regular: 400,
     medium: 500,
     semibold: 600,
     bold: 700,
-  },
+  } as const,
 } as const;
 
+/** typography.size 的型別別名 — 支持任何符合結構的字型值 */
+export type FontSizeTokens = Record<'pageTitle' | 'sectionTitle' | 'cardTitle' | 'contentTitle' | 'body' | 'caption', string>;
+
 /**
- * 間距 Token
+ * 響應式字型大小
+ * 針對不同螢幕大小提供調整
+ */
+export const responsiveTypography: Record<ScreenSize, FontSizeTokens> = {
+  mobile: {
+    pageTitle: '18px',
+    sectionTitle: '14px',
+    cardTitle: '12px',
+    contentTitle: '11px',
+    body: '15px',
+    caption: '10px',
+  },
+  tablet: {
+    pageTitle: '20px',
+    sectionTitle: '16px',
+    cardTitle: '13px',
+    contentTitle: '12px',
+    body: '14px',
+    caption: '10px',
+  },
+  laptop: {
+    pageTitle: '21px',
+    sectionTitle: '17px',
+    cardTitle: '14px',    
+    contentTitle: '13px', 
+    body: '14px',         
+    caption: '11px',      
+  },
+  desktop: {
+    pageTitle: '24px',
+    sectionTitle: '18px',
+    cardTitle: '16px',
+    contentTitle: '14px',
+    body: '12px',
+    caption: '12px',
+  },
+};
+
+/**
+ * 間距 Token — 基礎預設（適配 Desktop）
  */
 export const spacing = {
   navbarHeight: 64,
-  sidebarWidth: 320,
-  rightPanelWidth: 300,
+  sidebarWidth: 300,    
+  rightPanelWidth: 280,
   rightPanelCollapsed: 20,
   cardRadius: 12,
   uploadZoneRadius: 14,
-} as const;
+  /** FailSampleList table body 固定高度（px）*/
+  tableScrollY: 520,
+  /** ResultsPanel 容器高度（px）*/
+  resultsHeight: 140,
+} as const satisfies Record<'navbarHeight' | 'sidebarWidth' | 'rightPanelWidth' | 'rightPanelCollapsed' | 'cardRadius' | 'uploadZoneRadius' | 'tableScrollY' | 'resultsHeight', number>;
+
+/** spacing 的型別別名 — 支持任何符合結構的間距值 */
+export type SpacingTokens = Record<'navbarHeight' | 'sidebarWidth' | 'rightPanelWidth' | 'rightPanelCollapsed' | 'cardRadius' | 'uploadZoneRadius' | 'tableScrollY' | 'resultsHeight', number>;
+
+/**
+ * 響應式間距
+ * 調整邊框/側欄寬度以適應較小的螢幕
+ */
+export const responsiveSpacing: Record<ScreenSize, SpacingTokens> = {
+  mobile: {
+    navbarHeight: 52,
+    sidebarWidth: 200,
+    rightPanelWidth: 150,
+    rightPanelCollapsed: 15,
+    cardRadius: 8,
+    uploadZoneRadius: 10,
+    tableScrollY: 260,
+    resultsHeight: 110,
+  },
+  tablet: {
+    navbarHeight: 56,
+    sidebarWidth: 240,
+    rightPanelWidth: 200,
+    rightPanelCollapsed: 15,
+    cardRadius: 10,
+    uploadZoneRadius: 11,
+    tableScrollY: 320,
+    resultsHeight: 120,
+  },
+  laptop: {
+    navbarHeight: 60,
+    sidebarWidth: 280,
+    rightPanelWidth: 260,
+    rightPanelCollapsed: 17,
+    cardRadius: 11,
+    uploadZoneRadius: 12,
+    tableScrollY: 360,   // 1366×768：可用約 406px，360px 保留安全緩衝
+    resultsHeight: 130,
+  },
+  desktop: {
+    navbarHeight: 64,
+    sidebarWidth: 300,
+    rightPanelWidth: 280,
+    rightPanelCollapsed: 20,
+    cardRadius: 12,
+    uploadZoneRadius: 14,
+    tableScrollY: 520,
+    resultsHeight: 140,
+  },
+};
 
 /** 全域 Token bundle，方便單一 import */
 export const tokens = { colors, typography, spacing } as const;

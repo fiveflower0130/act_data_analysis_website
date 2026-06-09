@@ -33,7 +33,9 @@ const useAuthStore = create<AuthState>()(
           // response.data = ApiResponse<LoginResponse>，token 在 .data.data
           const { data: loginResp } = await apiLogin({ user_no: employeeId, password });
           const token = loginResp.data!.access_token;
+          const refreshTok = loginResp.data!.refresh_token;
           localStorage.setItem('access_token', token);
+          localStorage.setItem('refresh_token', refreshTok);
           // 取得完整 UserInfo
           const { data: meResp } = await getMe();
           const userInfo = meResp.data!;
@@ -41,6 +43,7 @@ const useAuthStore = create<AuthState>()(
           addLog({ level: 'info', module: 'authStore', stack: ['login'], msg: `登入成功：${userInfo.display_name}`, user: userInfo.user_no });
         } catch (err) {
           localStorage.removeItem('access_token');
+          localStorage.removeItem('refresh_token');
           set({ isLoading: false });
           addLog({ level: 'error', module: 'authStore', stack: ['login'], msg: err });
           throw err;
@@ -50,6 +53,7 @@ const useAuthStore = create<AuthState>()(
       logout: () => {
         const user = get().user?.user_no ?? 'unknown';
         localStorage.removeItem('access_token');
+        localStorage.removeItem('refresh_token');
         set({ token: null, user: null });
         addLog({ level: 'info', module: 'authStore', stack: ['logout'], msg: `登出：${user}`, user });
       },

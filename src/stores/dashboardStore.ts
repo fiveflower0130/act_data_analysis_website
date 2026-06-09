@@ -1,0 +1,133 @@
+import { create } from 'zustand';
+import { persist } from 'zustand/middleware';
+import { getFailSample } from '../api/analysis';
+import type { FailSampleResult, HBinValue, SearchHistoryEntry } from '../types/api';
+import addLog from '../utils/logging';
+
+const HBIN_VALUES: HBinValue[] = [2, 3, 4, 5];
+const MAX_HISTORY = 20;
+
+/** cache[lotId][hbin] = FailSampleResult | null（null 表示後端 404 無資料） */
+type FailSampleCache = Record<string, Partial<Record<HBinValue, FailSampleResult | null>>>;
+
+interface DashboardState {
+  searchHistory: SearchHistoryEntry[];
+  failSampleCache: FailSampleCache;
+  currentLotId: string | null;
+  currentHbin: HBinValue | null;
+  isSearching: boolean;
+  searchError: string | null;
+}
+
+interface DashboardActions {
+  /** 輸入 Lot ID 並搜尋，對所有 HBIN 並行取得 fail-sample 資料後快取 */
+  search: (lotId: string) => Promise<void>;
+  /** 從歷史記錄點選一個 Lot，切換當前 Lot（資料從快取讀） */
+  selectFromHistory: (lotId: string) => void;
+  /** 選取 Fail Mode（HBIN） */
+  setHbin: (hbin: HBinValue) => void;
+  clearError: () => void;
+  /** 取得目前選取的 fail-sample 結果（若無則 null） */
+  getCurrentFailSample: () => FailSampleResult | null;
+}
+
+const useDashboardStore = create<DashboardState & DashboardActions>()(
+  persist(
+    (set, get) => ({
+      searchHistory: [],
+      failSampleCache: {},
+      currentLotId: null,
+      currentHbin: 3 as HBinValue,
+      isSearching: false,
+      searchError: null,
+
+      search: async (lotId: string) => {
+        const trimmedId = lotId.trim().toUpperCase();
+        if (!trimmedId) return;
+
+        set({ isSearching: true, searchError: null });
+        addLog({ level: 'info', module: 'dashboardStore', stack: ['search'], msg: `搜尋 Lot: ${trimmedId}` });
+
+        try {
+          // 對 4 個 HBIN 並行發出請求，任一失敗不中斷整體
+          const results = await Promise.allSettled(
+            HBIN_VALUES.map((hbin) => getFailSample(trimmedId, hbin)),
+          );
+
+          const hbinCache: Partial<Record<HBinValue, FailSampleResult | null>> = {};
+          let hasAnyFail = false;
+
+          results.forEach((result, idx) => {
+            const hbin = HBIN_VALUES[idx];
+            if (result.status === 'fulfilled') {
+              const data = result.value.data.data;
+              hbinCache[hbin] = data;
+              if (data && data.fail_sample.some((s) => s.ball_name.length > 0)) {
+                hasAnyFail = true;
+              }
+              addLog({ level: 'info', module: 'dashboardStore', stack: ['search'], msg: `HBIN=${hbin} 取得 ${data?.total_duts ?? 0} 筆` });
+            } else {
+              // 404（Netlist 未上傳）或其他錯誤 → 存 null
+              hbinCache[hbin] = null;
+              addLog({ level: 'warn', module: 'dashboardStore', stack: ['search'], msg: `HBIN=${hbin} 無資料: ${result.reason?.message}` });
+            }
+          });
+
+          const newEntry: SearchHistoryEntry = {
+            lotId: trimmedId,
+            searchedAt: new Date().toISOString(),
+            hasAnyFail,
+          };
+
+          set((state) => ({
+            isSearching: false,
+            currentLotId: trimmedId,
+            failSampleCache: {
+              ...state.failSampleCache,
+              [trimmedId]: hbinCache,
+            },
+            // 最新在最上方，去重後保留最新一筆，最多 MAX_HISTORY 筆
+            searchHistory: [
+              newEntry,
+              ...state.searchHistory.filter((h) => h.lotId !== trimmedId),
+            ].slice(0, MAX_HISTORY),
+          }));
+        } catch (err: unknown) {
+          const message = err instanceof Error ? err.message : '搜尋失敗';
+          addLog({ level: 'error', module: 'dashboardStore', stack: ['search'], msg: `搜尋錯誤: ${message}` });
+          set({ isSearching: false, searchError: message });
+        }
+      },
+
+      selectFromHistory: (lotId: string) => {
+        set({ currentLotId: lotId, searchError: null });
+        addLog({ level: 'info', module: 'dashboardStore', stack: ['selectFromHistory'], msg: `切換至歷史記錄: ${lotId}` });
+      },
+
+      setHbin: (hbin: HBinValue) => {
+        set({ currentHbin: hbin });
+        addLog({ level: 'info', module: 'dashboardStore', stack: ['setHbin'], msg: `選取 Fail Mode HBIN=${hbin}` });
+      },
+
+      clearError: () => set({ searchError: null }),
+
+      getCurrentFailSample: () => {
+        const { currentLotId, currentHbin, failSampleCache } = get();
+        if (!currentLotId || currentHbin === null) return null;
+        return failSampleCache[currentLotId]?.[currentHbin] ?? null;
+      },
+    }),
+    {
+      name: 'dashboard-store',
+      // 只持久化歷史記錄和快取，loading/error 不需要持久化
+      partialize: (state) => ({
+        searchHistory: state.searchHistory,
+        failSampleCache: state.failSampleCache,
+        currentLotId: state.currentLotId,
+        currentHbin: state.currentHbin,
+      }),
+    },
+  ),
+);
+
+export default useDashboardStore;

@@ -1,15 +1,27 @@
+import { useEffect } from 'react';
 import { Layout, Avatar, Dropdown, Typography, Space } from 'antd';
-import { LogOut, User } from 'lucide-react';
+import { LogOut, User, Activity } from 'lucide-react';
 import { Outlet, useNavigate } from 'react-router-dom';
 import useAuthStore from '../stores/authStore';
+import { useResponsiveTokens } from '../hooks/useResponsiveTokens';
 import { tokens } from '../styles/tokens';
 
-const { Header, Sider, Content } = Layout;
+const { Header, Content } = Layout;
 const { Text } = Typography;
 
 const MainLayout = () => {
-  const { user, logout } = useAuthStore();
+  const { user, token, logout, restoreSession } = useAuthStore();
   const navigate = useNavigate();
+  const responsive = useResponsiveTokens();
+
+  // 頁面重整後，token 從 localStorage 恢復但 user 為 null，重新呼叫 /me 取得使用者資訊
+  useEffect(() => {
+    if (token && !user) {
+      restoreSession().catch(() => {
+        // restoreSession 內部已處理 logout，此處靜默即可
+      });
+    }
+  }, [token, user, restoreSession]);
 
   const handleLogout = () => {
     logout();
@@ -30,7 +42,8 @@ const MainLayout = () => {
       {/* ── Navbar ── */}
       <Header
         style={{
-          height: 64,
+          height: responsive.spacing.navbarHeight,
+          lineHeight: `${responsive.spacing.navbarHeight}px`,
           padding: '0 24px',
           background: tokens.colors.surface,
           borderBottom: `1px solid ${tokens.colors.border}`,
@@ -42,48 +55,35 @@ const MainLayout = () => {
           zIndex: 100,
         }}
       >
-        <Text strong style={{ color: tokens.colors.textPrimary, fontSize: 18, letterSpacing: 1 }}>
-          ACT Failure Analysis System
-        </Text>
+        <Space align="center" size={8}>
+          <Activity size={responsive.isMobile ? 16 : 20} color={tokens.colors.primary} strokeWidth={1.5} />
+          <Text strong style={{ 
+              color: tokens.colors.textPrimary, 
+              fontSize: responsive.typography.sectionTitle,
+              letterSpacing: 1 
+            }}>
+            ACT Failure Analysis AI
+          </Text>
+        </Space>
 
         <Dropdown menu={{ items: userMenuItems }} placement="bottomRight">
           <Space style={{ cursor: 'pointer' }}>
             <Avatar
-              size={32}
-              icon={<User size={16} />}
+              size={responsive.isMobile ? 28 : 32}
+              icon={<User size={responsive.isMobile ? 14 : 16} />}
               style={{ background: tokens.colors.primary }}
             />
-            <Text style={{ color: tokens.colors.textPrimary }}>
+            <Text style={{ color: tokens.colors.textPrimary, fontSize: responsive.typography.body }}>
               {user?.display_name ?? user?.user_no ?? '使用者'}
             </Text>
           </Space>
         </Dropdown>
       </Header>
 
-      <Layout>
-        {/* ── Left Sidebar ── */}
-        <Sider
-          width={320}
-          style={{
-            background: tokens.colors.surface,
-            borderRight: `1px solid ${tokens.colors.border}`,
-            overflowY: 'auto',
-          }}
-        >
-          {/* Sidebar 內容由各功能頁自行注入，目前為空 */}
-        </Sider>
-
-        {/* ── Center Content ── */}
-        <Content
-          style={{
-            padding: 24,
-            background: tokens.colors.base,
-            overflowY: 'auto',
-          }}
-        >
-          <Outlet />
-        </Content>
-      </Layout>
+      {/* ── Page Content（各功能頁自行管理左右欄佈局）── */}
+      <Content style={{ flex: 1, overflow: 'hidden', display: 'flex' }}>
+        <Outlet />
+      </Content>
     </Layout>
   );
 };

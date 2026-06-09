@@ -14,9 +14,12 @@ export const ApiErrorCode = {
   Forbidden: 1002,
   NotFound: 1003,
   ValidationError: 1004,
-  LdapError: 1005,
+  /** LDAP 帳號驗證失敗（帳號或密碼錯誤），HTTP 401 */
+  LdapAuthFailed: 1005,
   FileFormatError: 1007,
   DatabaseError: 1008,
+  /** LDAP 服務不可用（連線失敗），HTTP 503 */
+  LdapServiceError: 1009,
 } as const;
 
 /** 使用者角色 */
@@ -31,11 +34,26 @@ export interface LoginRequest {
 /** 登入 Response */
 export interface LoginResponse {
   access_token: string;
+  /** Rolling Refresh Token，有效期 7 天（P1-2） */
+  refresh_token: string;
   token_type: 'bearer';
   expires_in: number;
   user_no: string;
   display_name: string;
   role: UserRole;
+}
+
+/** Refresh Token Request（P1-2） */
+export interface RefreshRequest {
+  refresh_token: string;
+}
+
+/** Refresh Token Response（P1-2） */
+export interface RefreshResponse {
+  access_token: string;
+  /** 新的 refresh token（舊的同時失效） */
+  refresh_token: string;
+  expires_in: number;
 }
 
 /** 當前使用者資訊 */
@@ -103,6 +121,8 @@ export interface FailSampleResult {
   lot_id: string;
   hbin: number;
   test_program: string;
+  /** MongoDB 查得的 Fail DUT 總數（含 VDD），新增於 2026-06-06 */
+  total_qty: number;
   total_duts: number;
   fail_sample: FailSampleItem[];
 }
@@ -118,4 +138,43 @@ export interface StackingDieLayer {
   layer_no: number;
   unity_no: string;
   is_substrate: boolean;
+}
+
+/** /data/search 回應中各測項的超規詳情 */
+export interface TestItemResult {
+  value: string;
+  fail_reason: string;
+  spec_max: string;
+  spec_min: string;
+  unit: string;
+}
+
+/** /data/search 回應中單一 DUT 的測試結果（含動態測項 key） */
+export type TestResultValueItem = {
+  serial_no: string;
+  site_id: number;
+  hbin: string;
+  flag: number;
+  real_time: string;
+} & Record<string, string | number | TestItemResult>;
+
+/** /data/search 回應中單一 Site 的資料 */
+export interface SiteSearchResult {
+  lot_info: LotSiteInfo;
+  test_result_value: TestResultValueItem[];
+}
+
+/** GET /api/v1/data/search 回應 */
+export interface SearchResult {
+  lot_id: string;
+  hbin: number;
+  execution_mode: string;
+  sites: SiteSearchResult[];
+}
+
+/** Dashboard 搜尋歷史記錄 */
+export interface SearchHistoryEntry {
+  lotId: string;
+  searchedAt: string; // ISO string（Zustand persist 序列化友好）
+  hasAnyFail: boolean; // 是否有任一 HBIN 有 fail 資料（用於顯示 正常/警告 badge）
 }

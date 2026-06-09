@@ -117,8 +117,7 @@ const addLog = ({ level, module, stack, msg, user }: AddLogParams): void => {
     : level === 'warn'  ? console.warn
     : console.error;
 
-  consoleMethod(`%c[${level.toUpperCase()}]%c ${raw.split(': ').slice(1).join(': ')}`,
-    levelStyle[level], 'color:inherit');
+  consoleMethod(`%c[${level.toUpperCase()}]%c ${raw.split(': ').slice(1).join(': ')}`, levelStyle[level], 'color:inherit');
 };
 
 // ─── 公開工具函式 ────────────────────────────────────────────────────────────

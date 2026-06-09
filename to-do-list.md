@@ -1,6 +1,6 @@
 # ACT Failure Analysis System Frontend — 待辦事項清單
 
-> 最後更新：2026-06-05（14:35）
+> 最後更新：2026-06-09（10:30）
 > 分析工具：GitHub Copilot
 > 說明：本文件記錄前端專案的待辦事項，依優先度分類管理，並於每次變更後同步更新狀態與修改紀錄。
 
@@ -41,7 +41,8 @@
 | 24 | ✅ | ResultsPanel 分析文本實作（IO pin fail 統計、最高頻 die/ball 計算、平局全列、total_qty 型別同步） | `src/features/dashboard/components/ResultsPanel.tsx` |
 | 23 | ✅ | 撰寫 Dashboard 模組單元測試（dashboardStore 15 tests + analysisHelpers 15 tests） | `tests/unit/` |
 | 25 | ✅ | 響應式版面設計（tokens 斷點/排版、useResponsiveTokens hook、所有頁面套用） | `src/styles/tokens.ts`、`src/hooks/`、各功能頁 |
-| 8 | ⬜ | Fail Sample on Tray 圖表元件 | `src/features/analysis/` |
+| 26 | ✅ | 環境變數設定（`.env/` 資料夾、`.env`/`.env.dev`，vite.config.ts `envDir`，區分正式/開發環境） | `.env/`、`vite.config.ts`、`package.json` |
+| 27 | ✅ | IIS 佈署指南與 `public/web.config` SPA 路由設定 | `docs/deployment/iis-deployment.md`、`public/web.config` |
 | 9 | ⬜ | Fail Die / Fail Die Rate 圖表元件 | `src/features/analysis/` |
 | 10 | ⬜ | Fail Ball 圖表元件 | `src/features/analysis/` |
 | 11 | ⬜ | Netlist 管理頁（上傳、列表） | `src/features/netlist/` |
@@ -85,4 +86,7 @@
 | 2026-06-05 | 修正 | ✅ 修正頁面刷新後使用者名稱消失問題：MainLayout 加 useEffect，有 token 無 user 時呼叫 restoreSession() | Dante |
 | 2026-06-05 | 修正 | ✅ 修正外部機器 Network Error：vite.config.ts 加 Proxy（/api → localhost:8001），client.ts baseURL 改為空字串 | Dante |
 | 2026-06-05 | #23 | ✅ 完成：新增 dashboardStore 測試（15 tests）+ analysisHelpers 測試（15 tests）；總計 57 Tests 通過 | Dante |
-| 2026-06-05 | #25 | ✅ 完成：響應式版面設計。tokens.ts 新增 tableScrollY/resultsHeight 欄位、修正 laptop 12.5px bug；useResponsiveTokens 補 isMobile/isTablet/isLaptop/isDesktop；MainLayout 修 lineHeight + sectionTitle；DashboardPage 修 sidebar width 未套用 bug；LoginPage/FailSampleList/DashboardHeader/ResultsPanel 全部套用響應式；57 Tests 通過 | Dante |
+| 2026-06-09 | #26 | ✅ 完成：建立 `.env/` 資料夾，新增 `.env`（正式）、`.env.dev`（開發覆蓋）；更新 vite.config.ts 加 `envDir: '.env'` + `loadEnv` 讀取 DEV_API_TARGET；package.json scripts 加 `--mode dev/prod` | Dante |
+| 2026-06-09 | #27 | ✅ 完成：建立 `public/web.config`（SPA 路由 + Option B 反向代理 comment）；建立 `docs/deployment/iis-deployment.md`（完整 IIS 佈署指南） | Dante |
+| 2026-06-09 | 修正 | ✅ 修正 LoginPage 標題由 "ACT Data Analytics AI" → "ACT Failure Analysis System" | Dante |
+| 2026-06-09 | 文件 | 更新 `.github/instructions/` 內 docs/reports → docs/records 參照；補充 project-overview 新增 docs/deployment 說明 | Dante |

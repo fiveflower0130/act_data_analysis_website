@@ -97,13 +97,21 @@ const FailSampleList = () => {
 
   const title = `Fail Sample List${currentHbin ? ` — ${HBinLabel[currentHbin]}` : ''}`;
 
-  // 展開所有 DUT → flat rows（不含 rowSpan）
+  // 展開所有 DUT → flat rows（不含 rowSpan），如果 ball_name 為空則視為無 fail，仍保留一列但內容以「—」顯示
   const allFlatRows = useMemo<FlatRow[]>(() => {
     if (!failSampleData) return [];
     const rows: FlatRow[] = [];
-    failSampleData.fail_sample
-      .filter((d) => d.ball_name.length > 0)
-      .forEach((dut) => {
+    failSampleData.fail_sample.forEach((dut) => {
+      if (dut.ball_name.length === 0) {
+        // 新的寫法則保留這些 DUT 的列，但將 dieNo 和 ballName 顯示為空，並在 render 時以「—」表示，讓使用者能清楚看到這些 DUT 的狀態。
+        rows.push({
+          key: `${dut.dut_no}-0`,
+          dutNo: dut.dut_no,
+          dieNo: '',
+          ballName: '',
+        });
+      } else {
+        // 正常展開所有 ball_name
         dut.ball_name.forEach((ball, idx) => {
           rows.push({
             key: `${dut.dut_no}-${idx}`,
@@ -112,7 +120,22 @@ const FailSampleList = () => {
             ballName: ball,
           });
         });
-      });
+      }
+    });
+    // 原本的寫法會完全忽略 ball_name 為空的 DUT，
+    // 導致表格中無法顯示這些 DUT 的存在，且無法區分是「尚未上傳 Netlist」還是「有上傳但該 DUT 無 fail」。
+    // failSampleData.fail_sample
+    //   .filter((d) => d.ball_name.length > 0)
+    //   .forEach((dut) => {
+    //     dut.ball_name.forEach((ball, idx) => {
+    //       rows.push({
+    //         key: `${dut.dut_no}-${idx}`,
+    //         dutNo: dut.dut_no,
+    //         dieNo: dut.die_no[idx] ?? '',
+    //         ballName: ball,
+    //       });
+    //     });
+    //   });
     return rows;
   }, [failSampleData]);
 

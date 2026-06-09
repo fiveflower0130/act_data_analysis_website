@@ -63,7 +63,7 @@ describe('LoginPage', () => {
 
     it('應顯示系統標題', () => {
       renderLoginPage();
-      expect(screen.getByText('ACT Data Analytics AI')).toBeInTheDocument();
+      expect(screen.getByText('ACT Failure Analysis System')).toBeInTheDocument();
     });
 
     it('預設不應顯示錯誤訊息', () => {

@@ -77,7 +77,7 @@ const LoginPage = () => {
             style={{ marginBottom: 12 }}
           />
           <Title level={3} style={{ color: tokens.colors.textPrimary, marginBottom: 4, marginTop: 0 }}>
-            ACT Data Analytics AI
+            ACT Failure Analysis System
           </Title>
           <Text style={{ color: tokens.colors.textMuted }}>5920 智慧分析系統</Text>
         </div>

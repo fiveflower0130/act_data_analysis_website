@@ -1,5 +1,4 @@
-import { Select, Typography, Button, Space } from 'antd';
-import { Download } from 'lucide-react';
+import { Select, Typography, Space } from 'antd';
 import useDashboardStore from '../../../stores/dashboardStore';
 import type { HBinValue } from '../../../types/api';
 import { tokens } from '../../../styles/tokens';
@@ -44,6 +43,7 @@ const DashboardHeader = () => {
         />
       </Space>
 
+      {/* 匯出報告功能開發中，待其他圖表功能完成後啟用
       <Button
         icon={<Download size={14} />}
         disabled={!currentLotId || currentHbin === null}
@@ -51,6 +51,7 @@ const DashboardHeader = () => {
       >
         匯出報告
       </Button>
+      */}
     </div>
   );
 };

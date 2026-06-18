@@ -1,18 +1,21 @@
 import { useEffect } from 'react';
-import { Layout, Avatar, Dropdown, Typography, Space } from 'antd';
-import { LogOut, User, Activity } from 'lucide-react';
+import { Layout, Avatar, Dropdown, Typography, Space, Tooltip } from 'antd';
+import { LogOut, User, Activity, Sun, Moon } from 'lucide-react';
 import { Outlet, useNavigate } from 'react-router-dom';
 import useAuthStore from '../stores/authStore';
+import useThemeStore from '../stores/themeStore';
 import { useResponsiveTokens } from '../hooks/useResponsiveTokens';
-import { tokens } from '../styles/tokens';
+import { useThemeColors } from '../hooks/useThemeColors';
 
 const { Header, Content } = Layout;
 const { Text } = Typography;
 
 const MainLayout = () => {
   const { user, token, logout, restoreSession } = useAuthStore();
+  const { mode, toggleTheme } = useThemeStore();
   const navigate = useNavigate();
   const responsive = useResponsiveTokens();
+  const colorMode = useThemeColors();
 
   // 頁面重整後，token 從 localStorage 恢復但 user 為 null，重新呼叫 /me 取得使用者資訊
   useEffect(() => {
@@ -38,15 +41,15 @@ const MainLayout = () => {
   ];
 
   return (
-    <Layout style={{ minHeight: '100vh', background: tokens.colors.base }}>
+    <Layout style={{ minHeight: '100vh', background: colorMode.base }}>
       {/* ── Navbar ── */}
       <Header
         style={{
           height: responsive.spacing.navbarHeight,
           lineHeight: `${responsive.spacing.navbarHeight}px`,
           padding: '0 24px',
-          background: tokens.colors.surface,
-          borderBottom: `1px solid ${tokens.colors.border}`,
+          background: colorMode.surface,
+          borderBottom: `1px solid ${colorMode.border}`,
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
@@ -56,9 +59,9 @@ const MainLayout = () => {
         }}
       >
         <Space align="center" size={8}>
-          <Activity size={responsive.isMobile ? 16 : 20} color={tokens.colors.primary} strokeWidth={1.5} />
+          <Activity size={responsive.isMobile ? 16 : 20} color={colorMode.primary} strokeWidth={1.5} />
           <Text strong style={{ 
-              color: tokens.colors.textPrimary, 
+              color: colorMode.textPrimary, 
               fontSize: responsive.typography.sectionTitle,
               letterSpacing: 1 
             }}>
@@ -66,18 +69,47 @@ const MainLayout = () => {
           </Text>
         </Space>
 
-        <Dropdown menu={{ items: userMenuItems }} placement="bottomRight">
-          <Space style={{ cursor: 'pointer' }}>
-            <Avatar
-              size={responsive.isMobile ? 28 : 32}
-              icon={<User size={responsive.isMobile ? 14 : 16} />}
-              style={{ background: tokens.colors.primary }}
-            />
-            <Text style={{ color: tokens.colors.textPrimary, fontSize: responsive.typography.body }}>
-              {user?.display_name ?? user?.user_no ?? '使用者'}
-            </Text>
-          </Space>
-        </Dropdown>
+        <Space size={12} align="center">
+          {/* Light / Dark 切換 : Light時裡面底會是深色字是白色*/}
+          <Tooltip 
+            title={mode === 'dark' ? '切換淺色模式' : '切換深色模式'}
+            color={mode === 'dark' ? colorMode.base : colorMode.surface}
+          >
+            <div
+              role="button"
+              tabIndex={0}
+              onClick={toggleTheme}
+              onKeyDown={(e) => e.key === 'Enter' && toggleTheme()}
+              style={{
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                padding: '4px 6px',
+                borderRadius: 6,
+                color: colorMode.textPrimary,
+                transition: 'color 0.2s, background 0.2s',
+              }}
+            >
+              {mode === 'dark'
+                ? <Sun size={responsive.isMobile ? 16 : 18} />
+                : <Moon size={responsive.isMobile ? 16 : 18} />}
+            </div>
+          </Tooltip>
+
+          {/* 使用者選單 */}
+          <Dropdown menu={{ items: userMenuItems }} placement="bottomRight">
+            <Space style={{ cursor: 'pointer' }}>
+              <Avatar
+                size={responsive.isMobile ? 28 : 32}
+                icon={<User size={responsive.isMobile ? 14 : 16} />}
+                style={{ background: colorMode.primary }}
+              />
+              <Text style={{ color: colorMode.textPrimary, fontSize: responsive.typography.body }}>
+                {user?.display_name ?? user?.user_no ?? '使用者'}
+              </Text>
+            </Space>
+          </Dropdown>
+        </Space>
       </Header>
 
       {/* ── Page Content（各功能頁自行管理左右欄佈局）── */}
@@ -89,3 +121,4 @@ const MainLayout = () => {
 };
 
 export default MainLayout;
+

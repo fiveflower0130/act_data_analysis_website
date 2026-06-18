@@ -1,7 +1,7 @@
 import { Select, Typography, Space } from 'antd';
 import useDashboardStore from '../../../stores/dashboardStore';
 import type { HBinValue } from '../../../types/api';
-import { tokens } from '../../../styles/tokens';
+import { useThemeColors } from '../../../hooks/useThemeColors';
 import { useResponsiveTokens } from '../../../hooks/useResponsiveTokens';
 
 const { Text } = Typography;
@@ -16,6 +16,7 @@ const HBIN_OPTIONS: { label: string; value: HBinValue }[] = [
 const DashboardHeader = () => {
   const { currentHbin, currentLotId, setHbin } = useDashboardStore();
   const responsive = useResponsiveTokens();
+  const colorMode = useThemeColors();
 
   return (
     <div
@@ -24,13 +25,13 @@ const DashboardHeader = () => {
         alignItems: 'center',
         justifyContent: 'space-between',
         padding: '10px 20px',
-        background: tokens.colors.surface,
-        borderBottom: `1px solid ${tokens.colors.border}`,
+        background: colorMode.surface,
+        borderBottom: `1px solid ${colorMode.border}`,
         minHeight: 52,
       }}
     >
       <Space size={12}>
-        <Text strong style={{ color: tokens.colors.textPrimary, fontSize: responsive.typography.cardTitle }}>
+        <Text strong style={{ color: colorMode.textPrimary, fontSize: responsive.typography.cardTitle }}>
           Fail Mode
         </Text>
         <Select

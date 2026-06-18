@@ -1,10 +1,11 @@
 import { useState } from 'react';
-import { Form, Input, Button, Card, Typography, Alert } from 'antd';
+import { Form, Input, Button, Card, Typography, Alert, ConfigProvider, theme } from 'antd';
 import { Activity } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { AxiosError } from 'axios';
 import useAuthStore from '../../stores/authStore';
 import { tokens } from '../../styles/tokens';
+import { getAntdTheme } from '../../styles/antdTheme';
 import { useResponsiveTokens } from '../../hooks/useResponsiveTokens';
 import { ApiErrorCode } from '../../types/api';
 import type { ApiResponse } from '../../types/api';
@@ -49,6 +50,8 @@ const LoginPage = () => {
   };
 
   return (
+    // 登入頁固定使用深色主題，不受 App 全域 Light/Dark 切換影響
+    <ConfigProvider theme={{ ...getAntdTheme('dark'), algorithm: theme.darkAlgorithm }}>
     <div
       style={{
         minHeight: '100vh',
@@ -58,99 +61,130 @@ const LoginPage = () => {
         background: tokens.colors.base,
       }}
     >
-      <Card
+      {/* ── 新增：背景圖層（獨立 div，才能只對圖片設定透明度）── */}
+      <div
         style={{
-          width: responsive.isMobile ? '90vw' : 420,
-          maxWidth: 420,
-          background: tokens.colors.surface,
-          border: `1px solid ${tokens.colors.border}`,
-          borderRadius: responsive.spacing.cardRadius,
-          padding: '8px 4px',
+          position: 'absolute',
+          inset: '50px 0 0 0',                                // 等同於 top/right/bottom/left: 0，撐滿父層
+          backgroundImage: 'url(/login_bg.png)',  // public/ 資料夾直接用 /login_bg.png
+          backgroundSize: 'cover',
+          backgroundPosition: 'center',
+          backgroundRepeat: 'no-repeat',
+          opacity: 0.6,                           // 背景圖透明度，0（全透明）～1（不透明）
+          filter: 'brightness(1)',              // 背景圖亮度，0（全黑）～1（原色）～>1（更亮）
+          zIndex: 0,                              // 背景圖在最底層
         }}
-      >
-        {/* Logo + 標題 */}
-        <div style={{ textAlign: 'center', marginBottom: 28 }}>
-          <Activity
-            size={48}
-            color={tokens.colors.primary}
-            strokeWidth={1.5}
-            style={{ marginBottom: 12 }}
-          />
-          <Title level={3} style={{ color: tokens.colors.textPrimary, marginBottom: 4, marginTop: 0 }}>
-            ACT Failure Analysis System
-          </Title>
-          <Text style={{ color: tokens.colors.textMuted }}>5920 智慧分析系統</Text>
-        </div>
+      />
 
-        <div style={{ borderTop: `1px solid ${tokens.colors.border}`, marginBottom: 24 }} />
-
-        {errorMsg && (
-          <Alert
-            title={errorMsg}
-            type="error"
-            showIcon
-            style={{ marginBottom: 16 }}
-          />
-        )}
-
-        <Form
-          layout="vertical"
-          onFinish={handleSubmit}
-          disabled={isLoading}
-          requiredMark={false}
+      {/* ── 原本的 Card 包在新的前景 div 裡，蓋過背景圖 ── */}
+      <div style={{ position: 'relative', zIndex: 1 }}>
+        <Card
+          style={{
+            width: responsive.isMobile ? '90vw' : 420,
+            maxWidth: 420,
+            background: tokens.colors.surface,
+            border: `1px solid ${tokens.colors.border}`,
+            borderRadius: responsive.spacing.cardRadius,
+            padding: '8px 4px',
+          }}
         >
-          <Form.Item
-            label={<Text style={{ color: tokens.colors.textSecondary }}>帳號 / Username</Text>}
-            name="user_no"
-            rules={[{ required: true, message: '請輸入帳號' }]}
-          >
-            <Input
-              size="large"
-              placeholder="輸入您的帳號"
-              autoComplete="username"
-              prefix={
-                <img
-                  src="/user.png"
-                  alt="user"
-                  style={{ width: 16, height: 16, opacity: 0.5 }}
-                />
-              }
+          {/* Logo + 標題 */}
+          <div style={{ textAlign: 'center', marginBottom: 28 }}>
+            <Activity
+              size={48}
+              color={tokens.colors.primary}
+              strokeWidth={1.5}
+              style={{ marginBottom: 12 }}
             />
-          </Form.Item>
+            <Title level={3} style={{ color: tokens.colors.textPrimary, marginBottom: 4, marginTop: 0 }}>
+              ACT Failure Analysis System
+            </Title>
+            <Text style={{ color: tokens.colors.textMuted }}>智慧分析系統</Text>
+          </div>
 
-          <Form.Item
-            label={<Text style={{ color: tokens.colors.textSecondary }}>密碼 / Password</Text>}
-            name="password"
-            rules={[{ required: true, message: '請輸入密碼' }]}
-          >
-            <Input.Password
-              size="large"
-              placeholder="輸入您的密碼"
-              autoComplete="current-password"
-              prefix={
-                <img
-                  src="/lock.png"
-                  alt="lock"
-                  style={{ width: 16, height: 16, opacity: 0.5 }}
-                />
-              }
+          <div style={{ borderTop: `1px solid ${tokens.colors.border}`, marginBottom: 24 }} />
+
+          {errorMsg && (
+            <Alert
+              title={errorMsg}
+              type="error"
+              showIcon
+              style={{ marginBottom: 16 }}
             />
-          </Form.Item>
+          )}
 
-          <Form.Item style={{ marginBottom: 0, marginTop: 8 }}>
-            <Button
-              type="primary"
-              htmlType="submit"
-              size="large"
-              block
-              loading={isLoading}
+          <Form
+            layout="vertical"
+            onFinish={handleSubmit}
+            disabled={isLoading}
+            requiredMark={false}
+          >
+            <Form.Item
+              label={<Text style={{ color: tokens.colors.textSecondary }}>帳號 / Username</Text>}
+              name="user_no"
+              rules={[{ required: true, message: '請輸入帳號' }]}
             >
-              登入 Login
-            </Button>
-          </Form.Item>
-        </Form>
-      </Card>
+              <Input
+                size="large"
+                placeholder="輸入您的帳號"
+                autoComplete="username"
+                prefix={
+                  <img
+                    src="/user.png"
+                    alt="user"
+                    style={{ width: 16, height: 16, opacity: 0.5 }}
+                  />
+                }
+              />
+            </Form.Item>
+
+            <Form.Item
+              label={<Text style={{ color: tokens.colors.textSecondary }}>密碼 / Password</Text>}
+              name="password"
+              rules={[{ required: true, message: '請輸入密碼' }]}
+            >
+              <Input.Password
+                size="large"
+                placeholder="輸入您的密碼"
+                autoComplete="current-password"
+                prefix={
+                  <img
+                    src="/lock.png"
+                    alt="lock"
+                    style={{ width: 16, height: 16, opacity: 0.5 }}
+                  />
+                }
+              />
+            </Form.Item>
+
+            <Form.Item style={{ marginBottom: 0, marginTop: 8 }}>
+              <Button
+                type="primary"
+                htmlType="submit"
+                size="large"
+                block
+                loading={isLoading}
+              >
+                登入 Login
+              </Button>
+            </Form.Item>
+          </Form>
+          {/* ── 新增：版權標示 ── */}
+          <Text
+            style={{
+              display: 'block',
+              textAlign: 'center',
+              marginTop: 20,            // 與表單保持距離
+              color: tokens.colors.textCopyRight,
+              fontSize: 12,
+            }}
+          >
+            © CRD 5940 智慧測試開發部
+          </Text>
+        </Card>
+      </div>
     </div>
+    </ConfigProvider>
   );
 };
 

@@ -1,8 +1,11 @@
+/** 目前支援的主題模式 */
+export type ThemeMode = 'dark' | 'light';
+
 /**
- * 設計系統色彩 Token
- * 來源：ui-ux-design.instructions.md — 深海藍暗色系（Deep Navy Dark Theme）
+ * 設計系統色彩 Token — 深海藍暗色系（Dark Theme）
+ * 來源：ui-ux-design.instructions.md
  */
-export const colors = {
+export const darkColors = {
   // 背景層次
   base: '#0A1929',        // 主背景（原 bgBase）
   surface: '#0D1E30',     // 側欄 / Navbar 背景（原 bgSidebar）
@@ -26,6 +29,41 @@ export const colors = {
   textPrimary: '#FFFFFF',
   textSecondary: '#90CAF9',
   textMuted: '#4A6B8A',
+  textCopyRight: '#848b92', // 版權聲明等輔助文字
+} as const;
+
+/** 向後相容別名（現有程式可繼續使用 colors） */
+export const colors = darkColors;
+
+/**
+ * 設計系統色彩 Token — 淺色系（Light Theme）
+ * 適用於產線人員截圖貼 PPT 的白底場景
+ */
+export const lightColors = {
+  // 背景層次
+  base: '#F0F4F8',        // 主背景
+  surface: '#FFFFFF',     // 側欄 / Navbar 背景
+  card: '#FFFFFF',        // 卡片 / 浮層
+  border: '#D1DCE9',      // 邊線 / 分隔
+
+  // 藍色主調（與 dark 相同的品牌色）
+  primary: '#1c6bd3',
+  primaryLight: '#1565C0',
+  primaryMuted: '#1976D2',
+  primaryGhost: '#78909C',
+
+  // 語意色
+  success: '#2E7D32',
+  successBg: '#E8F5E9',
+  danger: '#D32F2F',
+  dangerBg: '#FFEBEE',
+  warning: '#E65100',
+
+  // 文字（深色文字搭配白底）
+  textPrimary: '#1A2332',
+  textSecondary: '#455A64',
+  textMuted: '#90A4AE',
+  textCopyRight: '#4A6B8A', // 版權聲明等輔助文字
 } as const;
 
 /**
@@ -185,5 +223,5 @@ export const responsiveSpacing: Record<ScreenSize, SpacingTokens> = {
 };
 
 /** 全域 Token bundle，方便單一 import */
-export const tokens = { colors, typography, spacing } as const;
+export const tokens = { colors: darkColors, typography, spacing } as const;
 

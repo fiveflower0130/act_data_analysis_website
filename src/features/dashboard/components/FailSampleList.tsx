@@ -3,10 +3,9 @@ import { Table, Card, Tag, Empty, Typography, ConfigProvider, Pagination } from 
 import type { ColumnsType } from 'antd/es/table';
 import useDashboardStore from '../../../stores/dashboardStore';
 import { HBinLabel } from '../../../types/api';
-import { tokens } from '../../../styles/tokens';
+import { useThemeColors } from '../../../hooks/useThemeColors';
 import { useResponsiveTokens } from '../../../hooks/useResponsiveTokens';
-
-const { Text } = Typography;
+import useThemeStore from '../../../stores/themeStore';
 
 const PAGE_SIZE = 20;
 
@@ -34,61 +33,57 @@ function calcRowSpan(slice: FlatRow[]): TableRow[] {
   });
 }
 
-const COLUMNS: ColumnsType<TableRow> = [
-  {
-    title: <span style={{ fontWeight: 700 }}>Dut No</span>,
-    dataIndex: 'dutNo',
-    key: 'dutNo',
-    width: 72,
-    align: 'center',
-    // onCell: (row) => ({
-    //   rowSpan: row.rowSpan,
-    //   style: {
-    //     background: 'rgba(30, 229, 30, 0.12)',
-    //     border: row.rowSpan > 0 ? `1px solid ${tokens.colors.primary}` : undefined,
-    //     borderLeft: `1px solid ${tokens.colors.primary}`,
-    //   },
-    // }),
-    render: (val: number) =>
-      val ? (
-        <Tag color="green" style={{ margin: 0, fontWeight: 600 }}>{val}</Tag>
-      ) : (
-        <Text strong style={{ color: tokens.colors.textMuted, fontSize: 16 }}>{val}</Text>
-      ),
-  },
-  {
-    title: <span style={{ fontWeight: 700 }}>Die No</span>,
-    dataIndex: 'dieNo',
-    key: 'dieNo',
-    width: 100,
-    align: 'center',
-    render: (val: string) =>
-      val ? (
-        <Tag color="geekblue" style={{ margin: 0, fontWeight: 600 }}>{val}</Tag>
-      ) : (
-        <Text style={{ color: tokens.colors.textMuted }}>—</Text>
-      ),
-  },
-  {
-    title: <span style={{ fontWeight: 700 }}>Ball Name</span>,
-    dataIndex: 'ballName',
-    key: 'ballName',
-    align: 'center',
-    render: (val: string) =>
-      val ? (
-        <Tag color="gold" style={{ margin: 0, fontWeight: 600 }}>{val}</Tag>
-      ) : (
-        <Text style={{ color: tokens.colors.textMuted }}>—</Text>
-      ),
-  },
-];
-
 const FailSampleList = () => {
   const [page, setPage] = useState(1);
   const responsive = useResponsiveTokens();
   const tableScrollY = responsive.spacing.tableScrollY;
   const { currentLotId, currentHbin, isSearching, getCurrentFailSample } = useDashboardStore();
   const failSampleData = getCurrentFailSample();
+  const colorMode = useThemeColors();
+  const themeMode = useThemeStore((s) => s.mode);
+
+  /** 動態 COLUMNS（使用目前主題色）*/
+  const COLUMNS: ColumnsType<TableRow> = useMemo(() => [
+    {
+      title: <span style={{ fontWeight: 700 }}>Dut No</span>,
+      dataIndex: 'dutNo',
+      key: 'dutNo',
+      width: 72,
+      align: 'center',
+      render: (val: number) =>
+        val ? (
+          <Tag color="green" style={{ margin: 0, fontWeight: 600 }}>{val}</Tag>
+        ) : (
+          <Typography.Text strong style={{ color: colorMode.textMuted, fontSize: 16 }}>{val}</Typography.Text>
+        ),
+    },
+    {
+      title: <span style={{ fontWeight: 700 }}>Die No</span>,
+      dataIndex: 'dieNo',
+      key: 'dieNo',
+      width: 100,
+      align: 'center',
+      render: (val: string) =>
+        val ? (
+          <Tag color="geekblue" style={{ margin: 0, fontWeight: 600 }}>{val}</Tag>
+        ) : (
+          <Typography.Text style={{ color: colorMode.textMuted }}>—</Typography.Text>
+        ),
+    },
+    {
+      title: <span style={{ fontWeight: 700 }}>Ball Name</span>,
+      dataIndex: 'ballName',
+      key: 'ballName',
+      align: 'center',
+      render: (val: string) =>
+        val ? (
+          <Tag color="gold" style={{ margin: 0, fontWeight: 600 }}>{val}</Tag>
+        ) : (
+          <Typography.Text style={{ color: colorMode.textMuted }}>—</Typography.Text>
+        ),
+    },
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  ], [colorMode]);
 
   // 資料來源改變時重置至第 1 頁
   useEffect(() => {
@@ -153,9 +148,9 @@ const FailSampleList = () => {
 
   const statsExtra =
     failSampleData && allFlatRows.length > 0 ? (
-      <Text style={{ color: tokens.colors.textMuted, fontSize: 11 }}>
+      <Typography.Text style={{ color: colorMode.textMuted, fontSize: 11 }}>
         {failSampleData.total_duts}個DUT &nbsp; {failDutCount}筆 Fail &nbsp; {allFlatRows.length}顆 Ball
-      </Text>
+      </Typography.Text>
     ) : undefined;
 
   // 依目前狀態決定空值提示文字（由 Table 內部 locale 顯示，確保 tbody 高度固定）
@@ -169,11 +164,11 @@ const FailSampleList = () => {
   return (
     <Card
       size="small"
-      title={<span style={{ color: tokens.colors.textPrimary, fontSize: 13, fontWeight: 600 }}>{title}</span>}
+      title={<span style={{ color: colorMode.textPrimary, fontSize: 13, fontWeight: 600 }}>{title}</span>}
       extra={statsExtra}
       style={{
-        background: tokens.colors.card,
-        borderColor: tokens.colors.border,
+        background: colorMode.card,
+        borderColor: colorMode.border,
         height: '100%',
         display: 'flex',
         flexDirection: 'column',
@@ -192,15 +187,25 @@ const FailSampleList = () => {
           <ConfigProvider
             theme={{
               components: {
-                Table: {
-                  headerBg: '#0f1e38',
-                  colorBgContainer: '#132540',
-                  rowHoverBg: '#1a3060',
-                  headerColor: tokens.colors.textPrimary,
-                  colorText: tokens.colors.textSecondary,
-                  borderColor: 'rgba(100,160,230,0.25)',
-                  headerSplitColor: 'rgba(100,160,230,0.25)',
-                },
+                Table: themeMode === 'dark'
+                  ? {
+                    headerBg: '#0f1e38',
+                    colorBgContainer: '#132540',
+                    rowHoverBg: '#1a3060',
+                    headerColor: colorMode.textPrimary,
+                    colorText: colorMode.textSecondary,
+                    borderColor: 'rgba(100,160,230,0.25)',
+                    headerSplitColor: 'rgba(100,160,230,0.25)',
+                  }
+                  : {
+                    headerBg: '#E8EEF5',
+                    colorBgContainer: '#FFFFFF',
+                    rowHoverBg: '#EEF2F8',
+                    headerColor: colorMode.textPrimary,
+                    colorText: colorMode.textSecondary,
+                    borderColor: colorMode.border,
+                    headerSplitColor: colorMode.border,
+                  },
               },
             }}
           >
@@ -216,7 +221,7 @@ const FailSampleList = () => {
                 emptyText: (
                   <Empty
                     image={Empty.PRESENTED_IMAGE_SIMPLE}
-                    description={<span style={{ color: tokens.colors.textMuted }}>{emptyDescription}</span>}
+                    description={<span style={{ color: colorMode.textMuted }}>{emptyDescription}</span>}
                   />
                 ),
               }}

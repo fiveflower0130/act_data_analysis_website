@@ -1,20 +1,21 @@
 import { Badge, Typography, Empty } from 'antd';
 import { Clock } from 'lucide-react';
 import useDashboardStore from '../../../stores/dashboardStore';
-import { tokens } from '../../../styles/tokens';
+import { useThemeColors } from '../../../hooks/useThemeColors';
 
 const { Text } = Typography;
 
 const SearchHistory = () => {
   const { searchHistory, currentLotId, selectFromHistory } = useDashboardStore();
+  const colorMode = useThemeColors();
 
   if (searchHistory.length === 0) {
     return (
       <div style={{ padding: '0 16px 16px' }}>
-        <Text style={{ color: tokens.colors.textMuted, fontSize: 13 }}>搜尋記錄</Text>
+        <Text style={{ color: colorMode.textMuted, fontSize: 13 }}>搜尋記錄</Text>
         <Empty
           image={Empty.PRESENTED_IMAGE_SIMPLE}
-          description={<span style={{ color: tokens.colors.textMuted, fontSize: 12 }}>尚無搜尋記錄</span>}
+          description={<span style={{ color: colorMode.textMuted, fontSize: 12 }}>尚無搜尋記錄</span>}
           style={{ marginTop: 12 }}
         />
       </div>
@@ -24,7 +25,7 @@ const SearchHistory = () => {
   return (
     <div style={{ padding: '0 16px' }}>
       <div style={{ marginTop: 8 }}>  
-        <Text style={{ color: tokens.colors.textPrimary, fontSize: 14 }}>Search History</Text>
+        <Text style={{ color: colorMode.textPrimary, fontSize: 14 }}>Search History</Text>
       </div> 
       <div style={{ marginTop: 8 }}>
         {searchHistory.map((entry) => {
@@ -44,8 +45,8 @@ const SearchHistory = () => {
                 padding: '8px 10px',
                 borderRadius: 6,
                 marginBottom: 4,
-                background: isActive ? `${tokens.colors.primary}22` : 'transparent',
-                border: isActive ? `1px solid ${tokens.colors.primary}55` : '1px solid transparent',
+                background: isActive ? `${colorMode.primary}22` : 'transparent',
+                border: isActive ? `1px solid ${colorMode.primary}55` : '1px solid transparent',
                 transition: 'background 0.2s',
               }}
             >
@@ -57,7 +58,7 @@ const SearchHistory = () => {
                   />
                   <Text
                     style={{
-                      color: isActive ? tokens.colors.primary : tokens.colors.textPrimary,
+                      color: isActive ? colorMode.primary : colorMode.textPrimary,
                       fontSize: 13,
                       fontWeight: isActive ? 600 : 400,
                     }}
@@ -66,8 +67,8 @@ const SearchHistory = () => {
                   </Text>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                  <Clock size={11} style={{ color: tokens.colors.textMuted }} />
-                  <Text style={{ color: tokens.colors.textMuted, fontSize: 10 }}>{timeStr}</Text>
+                  <Clock size={11} style={{ color: colorMode.textMuted }} />
+                  <Text style={{ color: colorMode.textMuted, fontSize: 10 }}>{timeStr}</Text>
                 </div>
               </div>
             </div>

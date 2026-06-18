@@ -1,95 +1,101 @@
 import type { ThemeConfig } from 'antd';
-import { colors, typography, spacing } from './tokens';
+import { darkColors, lightColors, typography, spacing } from './tokens';
+import type { ThemeMode } from './tokens';
 
-/**
- * Ant Design 5.x 主題設定
- * 對應 Deep Navy Dark Theme 設計系統
- */
-export const antdTheme: ThemeConfig = {
-  token: {
-    // 主色
-    colorPrimary: colors.primary,
-    colorLink: colors.primaryLight,
+/** 根據主題模式產生對應的 Ant Design ThemeConfig */
+export function getAntdTheme(mode: ThemeMode): ThemeConfig {
+  const colorMode = mode === 'dark' ? darkColors : lightColors;
 
-    // 背景
-    colorBgBase: colors.base,
-    colorBgContainer: colors.card,
-    colorBgElevated: colors.card,
-    colorBgLayout: colors.base,
-    colorBgSpotlight: colors.border,
+  return {
+    token: {
+      // 主色
+      colorPrimary: colorMode.primary,
+      colorLink: colorMode.primaryLight,
 
-    // 邊線
-    colorBorder: colors.border,
-    colorBorderSecondary: colors.border,
+      // 背景
+      colorBgBase: colorMode.base,
+      colorBgContainer: colorMode.card,
+      colorBgElevated: colorMode.card,
+      colorBgLayout: colorMode.base,
+      colorBgSpotlight: colorMode.border,
 
-    // 文字
-    colorText: colors.textPrimary,
-    colorTextSecondary: colors.textSecondary,
-    colorTextTertiary: colors.textMuted,
-    colorTextQuaternary: colors.textMuted,
+      // 邊線
+      colorBorder: colorMode.border,
+      colorBorderSecondary: colorMode.border,
 
-    // 語意色
-    colorSuccess: colors.success,
-    colorError: colors.danger,
-    colorWarning: colors.warning,
+      // 文字
+      colorText: colorMode.textPrimary,
+      colorTextSecondary: colorMode.textSecondary,
+      colorTextTertiary: colorMode.textMuted,
+      colorTextQuaternary: colorMode.textMuted,
 
-    // 字型
-    fontFamily: typography.fontFamily,
-    fontSize: 12,
+      // 語意色
+      colorSuccess: colorMode.success,
+      colorError: colorMode.danger,
+      colorWarning: colorMode.warning,
 
-    // 圓角
-    borderRadius: spacing.cardRadius,
-    borderRadiusSM: 8,
-    borderRadiusLG: spacing.uploadZoneRadius,
+      // 字型
+      fontFamily: typography.fontFamily,
+      fontSize: 12,
 
-    // 線框
-    lineWidth: 1,
-  },
-  components: {
-    Layout: {
-      headerBg: '#0D1E30',
-      siderBg: '#0D1E30',
-      bodyBg: colors.base,
-      headerHeight: spacing.navbarHeight,
+      // 圓角
+      borderRadius: spacing.cardRadius,
+      borderRadiusSM: 8,
+      borderRadiusLG: spacing.uploadZoneRadius,
+
+      // 線框
+      lineWidth: 1,
     },
-    Menu: {
-      darkItemBg: colors.surface,
-      darkSubMenuItemBg: colors.surface,
-      darkItemSelectedBg: colors.border,
-      darkItemHoverBg: colors.card,
+    components: {
+      Layout: {
+        headerBg: colorMode.surface,
+        siderBg: colorMode.surface,
+        bodyBg: colorMode.base,
+        headerHeight: spacing.navbarHeight,
+      },
+      Menu: {
+        darkItemBg: colorMode.surface,
+        darkSubMenuItemBg: colorMode.surface,
+        darkItemSelectedBg: colorMode.border,
+        darkItemHoverBg: colorMode.card,
+      },
+      Table: {
+        headerBg: colorMode.surface,
+        rowHoverBg: colorMode.border,
+        borderColor: colorMode.border,
+      },
+      Card: {
+        colorBgContainer: colorMode.card,
+      },
+      Input: {
+        colorBgContainer: colorMode.card,
+        activeBorderColor: colorMode.primary,
+      },
+      Select: {
+        colorBgContainer: colorMode.card,
+        colorBgElevated: colorMode.card,
+      },
+      Button: {
+        colorPrimary: colorMode.primary,
+        algorithm: true,
+      },
+      Modal: {
+        contentBg: colorMode.card,
+        headerBg: colorMode.card,
+      },
+      Tabs: {
+        inkBarColor: colorMode.primary,
+        itemColor: colorMode.primaryMuted,
+        itemSelectedColor: colorMode.textPrimary,
+        itemHoverColor: colorMode.primaryLight,
+      },
+      Badge: {
+        colorBgContainer: colorMode.card,
+      },
     },
-    Table: {
-      headerBg: '#0D1E30',
-      rowHoverBg: colors.border,
-      borderColor: colors.border,
-    },
-    Card: {
-      colorBgContainer: colors.card,
-    },
-    Input: {
-      colorBgContainer: colors.card,
-      activeBorderColor: colors.primary,
-    },
-    Select: {
-      colorBgContainer: colors.card,
-      colorBgElevated: colors.card,
-    },
-    Button: {
-      colorPrimary: colors.primary,
-      algorithm: true,
-    },
-    Modal: {
-      contentBg: colors.card,
-      headerBg: colors.card,
-    },
-    Tabs: {
-      inkBarColor: colors.primary,
-      itemColor: colors.primaryMuted,
-      itemSelectedColor: colors.textPrimary,
-      itemHoverColor: colors.primaryLight,
-    },
-    Badge: {
-      colorBgContainer: colors.card,
-    },
-  },
-};
+  };
+}
+
+/** 向後相容：預設匯出 dark theme config */
+export const antdTheme: ThemeConfig = getAntdTheme('dark');
+

@@ -6,10 +6,11 @@ import FailSampleList from './components/FailSampleList';
 import PlaceholderChart from './components/PlaceholderChart';
 import ResultsPanel from './components/ResultsPanel';
 import { useResponsiveTokens } from '../../hooks/useResponsiveTokens';
-import { tokens } from '../../styles/tokens';
+import { useThemeColors } from '../../hooks/useThemeColors';
 
 const DashboardPage = () => {
   const responsive = useResponsiveTokens();
+  const colorMode = useThemeColors();
 
   return (
     <div style={{ display: 'flex', width: '100%', height: '100%', overflow: 'hidden', minWidth: 800 }}>
@@ -18,15 +19,15 @@ const DashboardPage = () => {
         style={{
           width: responsive.spacing.sidebarWidth,
           flexShrink: 0,
-          background: tokens.colors.surface,
-          borderRight: `1px solid ${tokens.colors.border}`,
+          background: colorMode.surface,
+          borderRight: `1px solid ${colorMode.border}`,
           display: 'flex',
           flexDirection: 'column',
           overflow: 'hidden',
         }}
       >
         <SearchPanel />
-        <Divider style={{ margin: '0 16px', borderColor: tokens.colors.border, minWidth: 'unset', width: 'unset' }} />
+        <Divider style={{ margin: '0 16px', borderColor: colorMode.border, minWidth: 'unset', width: 'unset' }} />
         <div style={{ flex: 1, overflowY: 'auto', minHeight: 0 }}>
           <SearchHistory />
         </div>
@@ -40,7 +41,7 @@ const DashboardPage = () => {
           display: 'flex',
           flexDirection: 'column',
           overflow: 'hidden',
-          background: tokens.colors.base,
+          background: colorMode.base,
         }}
       >
         {/* Fail Mode 下拉 */}

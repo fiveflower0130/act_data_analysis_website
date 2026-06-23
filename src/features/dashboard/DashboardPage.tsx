@@ -4,6 +4,7 @@ import SearchHistory from './components/SearchHistory';
 import DashboardHeader from './components/DashboardHeader';
 import FailSampleList from './components/FailSampleList';
 import PlaceholderChart from './components/PlaceholderChart';
+import FailDieChart from './components/FailDieChart';
 import ResultsPanel from './components/ResultsPanel';
 import { useResponsiveTokens } from '../../hooks/useResponsiveTokens';
 import { useThemeColors } from '../../hooks/useThemeColors';
@@ -85,9 +86,9 @@ const DashboardPage = () => {
             }}
           >
             <PlaceholderChart title="Fail Sample on Tray" subtitle="Tray 排列圖，功能開發中" />
-            <PlaceholderChart title="Fail Die" subtitle="疊 Die 結構圖，功能開發中" />
-            <PlaceholderChart title="Fail Die Rate" subtitle="各層 Die 失效率，功能開發中" />
+            <FailDieChart />
             <PlaceholderChart title="Fail Ball" subtitle="BGA Ball 分佈直方圖，功能開發中" />
+            <PlaceholderChart title="Fail Die Rate" subtitle="各層 Die 失效率，功能開發中" />
           </div>
         </div>
       </div>

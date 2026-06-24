@@ -70,8 +70,8 @@ const DashboardPage = () => {
             gap: 12, 
           }}
         >
-          {/* 左欄：Fail Sample List（固定 30%，全高）*/}
-          <div style={{ width: '25%', flexShrink: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+          {/* 左欄：Fail Sample List（固定寬度佔 22%，全高）*/}
+          <div style={{ width: '21%', flexShrink: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
             <FailSampleList />
           </div>
 

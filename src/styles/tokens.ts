@@ -19,16 +19,16 @@ export const darkColors = {
   primaryGhost: '#4A6B8A',// Placeholder、Caption、Muted
 
   // 語意色
-  success: '#4CAF50',
-  successBg: '#0D3B2A',
-  danger: '#FF5252',
-  dangerBg: '#4A1020',
-  warning: '#FFB74D',
+  success: '#4CAF50',     // 成功色（綠色）
+  successBg: '#0D3B2A',   // 成功背景（綠色）
+  danger: '#FF5252',      // 錯誤色（紅色）
+  dangerBg: '#4A1020',    // 錯誤背景（紅色）
+  warning: '#FFB74D',     // 警告色（橘色）
 
   // 文字
-  textPrimary: '#FFFFFF',
-  textSecondary: '#90CAF9',
-  textMuted: '#4A6B8A',
+  textPrimary: '#FFFFFF',   // 主要文字、標題
+  textSecondary: '#90CAF9', // 次要文字、說明文字
+  textMuted: '#4A6B8A',     // 輔助文字、Placeholder、Caption
   textCopyRight: '#848b92', // 版權聲明等輔助文字
 } as const;
 
@@ -53,9 +53,9 @@ export const lightColors = {
   primaryGhost: '#78909C',
 
   // 語意色
-  success: '#2E7D32',
+  success: '#2E7D32',     //另一個配色 #52c41a
   successBg: '#E8F5E9',
-  danger: '#D32F2F',
+  danger: '#D32F2F',      //另一個配色 #FF5252
   dangerBg: '#FFEBEE',
   warning: '#E65100',
 
@@ -182,8 +182,8 @@ export type SpacingTokens = Record<'navbarHeight' | 'sidebarWidth' | 'rightPanel
 export const responsiveSpacing: Record<ScreenSize, SpacingTokens> = {
   mobile: {
     navbarHeight: 52,
-    sidebarWidth: 200,
-    rightPanelWidth: 150,
+    sidebarWidth: 180,
+    rightPanelWidth: 180,
     rightPanelCollapsed: 15,
     cardRadius: 8,
     uploadZoneRadius: 10,
@@ -192,7 +192,7 @@ export const responsiveSpacing: Record<ScreenSize, SpacingTokens> = {
   },
   tablet: {
     navbarHeight: 56,
-    sidebarWidth: 240,
+    sidebarWidth: 200,
     rightPanelWidth: 200,
     rightPanelCollapsed: 15,
     cardRadius: 10,
@@ -202,7 +202,7 @@ export const responsiveSpacing: Record<ScreenSize, SpacingTokens> = {
   },
   laptop: {
     navbarHeight: 60,
-    sidebarWidth: 280,
+    sidebarWidth: 230,
     rightPanelWidth: 260,
     rightPanelCollapsed: 17,
     cardRadius: 11,
@@ -212,7 +212,7 @@ export const responsiveSpacing: Record<ScreenSize, SpacingTokens> = {
   },
   desktop: {
     navbarHeight: 64,
-    sidebarWidth: 300,
+    sidebarWidth: 250,
     rightPanelWidth: 280,
     rightPanelCollapsed: 20,
     cardRadius: 12,

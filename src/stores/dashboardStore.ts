@@ -5,7 +5,7 @@ import type { FailSampleResult, HBinValue, SearchHistoryEntry } from '../types/a
 import addLog from '../utils/logging';
 
 const HBIN_VALUES: HBinValue[] = [2, 3, 4, 5];
-const MAX_HISTORY = 20;
+const MAX_HISTORY = 30; // 最多保留 30 筆搜尋記錄
 
 /** cache[lotId][hbin] = FailSampleResult | null（null 表示後端 404 無資料） */
 type FailSampleCache = Record<string, Partial<Record<HBinValue, FailSampleResult | null>>>;
@@ -24,6 +24,8 @@ interface DashboardActions {
   search: (lotId: string) => Promise<void>;
   /** 從歷史記錄點選一個 Lot，切換當前 Lot（資料從快取讀） */
   selectFromHistory: (lotId: string) => void;
+  /** 刪除指定歷史記錄（同時清除快取） */
+  removeFromHistory: (lotId: string) => void;
   /** 選取 Fail Mode（HBIN） */
   setHbin: (hbin: HBinValue) => void;
   clearError: () => void;
@@ -102,6 +104,21 @@ const useDashboardStore = create<DashboardState & DashboardActions>()(
       selectFromHistory: (lotId: string) => {
         set({ currentLotId: lotId, searchError: null });
         addLog({ level: 'info', module: 'dashboardStore', stack: ['selectFromHistory'], msg: `切換至歷史記錄: ${lotId}` });
+      },
+
+      removeFromHistory: (lotId: string) => {
+        set((state) => {
+          // 移除歷史記錄；若刪除的是當前選取項目，一併清除 currentLotId
+          const newHistory = state.searchHistory.filter((h) => h.lotId !== lotId);
+          const newCache = { ...state.failSampleCache };
+          delete newCache[lotId];
+          return {
+            searchHistory: newHistory,
+            failSampleCache: newCache,
+            currentLotId: state.currentLotId === lotId ? null : state.currentLotId,
+          };
+        });
+        addLog({ level: 'info', module: 'dashboardStore', stack: ['removeFromHistory'], msg: `刪除歷史記錄: ${lotId}` });
       },
 
       setHbin: (hbin: HBinValue) => {

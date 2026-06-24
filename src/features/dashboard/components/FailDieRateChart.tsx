@@ -102,8 +102,8 @@ const FailDieRateChart = () => {
     if (rateData.length === 0) return {};
 
     const maxRate = Math.max(...rateData.map((d) => d.rate), 0);
-    // Y 軸上限：比最高值多 20%，至少 10%，最多 100%
-    const yMax = Math.min(100, Math.ceil((maxRate * 1.2) / 10) * 10 || 10);
+    // // Y 軸上限：比最高值多 20%，至少 10%，最多 100%
+    // const yMax = Math.min(100, Math.ceil((maxRate * 1.2) / 10) * 10 || 10);
     const totalQty = failSampleData?.total_qty ?? 0;
 
     return {
@@ -142,7 +142,8 @@ const FailDieRateChart = () => {
         nameGap: 40,
         nameTextStyle: { color: colorMode.textMuted, fontSize: 11 },
         min: 0,
-        max: yMax,
+        max: 100,  // 固定 0~100%，不隨資料變動若要改為浮動則寫成 max: yMax
+        interval: 20, // 固定每 10% 一個級距，若要改為浮動則寫成 interval: yMax / 10
         axisLine: { show: false },
         axisTick: { show: false },
         axisLabel: {
@@ -155,7 +156,7 @@ const FailDieRateChart = () => {
       series: [
         {
           type: 'bar',
-          barMaxWidth: 40,
+          barMaxWidth: 28,        // 最大寬度
           data: rateData.map((d) => ({
             value: parseFloat(d.rate.toFixed(2)),
             itemStyle: {

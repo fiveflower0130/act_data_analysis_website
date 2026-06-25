@@ -33,12 +33,19 @@ function calcRowSpan(slice: FlatRow[]): TableRow[] {
   });
 }
 
-const FailSampleList = () => {
+const FailSampleList = ({ variant = 'io' }: { variant?: 'io' | 'power' }) => {
   const [page, setPage] = useState(1);
   const responsive = useResponsiveTokens();
   const tableScrollY = responsive.spacing.tableScrollY;
-  const { currentLotId, currentHbin, isSearching, getCurrentFailSample } = useDashboardStore();
-  const failSampleData = getCurrentFailSample();
+  const {
+    currentLotId,
+    currentHbin,
+    isSearching,
+    getCurrentFailSample,
+    getCurrentFailSamplePower,
+    failSamplePowerCache,
+  } = useDashboardStore();
+  const failSampleData = variant === 'io' ? getCurrentFailSample() : getCurrentFailSamplePower();
   const colorMode = useThemeColors();
   const themeMode = useThemeStore((s) => s.mode);
 
@@ -90,7 +97,8 @@ const FailSampleList = () => {
     setPage(1);
   }, [currentLotId, currentHbin]);
 
-  const title = `Fail Sample List${currentHbin ? ` — ${HBinLabel[currentHbin]}` : ''}`;
+  const variantLabel = variant === 'io' ? 'IO' : 'POWER';
+  const title = `Fail Sample List${currentHbin ? ` — ${HBinLabel[currentHbin]} (${variantLabel})` : ''}`;
 
   // 展開所有 DUT → flat rows（不含 rowSpan），如果 ball_name 為空則視為無 fail，仍保留一列但內容以「—」顯示
   const allFlatRows = useMemo<FlatRow[]>(() => {
@@ -134,10 +142,10 @@ const FailSampleList = () => {
     return rows;
   }, [failSampleData]);
 
-  const failDutCount = useMemo(
-    () => failSampleData?.fail_sample.filter((d) => d.ball_name.length > 0).length ?? 0,
-    [failSampleData],
-  );
+  // const failDutCount = useMemo(
+  //   () => failSampleData?.fail_sample.filter((d) => d.ball_name.length > 0).length ?? 0,
+  //   [failSampleData],
+  // );
 
   // 目前頁的 slice + 重新計算 rowSpan
   const pageRows = useMemo<TableRow[]>(() => {
@@ -146,26 +154,33 @@ const FailSampleList = () => {
     return calcRowSpan(slice);
   }, [allFlatRows, page]);
 
-  const statsExtra =
-    failSampleData && allFlatRows.length > 0 ? (
-      <Typography.Text style={{ color: colorMode.textMuted, fontSize: 11 }}>
-        {failSampleData.total_duts}個DUT &nbsp; {failDutCount}筆 Fail &nbsp; {allFlatRows.length}顆 Ball
-      </Typography.Text>
-    ) : undefined;
+  // const statsExtra =
+  //   failSampleData && allFlatRows.length > 0 ? (
+  //     <Typography.Text style={{ color: colorMode.textMuted, fontSize: 11 }}>
+  //       {failSampleData.total_duts}個DUT &nbsp; {failDutCount}筆 Fail &nbsp; {allFlatRows.length}顆 Ball
+  //     </Typography.Text>
+  //   ) : undefined;
 
   // 依目前狀態決定空值提示文字（由 Table 內部 locale 顯示，確保 tbody 高度固定）
   const emptyDescription = (() => {
     if (!currentLotId) return '請先搜尋 Lot ID';
     if (currentHbin === null) return '請選擇 Fail Mode';
-    if (!failSampleData) return '此 Lot 尚未上傳 Netlist';
-    return '此 Fail Mode 無 Fail 資料';
+    if (!failSampleData) {
+      // POWER：區分「從未取得過（舊快取）」vs「取得後回 null（API 404）」
+      if (variant === 'power') {
+        const powerCacheForLot = failSamplePowerCache[currentLotId ?? ''];
+        if (powerCacheForLot === undefined) return '請重新搜尋以取得 POWER 資料';
+      }
+      return '此 Fail Mode 無 Fail 資料';
+    }
+    return '此 Lot 尚未上傳 Netlist';
   })();
 
   return (
     <Card
       size="small"
       title={<span style={{ color: colorMode.textPrimary, fontSize: 13, fontWeight: 600 }}>{title}</span>}
-      extra={statsExtra}
+      //extra={statsExtra}    //暫時不需要
       style={{
         background: colorMode.card,
         borderColor: colorMode.border,
@@ -178,12 +193,21 @@ const FailSampleList = () => {
       {/*
        * CSS override：將 Ant Design Table body 從 max-height 改為固定 height，
        * 確保資料少或空值時 tbody 仍維持 TABLE_SCROLL_Y px，不縮減。
+       * table 瀏覽的滾動條(Scrollbar)不要太大，避免在螢幕上過於佔版面
        */}
-      <style>{`.fsl-table-wrap .ant-table-body { height: ${tableScrollY}px !important; }`}</style>
+      <style> 
+        {`.fsl-table-wrap-${variant} .ant-table-body 
+          { 
+            height: ${tableScrollY}px !important;  
+            scrollbar-width: thin; 
+            scrollbar-color: ${themeMode === 'dark' ? '#1a3060 #0b172b' : '#D1DCE9 #eef2f8'};
+          }`
+        }
+      </style>
 
       <div style={{ display: 'flex', flexDirection: 'column', height: '100%', gap: 6 }}>
         {/* Table 永遠渲染；空值狀態透過 locale.emptyText 顯示，不替換整個元件 */}
-        <div className="fsl-table-wrap" style={{ flex: 1, minHeight: 0 }}>
+        <div className={`fsl-table-wrap-${variant}`} style={{ flex: 1, minHeight: 0 }}>
           <ConfigProvider
             theme={{
               components: {
@@ -194,8 +218,8 @@ const FailSampleList = () => {
                     rowHoverBg: '#1a3060',
                     headerColor: colorMode.textPrimary,
                     colorText: colorMode.textSecondary,
-                    borderColor: 'rgba(100,160,230,0.25)',
-                    headerSplitColor: 'rgba(100,160,230,0.25)',
+                    borderColor: '#64a0e640',
+                    headerSplitColor: '#64a0e640',
                   }
                   : {
                     headerBg: '#E8EEF5',
@@ -209,14 +233,14 @@ const FailSampleList = () => {
               },
             }}
           >
-            <Table<TableRow>
+            <Table<TableRow> 
               columns={COLUMNS}
               dataSource={pageRows}
               loading={isSearching}
               pagination={false}
               size="small"
               bordered
-              scroll={{ y: tableScrollY }}
+              scroll={{ y: tableScrollY, x: 'max-content' }}  // 讓表格寬度隨內容自動調整，避免欄位過多時被壓縮
               locale={{
                 emptyText: (
                   <Empty
@@ -230,7 +254,7 @@ const FailSampleList = () => {
           </ConfigProvider>
         </div>
 
-        {/* 分頁列：僅在資料超過單頁時顯示；移除無效的頁數下拉選單 */}
+        {/* 分頁列：僅在資料超過單頁時顯示；移除無效的頁數下拉選單； */}
         {allFlatRows.length > PAGE_SIZE && (
           <div style={{ display: 'flex', justifyContent: 'flex-start', alignItems: 'center', flexShrink: 0 }}>
             <Pagination
@@ -241,6 +265,8 @@ const FailSampleList = () => {
               size="small"
               showSizeChanger={false}
               showTotal={(total) => `共${total}筆`}
+              responsive={false}    // 取消自動隱藏，避免在小螢幕上跳頁數消失
+              showLessItems={true}  // 只顯示第一頁、最後一頁、當前頁前後各一頁，避免跳頁數過多
             />
           </div>
         )}

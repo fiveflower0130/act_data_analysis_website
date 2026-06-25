@@ -52,7 +52,7 @@ const DieLayerBlock = ({
   failCount,
   totalWidth,
   layerIndex,
-  totalLayers,
+  totalLayers: _totalLayers,
   dieCountInRow = 1,
   ballNamesForDie = [],
 }: DieLayerBlockProps) => {
@@ -79,7 +79,7 @@ const DieLayerBlock = ({
   return (
     <Tooltip
       title={
-        `${label}${isFailing ? `：失效 ${failCount} 次` : ''}${ballNamesForDie.length > 0 ? `（Focus： ${ballNamesForDie.join('、')}）` : ''}`
+        `${label}${isFailing ? `：失效 ${failCount} 次` : ''}${ballNamesForDie.length > 0 ? `（集中： ${ballNamesForDie.join('、')}）` : ''}`
       }
       color={COLOR_TEXT_DARK}
       placement="right"

@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { getFailSample } from '../api/analysis';
+import { getFailSample, getFailSamplePower } from '../api/analysis';
 import type { FailSampleResult, HBinValue, SearchHistoryEntry } from '../types/api';
 import addLog from '../utils/logging';
 
@@ -13,6 +13,7 @@ type FailSampleCache = Record<string, Partial<Record<HBinValue, FailSampleResult
 interface DashboardState {
   searchHistory: SearchHistoryEntry[];
   failSampleCache: FailSampleCache;
+  failSamplePowerCache: FailSampleCache;
   currentLotId: string | null;
   currentHbin: HBinValue | null;
   isSearching: boolean;
@@ -20,17 +21,19 @@ interface DashboardState {
 }
 
 interface DashboardActions {
-  /** 輸入 Lot ID 並搜尋，對所有 HBIN 並行取得 fail-sample 資料後快取 */
+  /** 輸入 Lot ID 並搜尋，對所有 HBIN 並行取得 fail-sample（IO）與 fail-sample-power（POWER）資料後快取 */
   search: (lotId: string) => Promise<void>;
   /** 從歷史記錄點選一個 Lot，切換當前 Lot（資料從快取讀） */
   selectFromHistory: (lotId: string) => void;
-  /** 刪除指定歷史記錄（同時清除快取） */
+  /** 刪除指定歷史記錄（同時清除 IO / POWER 快取） */
   removeFromHistory: (lotId: string) => void;
   /** 選取 Fail Mode（HBIN） */
   setHbin: (hbin: HBinValue) => void;
   clearError: () => void;
-  /** 取得目前選取的 fail-sample 結果（若無則 null） */
+  /** 取得目前選取的 fail-sample（IO）結果（若無則 null） */
   getCurrentFailSample: () => FailSampleResult | null;
+  /** 取得目前選取的 fail-sample-power（POWER）結果（若無則 null） */
+  getCurrentFailSamplePower: () => FailSampleResult | null;
 }
 
 const useDashboardStore = create<DashboardState & DashboardActions>()(
@@ -38,6 +41,7 @@ const useDashboardStore = create<DashboardState & DashboardActions>()(
     (set, get) => ({
       searchHistory: [],
       failSampleCache: {},
+      failSamplePowerCache: {},
       currentLotId: null,
       currentHbin: 3 as HBinValue,
       isSearching: false,
@@ -51,15 +55,16 @@ const useDashboardStore = create<DashboardState & DashboardActions>()(
         addLog({ level: 'info', module: 'dashboardStore', stack: ['search'], msg: `搜尋 Lot: ${trimmedId}` });
 
         try {
-          // 對 4 個 HBIN 並行發出請求，任一失敗不中斷整體
-          const results = await Promise.allSettled(
-            HBIN_VALUES.map((hbin) => getFailSample(trimmedId, hbin)),
-          );
+          // 對 4 個 HBIN 並行發出請求（IO + POWER 各 4 個，共 8 個）
+          const [ioResults, powerResults] = await Promise.all([
+            Promise.allSettled(HBIN_VALUES.map((hbin) => getFailSample(trimmedId, hbin))),
+            Promise.allSettled(HBIN_VALUES.map((hbin) => getFailSamplePower(trimmedId, hbin))),
+          ]);
 
           const hbinCache: Partial<Record<HBinValue, FailSampleResult | null>> = {};
           let hasAnyFail = false;
 
-          results.forEach((result, idx) => {
+          ioResults.forEach((result, idx) => {
             const hbin = HBIN_VALUES[idx];
             if (result.status === 'fulfilled') {
               const data = result.value.data.data;
@@ -67,11 +72,24 @@ const useDashboardStore = create<DashboardState & DashboardActions>()(
               if (data && data.fail_sample.some((s) => s.ball_name.length > 0)) {
                 hasAnyFail = true;
               }
-              addLog({ level: 'info', module: 'dashboardStore', stack: ['search'], msg: `HBIN=${hbin} 取得 ${data?.total_duts ?? 0} 筆` });
+              addLog({ level: 'info', module: 'dashboardStore', stack: ['search'], msg: `IO HBIN=${hbin} 取得 ${data?.total_duts ?? 0} 筆` });
             } else {
-              // 404（Netlist 未上傳）或其他錯誤 → 存 null
               hbinCache[hbin] = null;
-              addLog({ level: 'warn', module: 'dashboardStore', stack: ['search'], msg: `HBIN=${hbin} 無資料: ${result.reason?.message}` });
+              addLog({ level: 'warn', module: 'dashboardStore', stack: ['search'], msg: `IO HBIN=${hbin} 無資料: ${result.reason?.message}` });
+            }
+          });
+
+          const powerCache: Partial<Record<HBinValue, FailSampleResult | null>> = {};
+
+          powerResults.forEach((result, idx) => {
+            const hbin = HBIN_VALUES[idx];
+            if (result.status === 'fulfilled') {
+              const data = result.value.data.data;
+              powerCache[hbin] = data;
+              addLog({ level: 'info', module: 'dashboardStore', stack: ['search'], msg: `POWER HBIN=${hbin} 取得 ${data?.total_duts ?? 0} 筆` });
+            } else {
+              powerCache[hbin] = null;
+              addLog({ level: 'warn', module: 'dashboardStore', stack: ['search'], msg: `POWER HBIN=${hbin} 無資料: ${result.reason?.message}` });
             }
           });
 
@@ -87,6 +105,10 @@ const useDashboardStore = create<DashboardState & DashboardActions>()(
             failSampleCache: {
               ...state.failSampleCache,
               [trimmedId]: hbinCache,
+            },
+            failSamplePowerCache: {
+              ...state.failSamplePowerCache,
+              [trimmedId]: powerCache,
             },
             // 最新在最上方，去重後保留最新一筆，最多 MAX_HISTORY 筆
             searchHistory: [
@@ -111,10 +133,13 @@ const useDashboardStore = create<DashboardState & DashboardActions>()(
           // 移除歷史記錄；若刪除的是當前選取項目，一併清除 currentLotId
           const newHistory = state.searchHistory.filter((h) => h.lotId !== lotId);
           const newCache = { ...state.failSampleCache };
+          const newPowerCache = { ...state.failSamplePowerCache };
           delete newCache[lotId];
+          delete newPowerCache[lotId];
           return {
             searchHistory: newHistory,
             failSampleCache: newCache,
+            failSamplePowerCache: newPowerCache,
             currentLotId: state.currentLotId === lotId ? null : state.currentLotId,
           };
         });
@@ -133,6 +158,12 @@ const useDashboardStore = create<DashboardState & DashboardActions>()(
         if (!currentLotId || currentHbin === null) return null;
         return failSampleCache[currentLotId]?.[currentHbin] ?? null;
       },
+
+      getCurrentFailSamplePower: () => {
+        const { currentLotId, currentHbin, failSamplePowerCache } = get();
+        if (!currentLotId || currentHbin === null) return null;
+        return failSamplePowerCache[currentLotId]?.[currentHbin] ?? null;
+      },
     }),
     {
       name: 'dashboard-store',
@@ -140,6 +171,7 @@ const useDashboardStore = create<DashboardState & DashboardActions>()(
       partialize: (state) => ({
         searchHistory: state.searchHistory,
         failSampleCache: state.failSampleCache,
+        failSamplePowerCache: state.failSamplePowerCache,
         currentLotId: state.currentLotId,
         currentHbin: state.currentHbin,
       }),

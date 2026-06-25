@@ -133,7 +133,7 @@ const FailDieRateChart = () => {
         data: rateData.map((d) => d.unity),
         axisLine: { lineStyle: { color: colorMode.border } },
         axisTick: { lineStyle: { color: colorMode.border } },
-        axisLabel: { color: colorMode.textSecondary, fontSize: 10 },
+        axisLabel: { color: colorMode.textSecondary, fontSize: rateData.length > 12 ? 8 : 10 },
       },
       yAxis: {
         type: 'value',
@@ -148,7 +148,7 @@ const FailDieRateChart = () => {
         axisTick: { show: false },
         axisLabel: {
           color: colorMode.textSecondary,
-          fontSize: 10,
+          fontSize: rateData.length > 12 ? 8 : 10, // 字體大小隨X軸數量調整
           formatter: (v: number) => `${v}%`,
         },
         splitLine: { lineStyle: { color: colorMode.border, type: 'dashed' } },
@@ -156,7 +156,7 @@ const FailDieRateChart = () => {
       series: [
         {
           type: 'bar',
-          barMaxWidth: 28,        // 最大寬度
+          barMaxWidth: rateData.length > 12 ? 24 : 28,        // 最大寬度隨資料量調整，避免過胖
           data: rateData.map((d) => ({
             value: parseFloat(d.rate.toFixed(2)),
             itemStyle: {
@@ -168,7 +168,7 @@ const FailDieRateChart = () => {
           label: {
             show: true,
             position: 'top',
-            fontSize: 9,
+            fontSize: rateData.length > 12 ? 8 : 10, // 字體大小隨X軸數量調整
             color: colorMode.textSecondary,
             formatter: (p: { value: number }) =>
               p.value > 0 ? `${p.value.toFixed(1)}%` : '',

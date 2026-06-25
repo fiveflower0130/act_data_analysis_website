@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Badge, Typography, Empty, Button } from 'antd';
+import { Typography, Empty, Button } from 'antd';
 import { Clock, X, ChevronDown, ChevronUp, SearchCheck } from 'lucide-react';
 import useDashboardStore from '../../../stores/dashboardStore';
 import { useThemeColors } from '../../../hooks/useThemeColors';
@@ -64,19 +64,13 @@ const SearchHistory = () => {
               }}
             >
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
-                {/* 左側：badge + lotId ，紅色表示此Lot有任一 HBIN 有 fail 失效資料，綠色表示正常 */}
+                {/* 左側：SearchCheck 圖示 + lotId，紅色表示此 Lot 有任一 HBIN 有 fail 失效資料，綠色表示正常 */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
-                  <Badge
-                    color={entry.hasAnyFail ? colorMode.danger : colorMode.success}
-                    title={entry.hasAnyFail ? '有失效資料' : '正常'}
-                    style={{ flexShrink: 0 }}
-                  />
-                  {/*若不想用Badge的顯示判斷，可以統一使用SearchCheck表示就好 */}
-                  {/* <SearchCheck 
+                  <SearchCheck
                     size={12}
                     color={colorMode.success}
                     style={{ flexShrink: 0 }}
-                  /> */}
+                  />
                   <Text
                     ellipsis
                     style={{

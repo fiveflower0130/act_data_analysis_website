@@ -64,7 +64,7 @@ const SearchHistory = () => {
               }}
             >
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
-                {/* 左側：SearchCheck 圖示 + lotId，紅色表示此 Lot 有任一 HBIN 有 fail 失效資料，綠色表示正常 */}
+                {/* 左側：SearchCheck 圖示 + lotId，綠色圖示表示已搜尋記錄 */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
                   <SearchCheck
                     size={12}

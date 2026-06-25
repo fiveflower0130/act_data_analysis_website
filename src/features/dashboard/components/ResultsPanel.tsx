@@ -44,7 +44,7 @@ const ResultsPanel = () => {
         </Text>
         {ioFailCount > 0 && (
           <Text style={{ color: colorMode.textPrimary, fontSize: responsive.typography.body, lineHeight: '1.8' }}>
-            2. {ioFailCount} ea 的 {hbinLabel} sample 均集中在 <span style={{ color: '#e61f8c' }}>{concentrationStr}</span>.
+            2. {ioFailCount} ea IO pin 的 {hbinLabel} sample 均集中在 <span style={{ color: '#e61f8c' }}>{concentrationStr}</span>.
           </Text>
         )}
       </div>

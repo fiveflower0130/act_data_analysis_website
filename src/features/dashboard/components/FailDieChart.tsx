@@ -52,7 +52,7 @@ const DieLayerBlock = ({
   failCount,
   totalWidth,
   layerIndex,
-  totalLayers,
+  totalLayers: _totalLayers,
   dieCountInRow = 1,
   ballNamesForDie = [],
 }: DieLayerBlockProps) => {

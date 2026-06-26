@@ -3,8 +3,9 @@
 > **文件說明**：本文件為前端視角的 API 使用合約，記錄前端目前實際呼叫的 API 端點、TypeScript 介面定義、
 > 發現的問題，以及待後端提供的新 API 需求。供前後端 agent 協作時快速對齊。
 >
-> **最後更新**：2026-06-06（ResultsPanel 分析文本實作完成，total_qty 欄位已同步）
-> **對應後端文件**：`api-contract.md`（後端主要規格來源）
+> **最後更新**：2026-06-25（稽核補上 fail-sample-power / stacking-die 合約記載，修正 data/search 欄位誤植）
+> **對應後端規格文件**：`.github/instructions/api-contract-structure.instructions.md`（後端 Agent 維護，唯一的 API 規格來源）
+> **本文件性質**：前端視角的「實作對照報告」——記錄前端目前實際使用哪些端點、與上述規格文件的落差、以及前端專屬型別；**本身不是規格來源**，若內容有疑義請一律以 `api-contract-structure.instructions.md` 為準
 > **前端 API 層位置**：`src/api/`、`src/types/api.ts`
 
 ---
@@ -174,7 +175,55 @@ interface FailSampleItem {
 
 ---
 
-### 2.5 `GET /api/v1/data/search`（已定義，尚未使用）
+### 2.5 `GET /api/v1/analysis/fail-sample-power`
+
+**用途**：POWER Fail Sample List 分析，只處理 VDD（電源）相關測項，`die_no` 統一回傳 `"All"`（電源腳位無法對應特定 Die）。
+
+**Headers**：`Authorization: Bearer <access_token>`
+
+**Query Parameters**：
+```
+lot_id: string   // 批次 ID
+hbin: number     // 故障類型：Open=2 / Short=3 / Leak=4
+```
+
+**Response `data`**：與 2.4 節的 `FailSampleResult` / `FailSampleItem` 共用同一組型別，差異僅在 `die_no[i]` 固定為 `"All"`。
+
+**前端處理**：
+- `src/api/analysis.ts` 的 `getFailSamplePower()`
+- 與 `getFailSample()` 一起在 `dashboardStore` 中以 `Promise.allSettled` 並行查詢，作為 Fail Sample List 的 POWER variant
+
+**驗證狀態**：✅ 後端已提供、✅ 前端已實作（2026-06-25 稽核確認，本次補上合約記載）
+
+---
+
+### 2.6 `GET /api/v1/netlist/programs/{test_program}/stacking-die`
+
+**用途**：查詢疊層 Die 結構（`layer_no`、`unity_no`、`is_substrate`），用於繪製 Fail Die 疊層圖與 Fail Die Rate 統計。
+
+**Headers**：`Authorization: Bearer <access_token>`
+
+**Path Parameter**：`test_program`（可能含 `@` 符號，需 URL encode）
+
+**Response `data`**：
+```typescript
+interface StackingDieLayer {
+  layer_no: number;
+  unity_no: string;
+  is_substrate: boolean;
+}
+// data: StackingDieLayer[]
+```
+
+**前端處理**：
+- `src/api/netlist.ts` 的 `getStackingDie()`
+- 使用元件：`FailDieChart.tsx`、`FailDieRateChart.tsx`
+
+**驗證狀態**：✅ 後端已提供、✅ 前端已實作（2026-06-25 稽核確認，本次補上合約記載）
+
+---
+
+### 2.7 `GET /api/v1/data/search`（已定義，尚未使用）
 
 **用途**：依 LOT ID + HBIN 取得完整測試結果原始資料。
 
@@ -190,7 +239,6 @@ interface SearchResult {
   lot_id: string;
   hbin: number;
   execution_mode: string;
-  qty: number;          // ⭐ 新增（2026-06-06）：所有 site 的 fail DUT 總數
   sites: SiteSearchResult[];
 }
 
@@ -208,7 +256,6 @@ interface LotSiteInfo {
   tester: string;
   customer: string;
   test_program: string;
-  site_qty: number | null;  // ⭐ 新增（2026-06-06）：此 site 的 fail DUT 數量
 }
 
 // 動態結構：固定欄位 + 每個 test item 為一個 key
@@ -256,9 +303,9 @@ const ApiErrorCode = {
 | 優先度 | 需求 | 說明 | 狀態 |
 |--------|------|------|------|
 | 🟠 P1 | **Token Refresh API** | 後端已完成（`POST /api/v1/auth/refresh`，Rolling Refresh Token）。前端已實作 refresh 邏輯（詳見 2.3 節）。 | ✅ 後端完成，✅ **前端已實作** |
+| 🟡 P2 | **Fail Die API** | 依 LOT ID / Test Program 取得 Stacking Die 層次結構，用於繪製疊 Die 圖。後端提供 `GET /netlist/programs/{test_program}/stacking-die`（詳見 2.6 節）。 | ✅ 後端完成，✅ **前端已實作**（2026-06-25 稽核確認） |
 | 🟡 P2 | **Fail Sample on Tray API** | 前端需要依 LOT ID 取得 Tray 規格（row × col）與每個 DUT 的 Tray 位置，用於繪製 Tray 網格圖 | ⬜ 待討論 |
-| 🟡 P2 | **Fail Die API** | 前端需要依 LOT ID 取得 Stacking Die 層次結構與每層的失效 Unity 資訊，用於繪製疊 Die 圖 | ⬜ 待討論 |
-| 🟡 P2 | **Fail Die Rate API** | 各層 Die 的失效率統計 | ⬜ 待討論 |
+| 🟡 P2 | **Fail Die Rate API** | 各層 Die 的失效率統計，前端目前依 2.6 節 `stacking-die` 資料自行計算比率，暫無獨立後端 API 需求 | ❌ 不適用（前端自行計算） |
 | 🟡 P2 | **Fail Ball API** | 失效 BGA Ball 的分佈資料，用於繪製分布圖 | ⬜ 待討論 |
 
 ---
@@ -270,6 +317,8 @@ const ApiErrorCode = {
 | 2026-06-01 | `POST /auth/login`：前端原以 `employee_id` 傳送工號，後端要求 `user_no`，導致 422 錯誤 | ✅ 已修正（前端改為 `user_no`） |
 | 2026-06-01 | `apiClient.post<LoginResponse>` 導致 `data.access_token` 取到 `undefined`；應使用 `ApiResponse<LoginResponse>` 包裝 | ✅ 已修正 |
 | 2026-06-03 | 後端 `POST /auth/login` Response 新增 `refresh_token` 欄位；錯誤代碼新增 `1009`（LDAP 服務不可用）；前端需同步更新 | ✅ P1-1 + P1-2 前端已實作（2026-06-03） |
+| 2026-06-25 | 本文件先前記載 `GET /data/search` 回應含 `qty`、`LotSiteInfo.site_qty` 欄位，但對照後端權威規格 `.github/instructions/api-contract-structure.instructions.md` 與 `src/types/api.ts` 實際定義，該端點並無此二欄位，屬本文件記載錯誤 | ✅ 已修正（移除錯誤欄位記載，2.7 節） |
+| 2026-06-25 | `fail-sample-power`、`stacking-die` 兩端點後端已提供且前端已實作（`src/api/analysis.ts`、`src/api/netlist.ts`），但本文件「二、已使用的 API 端點」遲未記載，且第四節仍將 Fail Die API 誤標為「待討論」 | ✅ 已修正（補上 2.5 / 2.6 節，更新第四節狀態） |
 
 ---
 

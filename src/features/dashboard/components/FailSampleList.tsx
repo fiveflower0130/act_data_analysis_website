@@ -179,7 +179,7 @@ const FailSampleList = ({ variant = 'io' }: { variant?: 'io' | 'power' }) => {
   return (
     <Card
       size="small"
-      title={<span style={{ color: colorMode.textPrimary, fontSize: 13, fontWeight: 600 }}>{title}</span>}
+      title={<span style={{ color: colorMode.textPrimary, fontSize: responsive.typography.contentTitle, fontWeight: 600 }}>{title}</span>}
       //extra={statsExtra}    //暫時不需要
       style={{
         background: colorMode.card,

@@ -3,6 +3,7 @@ import { Card, Typography, Spin, Empty, Tooltip } from 'antd';
 import useDashboardStore from '../../../stores/dashboardStore';
 import { useThemeColors } from '../../../hooks/useThemeColors';
 import { getStackingDie } from '../../../api/netlist';
+import { useResponsiveTokens } from '../../../hooks/useResponsiveTokens';
 import type { StackingDieLayer } from '../../../types/api';
 
 const { Text } = Typography;
@@ -126,6 +127,7 @@ const FailDieChart = () => {
   const colorMode = useThemeColors();
   const { getCurrentFailSample, isSearching, currentLotId, currentHbin } = useDashboardStore();
   const failSampleData = getCurrentFailSample();
+  const responsive = useResponsiveTokens();
 
   // 容器寬度（方塊寬度計算用）
   const [containerWidth, setContainerWidth] = useState(200);
@@ -136,6 +138,7 @@ const FailDieChart = () => {
   const [layerError, setLayerError] = useState<string | null>(null);
   const lastFetchedProgram = useRef<string | null>(null);
 
+  const title = `Top 1 Fail Die${currentLotId ? ` — ${currentLotId}` : ''}`;
   // 量測容器寬度
   useEffect(() => {
     const el = containerRef.current;
@@ -347,8 +350,8 @@ const FailDieChart = () => {
       /*卡片標題*/
       size="small"
       title={
-        <span style={{ color: colorMode.textPrimary, fontSize: 13, fontWeight: 600 }}>
-          Top 1 Fail Die
+        <span style={{ color: colorMode.textPrimary, fontSize: responsive.typography.contentTitle, fontWeight: 600 }}>
+          {title}
         </span>
       }
       /*卡片外框*/

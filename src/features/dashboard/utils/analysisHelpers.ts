@@ -54,3 +54,23 @@ export function computeAnalysis(failSample: FailSampleItem[]): {
 
   return { ioFailCount, dieResults };
 }
+
+/**
+ * 計算 ball_name 在所有 DUT 出現的總次數（同一 DUT 內重複計），
+ * 取前 topN 筆降序排列。用於 FailBallChart 和 ResultsPanel。
+ */
+export function calcTopBalls(
+  failSample: FailSampleItem[],
+  topN = 10,
+): { ball: string; count: number }[] {
+  const counts: Record<string, number> = {};
+  failSample.forEach((dut) => {
+    dut.ball_name.forEach((ball) => {
+      if (ball) counts[ball] = (counts[ball] ?? 0) + 1;
+    });
+  });
+  return Object.entries(counts)
+    .sort(([, a], [, b]) => b - a)
+    .slice(0, topN)
+    .map(([ball, count]) => ({ ball, count }));
+}

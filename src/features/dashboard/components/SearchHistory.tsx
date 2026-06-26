@@ -3,6 +3,7 @@ import { Typography, Empty, Button } from 'antd';
 import { Clock, X, ChevronDown, ChevronUp, SearchCheck } from 'lucide-react';
 import useDashboardStore from '../../../stores/dashboardStore';
 import { useThemeColors } from '../../../hooks/useThemeColors';
+import { useResponsiveTokens } from '../../../hooks/useResponsiveTokens';
 
 const { Text } = Typography;
 
@@ -11,6 +12,7 @@ const VISIBLE_COUNT = 7; // 預設顯示最近幾筆
 const SearchHistory = () => {
   const { searchHistory, currentLotId, selectFromHistory, removeFromHistory } = useDashboardStore();
   const colorMode = useThemeColors();
+  const responsive = useResponsiveTokens();
   const [showAll, setShowAll] = useState(false);
   const [hoveredId, setHoveredId] = useState<string | null>(null);
 
@@ -33,7 +35,9 @@ const SearchHistory = () => {
   return (
     <div style={{ padding: '0 16px' }}>
       <div style={{ marginTop: 8 }}>
-        <Text style={{ color: colorMode.textPrimary, fontSize: 14 }}>Search History</Text>
+        <Text style={{ color: colorMode.textPrimary, fontSize: responsive.typography.contentTitle, fontWeight: 600 }}>
+          Search History
+        </Text>
       </div>
       <div style={{ marginTop: 8 }}>
         {visibleHistory.map((entry) => {

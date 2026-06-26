@@ -28,6 +28,10 @@ dist-ssr
 # GitHub Copilot 設定（指示文件、Agent 設定）
 .github/
 
+# Claude Code 設定（CLAUDE.md、權限與本機設定）
+CLAUDE.md
+.claude/
+
 # 環境變數
 .env
 .env.dev

@@ -4,6 +4,7 @@ import ReactECharts from 'echarts-for-react';
 import useDashboardStore from '../../../stores/dashboardStore';
 import { useThemeColors } from '../../../hooks/useThemeColors';
 import { getStackingDie } from '../../../api/netlist';
+import { useResponsiveTokens } from '../../../hooks/useResponsiveTokens';
 import type { FailSampleItem, StackingDieLayer } from '../../../types/api';
 
 const { Text } = Typography;
@@ -44,6 +45,7 @@ const FailDieRateChart = () => {
   const colorMode = useThemeColors();
   const { getCurrentFailSample, isSearching, currentLotId, currentHbin } = useDashboardStore();
   const failSampleData = getCurrentFailSample();
+  const responsive = useResponsiveTokens();
 
   const [stackingLayers, setStackingLayers] = useState<StackingDieLayer[]>([]);
   const [loadingLayers, setLoadingLayers] = useState(false);
@@ -133,11 +135,11 @@ const FailDieRateChart = () => {
         data: rateData.map((d) => d.unity),
         axisLine: { lineStyle: { color: colorMode.border } },
         axisTick: { lineStyle: { color: colorMode.border } },
-        axisLabel: { color: colorMode.textSecondary, fontSize: rateData.length > 12 ? 8 : 10 },
+        axisLabel: { color: colorMode.textSecondary, fontSize: rateData.length > 8 ? 8 : 10 },
       },
       yAxis: {
         type: 'value',
-        name: 'Fail Rate',
+        name: 'Fail Rate (%)',
         nameLocation: 'middle',
         nameGap: 40,
         nameTextStyle: { color: colorMode.textMuted, fontSize: 11 },
@@ -148,15 +150,15 @@ const FailDieRateChart = () => {
         axisTick: { show: false },
         axisLabel: {
           color: colorMode.textSecondary,
-          fontSize: rateData.length > 12 ? 8 : 10, // 字體大小隨X軸數量調整
-          formatter: (v: number) => `${v}%`,
+          fontSize: rateData.length > 8 ? 8 : 10, // 字體大小隨X軸數量調整
+          formatter: (v: number) => `${v}`,
         },
         splitLine: { lineStyle: { color: colorMode.border, type: 'dashed' } },
       },
       series: [
         {
           type: 'bar',
-          barMaxWidth: rateData.length > 12 ? 24 : 28,        // 最大寬度隨資料量調整，避免過胖
+          barMaxWidth: rateData.length > 8 ? 24 : 28,        // 最大寬度隨資料量調整，避免過胖
           data: rateData.map((d) => ({
             value: parseFloat(d.rate.toFixed(2)),
             itemStyle: {
@@ -168,10 +170,10 @@ const FailDieRateChart = () => {
           label: {
             show: true,
             position: 'top',
-            fontSize: rateData.length > 12 ? 8 : 10, // 字體大小隨X軸數量調整
+            fontSize: rateData.length > 8 ? 8 : 10, // 字體大小隨X軸數量調整
             color: colorMode.textSecondary,
             formatter: (p: { value: number }) =>
-              p.value > 0 ? `${p.value.toFixed(1)}%` : '',
+              p.value > 0 ? `${p.value.toFixed(1)}` : '',
           },
         },
       ],
@@ -237,7 +239,7 @@ const FailDieRateChart = () => {
     <Card
       size="small"
       title={
-        <span style={{ color: colorMode.textPrimary, fontSize: 13, fontWeight: 600 }}>
+        <span style={{ color: colorMode.textPrimary, fontSize: responsive.typography.contentTitle, fontWeight: 600 }}>
           {title}
           {/* {currentLotId && (
             <span style={{ color: colorMode.textMuted, fontWeight: 400, marginLeft: 8, fontSize: 11 }}>

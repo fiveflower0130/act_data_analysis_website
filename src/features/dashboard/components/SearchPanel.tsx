@@ -3,6 +3,7 @@ import { Search } from 'lucide-react';
 import { useState } from 'react';
 import useDashboardStore from '../../../stores/dashboardStore';
 import { useThemeColors } from '../../../hooks/useThemeColors';
+import { useResponsiveTokens } from '../../../hooks/useResponsiveTokens';
 
 const { Text } = Typography;
 
@@ -10,6 +11,7 @@ const SearchPanel = () => {
   const [inputValue, setInputValue] = useState('');
   const { isSearching, searchError, search } = useDashboardStore();
   const colorMode = useThemeColors();
+  const responsive = useResponsiveTokens();
 
   const handleSearch = async () => {
     if (!inputValue.trim()) return;
@@ -19,7 +21,7 @@ const SearchPanel = () => {
 
   return (
     <div style={{ padding: '16px' }}>
-      <Text strong style={{ color: colorMode.textPrimary, fontSize: 14, letterSpacing: 0.5 }}> 
+      <Text strong style={{ color: colorMode.textPrimary, fontSize: responsive.typography.cardTitle}}> 
         Failure Lot Search
       </Text>
 

@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Button, Card, Empty, Segmented, Spin, Tooltip, Typography } from 'antd';
 import useDashboardStore from '../../../stores/dashboardStore';
+import useThemeStore from '../../../stores/themeStore';
+import { HBinLabel } from '../../../types/api';
 import { useThemeColors } from '../../../hooks/useThemeColors';
 import { useResponsiveTokens } from '../../../hooks/useResponsiveTokens';
 import { buildTrayPages, computeAnalysis } from '../utils/analysisHelpers';
@@ -9,23 +11,30 @@ import type { CellStatus, TrayCell } from '../utils/analysisHelpers';
 const { Text } = Typography;
 
 // 橘色 / 藍色與 FailBallChart 保持一致（TOP1 / NORMAL）
-const CELL_COLOR: Record<CellStatus, string> = {
-  orange: '#F5C6A0',   // Top Die Fail
-  blue:   '#5BA4D5',   // 一般 Fail
-  gray:   '#2A3F52',   // 一般（pass），接近 tray 底色
+const CELL_COLOR_DARK: Record<CellStatus, string> = {
+  orange: '#F5C6A0',
+  blue:   '#5BA4D5',
+  gray:   '#2A3F52',
+};
+const CELL_COLOR_LIGHT: Record<CellStatus, string> = {
+  orange: '#F5C6A0',
+  blue:   '#5BA4D5',
+  gray:   '#D8E8F4',
 };
 
-const CELL_LABEL: Record<CellStatus, string> = {
-  orange: 'Top Die Fail',
-  blue:   '一般 Fail',
-  gray:   '一般',
-};
+// const CELL_LABEL: Record<CellStatus, string> = {
+//   orange: 'Top Die Fail',
+//   blue:   '一般 Fail',
+//   gray:   '—',
+// };
 
 // Y 軸標籤寬度（px）
-const Y_LABEL_WIDTH = 12;
+const Y_LABEL_WIDTH = 22;
 
 const FailTrayChart = () => {
   const colorMode = useThemeColors();
+  const themeMode = useThemeStore((s) => s.mode);
+  const CELL_COLOR = themeMode === 'dark' ? CELL_COLOR_DARK : CELL_COLOR_LIGHT;
   const responsive = useResponsiveTokens();
   const [variant, setVariant] = useState<'io' | 'power'>('io');
   const [currentPage, setCurrentPage] = useState(0);
@@ -82,19 +91,20 @@ const FailTrayChart = () => {
   const getTooltipTitle = (cell: TrayCell) => {
     if (cell.dutNo === 0) return null;
     return (
-      <div style={{ fontSize: 11 }}>
+      <div style={{ fontSize: 12 }}>
         <div><b>DUT #{cell.dutNo}</b></div>
-        <div>Ball：{cell.ballName || '—'}</div>
-        <div>狀態：{CELL_LABEL[cell.status]}</div>
+        {/* <div>Ball：{cell.ballName || '—'}</div>
+        <div>狀態：{CELL_LABEL[cell.status]}</div> */}
       </div>
     );
   };
 
-  const title = `Fail on Tray${currentLotId ? ` — ${currentLotId}` : ''}`;
+  const title = `Fail on Tray${currentHbin ? ` — ${HBinLabel[currentHbin]}` : ''}`;
 
   const axisTextStyle = {
+    textAlign: 'center' as const,
     color: colorMode.textMuted,
-    fontSize: 12,
+    fontSize: 11,
     userSelect: 'none' as const,
   };
 
@@ -156,13 +166,31 @@ const FailTrayChart = () => {
       );
     }
 
+    // ── 繪製 Tray 圖 ──
     return (
       <div style={{ width: '100%', height: '100%', boxSizing: 'border-box', paddingTop: 8, paddingRight: 8, display: 'flex', flexDirection: 'column' }}>
+
+        {/* Grid 色塊說明 整體位置置中，橘色: Top 1 Fail 、 藍色: Fail Sample，灰色: 無資料，字體顏色: dark mode時白色、 light mode時黑色 */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12, marginBottom: 4, paddingBottom: 8 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <div style={{ width: 12, height: 12, borderRadius: 2, backgroundColor: CELL_COLOR.orange }} />
+            <Text style={{ color: colorMode.textPrimary, fontSize: 11 }}>Top 1 Fail</Text>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <div style={{ width: 12, height: 12, borderRadius: 2, backgroundColor: CELL_COLOR.blue }} />
+            <Text style={{ color: colorMode.textPrimary, fontSize: 11 }}>Fail Sample</Text>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <div style={{ width: 12, height: 12, borderRadius: 2, backgroundColor: CELL_COLOR.gray }} />
+            <Text style={{ color: colorMode.textPrimary, fontSize: 11 }}>—</Text>
+          </div>
+        </div>
+        
 
         {/* Grid 區：Y 軸標籤 + Tray 格子（gap 提供 row 標籤與格子的間距） */}
         <div style={{ flex: 1, minHeight: 0, display: 'flex', gap: 8 }}>
 
-          {/* Y 軸：row(N)，垂直居中、逆時針旋轉 */}
+          {/* Y 軸：Row(N)，垂直居中、逆時針旋轉 */}
           <div
             style={{
               width: Y_LABEL_WIDTH,
@@ -179,7 +207,7 @@ const FailTrayChart = () => {
                 whiteSpace: 'nowrap',
               }}
             >
-              row({traySpec.row_count})
+              Row({traySpec.row_count})
             </Text>
           </div>
 
@@ -199,14 +227,24 @@ const FailTrayChart = () => {
                 // 超出 totalDuts 的佔位格：顯示與 pass 相同的底色
                 <div
                   key={`pad-${i}`}
-                  style={{ borderRadius: 2, backgroundColor: CELL_COLOR.gray }}
+                  style={{
+                    borderRadius: 2,
+                    backgroundColor: CELL_COLOR.gray,
+                    border: `0px solid ${colorMode.border}`,
+                  }}
                 />
               ) : (
-                <Tooltip key={cell.dutNo} title={getTooltipTitle(cell)} mouseEnterDelay={0.1}>
+                <Tooltip
+                  key={cell.dutNo}
+                  title={getTooltipTitle(cell)}
+                  color={'#1A2332'}
+                  mouseEnterDelay={0.1}
+                >
                   <div
                     style={{
                       borderRadius: 2,
                       backgroundColor: CELL_COLOR[cell.status],
+                      border: `0px solid ${colorMode.border}`,
                       cursor: cell.status !== 'gray' ? 'pointer' : 'default',
                     }}
                   />
@@ -216,20 +254,20 @@ const FailTrayChart = () => {
           </div>
         </div>
 
-        {/* 底部列：X 軸標籤（col(N)）+ 分頁導航（同一列） */}
+        {/* 底部列：X 軸標籤（Col(N)）+ 分頁導航（同一列），有沒有分頁col都要置中 */}
         <div
           style={{
             height: 22,
             flexShrink: 0,
             display: 'flex',
             alignItems: 'center',
-            paddingTop: 4,           // col 標籤與格子間距
-            paddingLeft: Y_LABEL_WIDTH + 8, // 與格子左緣對齊
+            paddingTop: 12,           // col 標籤與格子間距
+            paddingLeft: pages.length > 1? Y_LABEL_WIDTH + 80 : Y_LABEL_WIDTH + 8, // 與格子左緣對齊(置中)
           }}
         >
           {/* col 標籤：佔滿剩餘空間，置中 */}
           <Text style={{ ...axisTextStyle, flex: 1, textAlign: 'center' }}>
-            col({traySpec.col_count})
+            Col({traySpec.col_count})
           </Text>
 
           {/* 分頁導航（僅多頁時顯示） */}
@@ -245,7 +283,7 @@ const FailTrayChart = () => {
                 ‹
               </Button>
               <Text style={{ color: colorMode.textMuted, fontSize: 10 }}>
-                {safePage + 1}/{pages.length}
+                Tray {safePage + 1}/{pages.length}
               </Text>
               <Button
                 type="text"

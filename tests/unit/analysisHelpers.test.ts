@@ -166,19 +166,20 @@ describe('buildTrayPages()', () => {
     const pages = buildTrayPages(items, [], spec, 6);
     expect(pages).toHaveLength(1);
     expect(pages[0]).toHaveLength(6);
-    // dut 1-4 對應到 dutMap，5-6 不在 dutMap → gray
-    expect(pages[0].slice(0, 4).every((c) => c.status !== 'gray')).toBe(true);
-    expect(pages[0].slice(4).every((c) => c.status === 'gray')).toBe(true);
+    // 真實 DUT 位置（1-6）一律非 gray；不在 dutMap 的 DUT → blue
+    expect(pages[0].every((c) => c.status !== 'gray')).toBe(true);
+    // dut 1-4 在 dutMap（dieResults 為空 → blue），5-6 不在 dutMap → blue
+    expect(pages[0].every((c) => c.status === 'blue')).toBe(true);
   });
 
-  it('不在 ioPinFailItems 的 DUT 位置 → gray', () => {
-    // ioPinFailItems 只有 DUT#1；totalDuts=4 → 位置 2,3,4 為 gray
+  it('不在 ioPinFailItems 的 DUT 位置 → blue（視同 Fail）', () => {
+    // ioPinFailItems 只有 DUT#1；totalDuts=4 → 位置 2,3,4 不在 dutMap → blue
     const items = [mkItem(1, ['U7'], ['AY10'])];
     const pages = buildTrayPages(items, [], mkTray(2, 2), 4);
     expect(pages[0][0].status).not.toBe('gray'); // DUT#1 在 dutMap
-    expect(pages[0][1].status).toBe('gray');      // DUT#2 不在 dutMap
-    expect(pages[0][2].status).toBe('gray');      // DUT#3 不在 dutMap
-    expect(pages[0][3].status).toBe('gray');      // DUT#4 不在 dutMap
+    expect(pages[0][1].status).toBe('blue');      // DUT#2 不在 dutMap → blue
+    expect(pages[0][2].status).toBe('blue');      // DUT#3 不在 dutMap → blue
+    expect(pages[0][3].status).toBe('blue');      // DUT#4 不在 dutMap → blue
   });
 
   it('totalDuts < 容量：最後一頁以 dutNo=0 佔位補滿', () => {
@@ -198,8 +199,8 @@ describe('buildTrayPages()', () => {
     expect(pages).toHaveLength(2);
     expect(pages[0]).toHaveLength(10);
     expect(pages[1]).toHaveLength(10);
-    // 第二頁 DUT 11-15（都不在 dutMap → gray），然後 dutNo=0 佔位
-    expect(pages[1].slice(0, 5).every((c) => c.status === 'gray' && c.dutNo > 0)).toBe(true);
+    // 第二頁 DUT 11-15（都不在 dutMap → blue），然後 dutNo=0 佔位（gray）
+    expect(pages[1].slice(0, 5).every((c) => c.status === 'blue' && c.dutNo > 0)).toBe(true);
     expect(pages[1].slice(5).every((c) => c.dutNo === 0 && c.status === 'gray')).toBe(true);
   });
 

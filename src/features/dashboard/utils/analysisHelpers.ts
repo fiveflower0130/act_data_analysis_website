@@ -1,5 +1,7 @@
 import type { FailSampleItem, TraySpec } from '../../../types/api';
 
+// ── Fail Die 統計 ─────────────────────────────────────────────────────────────────
+
 /** 統計陣列中各元素的出現次數，回傳 Map<element, count> */
 export function countFrequency<T>(arr: T[]): Map<T, number> {
   const map = new Map<T, number>();
@@ -56,7 +58,7 @@ export function computeAnalysis(failSample: FailSampleItem[]): {
   return { ioFailCount, dieResults, ioPinFailItems };
 }
 
-// ── Tray 相關 ─────────────────────────────────────────────────────────────────
+// ── Fail Tray 統計 ─────────────────────────────────────────────────────────────────
 
 export type CellStatus = 'orange' | 'blue' | 'gray';
 
@@ -67,7 +69,8 @@ export interface TrayCell {
 }
 
 function getCellStatus(dut: FailSampleItem | undefined, topBalls: Set<string>): CellStatus {
-  if (!dut) return 'gray'; // 不在 ioPinFailItems → gray（POWER-only fail 或 pass）
+  // 不在 ioPinFailItems 或 ball name 為空 → blue（POWER-only fail 或 pass）
+  if (!dut) return 'blue';
   if (dut.ball_name.some((b) => b && topBalls.has(b))) return 'orange';
   return 'blue';
 }
@@ -112,7 +115,7 @@ export function buildTrayPages(
   return pages;
 }
 
-// ── Ball 統計 ─────────────────────────────────────────────────────────────────
+// ── Fail Ball 統計 ─────────────────────────────────────────────────────────────────
 
 /**
  * 計算 ball_name 在所有 DUT 出現的總次數（同一 DUT 內重複計），

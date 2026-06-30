@@ -2,7 +2,7 @@
 
 > **說明**：本文件以問答（QA）方式記錄專案建置過程中所有重要的技術討論、選型決策與議題結論，供日後回顧、交接或擴展時參考。
 > **維護規則**：每當有新的技術討論或架構決策時，應在本文件補充新條目。
-> **最後更新**：2026-06-01
+> **最後更新**：2026-06-30
 
 ---
 
@@ -20,6 +20,10 @@
 10. [圖表套件選型](#10-圖表套件選型)
 11. [目錄結構設計](#11-目錄結構設計)
 12. [測試目錄位置](#12-測試目錄位置)
+13. [Fail Sample on Tray 呈現方式](#13-fail-sample-on-tray-呈現方式)
+14. [FailTrayChart 著色資料來源演進](#14-failtarychart-著色資料來源演進)
+15. [FailTrayChart 非 IO-fail DUT 的著色語意](#15-failtarychart-非-io-fail-dut-的著色語意)
+16. [Dashboard 圖表 Tooltip 主題處理](#16-dashboard-圖表-tooltip-主題處理)
 
 ---
 
@@ -282,21 +286,16 @@ server {
 
 **Q：圖表要用哪個套件？Cytoscape.js 是否適合？**
 
-**決策**：✅ 主要圖表使用 **Cytoscape.js**（搭配 React 包裝）
+**最終決策**（2026-06-30 修正確認）：
 
-**Cytoscape.js 適用的圖表類型**：
-- Fail Ball 分佈圖（BGA Ball 接線拓樸）
-- Fail Die 圖（疊 Die 結構關係圖）
-- 連結關係視覺化
+| 圖表 | 套件 | 說明 |
+|------|------|------|
+| Top 1 Fail Die（疊層圖） | **Cytoscape.js** | 節點/邊關係圖，疊層 Die 結構視覺化 |
+| Fail Die Rate | **ECharts（echarts-for-react）** | 水平柱狀圖，Die 失效率統計 |
+| Fail Ball | **ECharts（echarts-for-react）** | 水平柱狀圖，Top 10 Ball Name |
+| Fail Sample on Tray | **CSS Grid（原生 HTML/CSS）** | 位置格子圖，不需圖表套件（見條目 13） |
 
-**其他圖表可能使用的套件**：
-- Fail Sample on Tray：自訂 Canvas / SVG 或輕量圖表庫（待決定）
-- 統計數據：Ant Design Charts 或 Recharts（待決定）
-
-**理由**：
-1. Cytoscape.js 專為圖形（Graph）和網路拓樸設計，功能強大
-2. 與 React 完全相容
-3. Dante 已評估並認可此套件
+> **初期決策修正**：原本評估 Fail Ball 使用 Cytoscape.js（BGA 拓樸圖），最終改用 ECharts 水平柱狀圖，理由是資料導向的統計視圖（Top 10 次數排行）比拓樸圖更直覺，且 ECharts 已為現有依賴，不需引入新套件。
 
 ---
 
@@ -351,6 +350,129 @@ tests/
 └── components/        # React 元件測試
     └── LoginPage.test.tsx
 ```
+
+---
+
+---
+
+## 13. Fail Sample on Tray 呈現方式
+
+**Q：Fail Sample on Tray 圖表要用什麼技術實作？**
+
+**背景**：Dashboard 左上角需要一個 Tray 位置圖，讓工程師能一眼看出 Tray 盤上哪個位置有失效的 DUT。
+
+**討論過的方案**：
+
+| 方案 | 優點 | 缺點 | 決策 |
+|------|------|------|------|
+| Cytoscape.js | 彈性高，可做動畫 | 引入額外複雜度，Tray 格子本質不是「圖」關係 | ❌ 不採用 |
+| Canvas / SVG 自繪 | 完全控制 | 程式量大，互動（hover tooltip）需自行實作 | ❌ 不採用 |
+| ECharts Heatmap | 現有依賴，API 豐富 | 位置對應不直覺（Tray 是正交格子，非熱圖語意） | ❌ 不採用 |
+| **CSS Grid（原生）** | 輕量、自動等比縮放、Ant Design Tooltip 直接套用 | 無動畫效果 | ✅ 採用 |
+
+**決策**：✅ 使用 **CSS Grid**（`gridTemplateColumns: repeat(col_count, 1fr)`）繪製等比例格子
+
+**理由**：
+1. Tray 本質是二維矩陣（col × row），CSS Grid 是最自然的對應
+2. 自動填滿容器，不需固定像素，響應式免設定
+3. 每個格子是 `<div>`，可直接套 Ant Design `<Tooltip>`，hover 互動零成本
+4. 不增加新套件依賴
+
+---
+
+## 14. FailTrayChart 著色資料來源演進
+
+**Q：Tray 圖的資料來源與格子數量應如何計算？**
+
+**背景**：多次修正後才確認正確邏輯，特此記錄演進過程供未來參考。
+
+**版本一（initial）**：以 `total_qty` 為格子總數，`fail_sample` 建立 dutMap，不在 dutMap 的位置 → 灰色。
+- 問題：頁數計算正確，但對 FailSampleList「354 筆」的意義有誤解（誤以為等於格子數）
+
+**版本二（錯誤嘗試）**：FailSampleList 展開每個 ball_name 為一筆（DUT#1 有 2 個 ball → 2 筆），改以展開後的筆數計算格子。
+- 問題：FailSampleList 的展開邏輯是「UI 顯示用」，非 Tray 位置的正確對應
+
+**版本三（最終正確）**：
+- **格子總數** = `total_qty`（MongoDB 回傳的實際失效 DUT 總數）
+- **著色來源** = `ioPinFailItems`（`computeAnalysis` 過濾出有非空 ball_name 的 FailSampleItem）
+- **dutMap** = `ioPinFailItems.map(item => item.dut_no → item)`
+- 不在 dutMap 的真實 DUT 位置 → 視同 Fail（藍色），無 IO ball 資訊
+- 超出 `total_qty` 的補位格（`dutNo=0`）→ 灰色
+
+**關鍵釐清（與產線人員確認）**：
+- `total_qty` = Tray 上 DUT 的實際數量（= 格子總數）
+- `ioPinFailItems` = 有 IO pin fail 的 DUT 子集（≤ total_qty）
+- IO / POWER 使用相同的 Tray 位置邏輯
+
+---
+
+## 15. FailTrayChart 非 IO-fail DUT 的著色語意
+
+**Q：Tray 上不在 ioPinFailItems 的 DUT 位置，應顯示灰色還是藍色？**
+
+**背景**：初版將「不在 ioPinFailItems」的 DUT 位置顯示為灰色（代表「一般」），但產線確認後調整。
+
+**討論**：
+- 灰色語意：「此 DUT 正常」——但在 Fail HBIN 下搜尋到的 DUT 本身就已是失效品
+- 藍色語意：「此 DUT 失效，只是無法對應到特定 IO ball」（可能是 POWER fail 或其他類型）
+
+**決策**：✅ 不在 ioPinFailItems 的**真實 DUT 位置（dutNo > 0）一律顯示藍色**
+
+**理由**：
+1. 在 HBIN 篩選下取得的 fail_sample 皆為失效 DUT，不應顯示「正常」的灰色
+2. 藍色（`#5BA4D5`）統一代表「Fail Sample」，無論有無 IO ball 資訊
+3. 灰色（`#2A3F52` / `#D8E8F4`）僅用於補位格（超出 `total_qty`，dutNo=0），語意清晰
+
+**圖例**：
+- 橘色 = Top 1 Fail（ball 在 dieResults）
+- 藍色 = Fail Sample（任何真實 DUT 位置）
+- 灰色 = 無 DUT（補位格）
+
+---
+
+## 16. Dashboard 圖表 Tooltip 主題處理
+
+**Q：ECharts tooltip 與 Ant Design Tooltip 在 dark/light 切換時如何保持一致？**
+
+**背景**：Dashboard 有兩種 tooltip 來源：ECharts（FailBallChart / FailDieRateChart）與 Ant Design（FailTrayChart / FailDieChart），在 dark/light 切換時行為不同。
+
+**ECharts Tooltip**：
+
+ECharts tooltip 使用 JavaScript 設定，不自動跟隨 CSS 主題。採用**固定深色 tooltip**：
+
+```typescript
+const COLOR_TOOLTIP_BG = '#1A2332';
+tooltip: {
+  backgroundColor: COLOR_TOOLTIP_BG,
+  borderColor: '#1E3A5F',
+  textStyle: { color: '#FFFFFF', fontSize: 12 },
+}
+```
+
+**決策**：✅ ECharts tooltip **固定使用深色**，不隨主題切換。
+
+**理由**：ECharts tooltip 在深色背景下視覺效果最佳，light mode 下深色 tooltip 仍然清晰，且避免動態切換 ECharts option 的複雜度。
+
+---
+
+**Ant Design Tooltip**：
+
+Ant Design `<Tooltip>` 預設使用 antd theme token，在 dark/light 切換時不會自動對應到自訂的 colorMode token。需手動指定：
+
+```tsx
+<Tooltip
+  color={colorMode.card}                               // 背景色
+  overlayInnerStyle={{ color: colorMode.textPrimary }} // 文字色
+>
+```
+
+**Token 對應**：
+| 屬性 | Dark mode | Light mode |
+|------|-----------|------------|
+| `color`（背景） | `#112240`（card） | `#FFFFFF`（card） |
+| 文字色 | `#FFFFFF`（textPrimary） | `#1A2332`（textPrimary） |
+
+**決策**：✅ Ant Design Tooltip 明確傳入 `color` 與 `overlayInnerStyle`，跟隨 `useThemeColors()` 切換。
 
 ---
 

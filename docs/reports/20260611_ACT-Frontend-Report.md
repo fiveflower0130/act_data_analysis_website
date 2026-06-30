@@ -238,11 +238,11 @@ graph LR
         Hist["searchHistory\n最近 20 筆"]
     end
 
-    Login -->|login()| authStore
-    authStore -->|restoreSession()| MeAPI["/auth/me"]
-    Dashboard -->|search()| dashboardStore
-    dashboardStore -->|快取命中?| Cache
-    Cache -->|未命中| FailAPI["/analysis/fail-sample"]
+    Login -->|"login()"| authStore
+    authStore -->|"restoreSession()"| MeAPI["/auth/me"]
+    Dashboard -->|"search()"| dashboardStore
+    dashboardStore -->|"快取命中?"| Cache
+    Cache -->|"未命中"| FailAPI["/analysis/fail-sample"]
 ```
 
 **快取策略：** 相同 `lotId + hbin` 的查詢結果快取於記憶體，頁面刷新前不重複呼叫 API。

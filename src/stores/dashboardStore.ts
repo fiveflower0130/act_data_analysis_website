@@ -1,7 +1,8 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { getFailSample, getFailSamplePower } from '../api/analysis';
-import type { FailSampleResult, HBinValue, SearchHistoryEntry } from '../types/api';
+import { getTray } from '../api/netlist';
+import type { FailSampleResult, HBinValue, SearchHistoryEntry, TraySpec } from '../types/api';
 import addLog from '../utils/logging';
 
 const HBIN_VALUES: HBinValue[] = [2, 3, 4, 5];
@@ -14,6 +15,7 @@ interface DashboardState {
   searchHistory: SearchHistoryEntry[];
   failSampleCache: FailSampleCache;
   failSamplePowerCache: FailSampleCache;
+  traySpecCache: Record<string, TraySpec>;
   currentLotId: string | null;
   currentHbin: HBinValue | null;
   isSearching: boolean;
@@ -34,6 +36,10 @@ interface DashboardActions {
   getCurrentFailSample: () => FailSampleResult | null;
   /** 取得目前選取的 fail-sample-power（POWER）結果（若無則 null） */
   getCurrentFailSamplePower: () => FailSampleResult | null;
+  /** 懶加載 Tray 規格，已快取則跳過 API 呼叫 */
+  fetchTraySpec: (testProgram: string) => Promise<void>;
+  /** 取得 Tray 規格（若尚未快取則 null） */
+  getTraySpec: (testProgram: string) => TraySpec | null;
 }
 
 const useDashboardStore = create<DashboardState & DashboardActions>()(
@@ -42,6 +48,7 @@ const useDashboardStore = create<DashboardState & DashboardActions>()(
       searchHistory: [],
       failSampleCache: {},
       failSamplePowerCache: {},
+      traySpecCache: {},
       currentLotId: null,
       currentHbin: 3 as HBinValue,
       isSearching: false,
@@ -164,6 +171,26 @@ const useDashboardStore = create<DashboardState & DashboardActions>()(
         if (!currentLotId || currentHbin === null) return null;
         return failSamplePowerCache[currentLotId]?.[currentHbin] ?? null;
       },
+
+      fetchTraySpec: async (testProgram: string) => {
+        if (get().traySpecCache[testProgram] !== undefined) return;
+        try {
+          const res = await getTray(testProgram);
+          const spec = res.data.data;
+          if (spec) {
+            set((state) => ({
+              traySpecCache: { ...state.traySpecCache, [testProgram]: spec },
+            }));
+            addLog({ level: 'info', module: 'dashboardStore', stack: ['fetchTraySpec'], msg: `Tray 規格取得成功: ${testProgram} ${spec.col_count}×${spec.row_count}` });
+          }
+        } catch (err) {
+          addLog({ level: 'warn', module: 'dashboardStore', stack: ['fetchTraySpec'], msg: `Tray 規格取得失敗: ${err instanceof Error ? err.message : String(err)}` });
+        }
+      },
+
+      getTraySpec: (testProgram: string) => {
+        return get().traySpecCache[testProgram] ?? null;
+      },
     }),
     {
       name: 'dashboard-store',
@@ -172,6 +199,7 @@ const useDashboardStore = create<DashboardState & DashboardActions>()(
         searchHistory: state.searchHistory,
         failSampleCache: state.failSampleCache,
         failSamplePowerCache: state.failSamplePowerCache,
+        traySpecCache: state.traySpecCache,
         currentLotId: state.currentLotId,
         currentHbin: state.currentHbin,
       }),

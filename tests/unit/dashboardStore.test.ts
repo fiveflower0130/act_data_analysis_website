@@ -4,13 +4,18 @@ import { act } from '@testing-library/react';
 // Mock API 與 Logger
 vi.mock('../../src/api/analysis', () => ({
   getFailSample: vi.fn(),
+  getFailSamplePower: vi.fn(),
+}));
+vi.mock('../../src/api/netlist', () => ({
+  getTray: vi.fn(),
+  getStackingDie: vi.fn(),
 }));
 vi.mock('../../src/utils/logging', () => ({
   default: vi.fn(),
 }));
 
 import useDashboardStore from '../../src/stores/dashboardStore';
-import { getFailSample as mockGetFailSample } from '../../src/api/analysis';
+import { getFailSample as mockGetFailSample, getFailSamplePower as mockGetFailSamplePower } from '../../src/api/analysis';
 import type { FailSampleResult, HBinValue } from '../../src/types/api';
 
 // ─── 測試輔助 ─────────────────────────────────────────────────────────────────
@@ -39,12 +44,18 @@ describe('dashboardStore', () => {
     useDashboardStore.setState({
       searchHistory: [],
       failSampleCache: {},
+      failSamplePowerCache: {},
+      traySpecCache: {},
       currentLotId: null,
       currentHbin: 3,
       isSearching: false,
       searchError: null,
     });
     vi.clearAllMocks();
+    // POWER 預設回傳空結果，避免影響 IO 相關測試（clearAllMocks 之後設定）
+    vi.mocked(mockGetFailSamplePower).mockResolvedValue(
+      { data: { code: 200, message: 'OK', data: null } } as never,
+    );
   });
 
   afterEach(() => {

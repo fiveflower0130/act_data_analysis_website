@@ -3,7 +3,7 @@
 > **文件說明**：本文件為前端視角的 API 使用合約，記錄前端目前實際呼叫的 API 端點、TypeScript 介面定義、
 > 發現的問題，以及待後端提供的新 API 需求。供前後端 agent 協作時快速對齊。
 >
-> **最後更新**：2026-06-25（稽核補上 fail-sample-power / stacking-die 合約記載，修正 data/search 欄位誤植）
+> **最後更新**：2026-06-30（新增 2.8 節 tray 端點，更新第四節狀態，補充 TraySpec 型別）
 > **對應後端規格文件**：`.github/instructions/api-contract-structure.instructions.md`（後端 Agent 維護，唯一的 API 規格來源）
 > **本文件性質**：前端視角的「實作對照報告」——記錄前端目前實際使用哪些端點、與上述規格文件的落差、以及前端專屬型別；**本身不是規格來源**，若內容有疑義請一律以 `api-contract-structure.instructions.md` 為準
 > **前端 API 層位置**：`src/api/`、`src/types/api.ts`
@@ -223,6 +223,33 @@ interface StackingDieLayer {
 
 ---
 
+### 2.8 `GET /api/v1/netlist/programs/{test_program}/tray`
+
+**用途**：查詢指定 Test Program 的 Tray 規格（欄數 × 列數），用於繪製 Fail Sample on Tray 位置格子圖。
+
+**Headers**：`Authorization: Bearer <access_token>`
+
+**Path Parameter**：`test_program`（可能含 `@` 符號，需 URL encode）
+
+**Response `data`**：
+```typescript
+interface TraySpec {
+  col_count: number;   // Tray 欄數
+  row_count: number;   // Tray 列數
+}
+// 每頁格子容量 = col_count × row_count
+```
+
+**前端處理**：
+- `src/api/netlist.ts` 的 `getTray(testProgram)`
+- 使用元件：`FailTrayChart.tsx`
+- 懶加載：由 `dashboardStore.fetchTraySpec(testProgram)` 呼叫，結果快取於 `traySpecCache[testProgram]`；已快取則跳過 API 呼叫
+- `test_program` 來自 `getCurrentFailSample().test_program`
+
+**驗證狀態**：✅ 後端已提供、✅ 前端已實作（2026-06-30）
+
+---
+
 ### 2.7 `GET /api/v1/data/search`（已定義，尚未使用）
 
 **用途**：依 LOT ID + HBIN 取得完整測試結果原始資料。
@@ -304,7 +331,7 @@ const ApiErrorCode = {
 |--------|------|------|------|
 | 🟠 P1 | **Token Refresh API** | 後端已完成（`POST /api/v1/auth/refresh`，Rolling Refresh Token）。前端已實作 refresh 邏輯（詳見 2.3 節）。 | ✅ 後端完成，✅ **前端已實作** |
 | 🟡 P2 | **Fail Die API** | 依 LOT ID / Test Program 取得 Stacking Die 層次結構，用於繪製疊 Die 圖。後端提供 `GET /netlist/programs/{test_program}/stacking-die`（詳見 2.6 節）。 | ✅ 後端完成，✅ **前端已實作**（2026-06-25 稽核確認） |
-| 🟡 P2 | **Fail Sample on Tray API** | 前端需要依 LOT ID 取得 Tray 規格（row × col）與每個 DUT 的 Tray 位置，用於繪製 Tray 網格圖 | ⬜ 待討論 |
+| 🟡 P2 | **Fail Sample on Tray API** | 前端以 `GET /netlist/programs/{test_program}/tray` 取得 Tray 規格，DUT 位置由 `fail_sample.dut_no` 對應（詳見 2.8 節） | ✅ 後端完成，✅ **前端已實作**（2026-06-30） |
 | 🟡 P2 | **Fail Die Rate API** | 各層 Die 的失效率統計，前端目前依 2.6 節 `stacking-die` 資料自行計算比率，暫無獨立後端 API 需求 | ❌ 不適用（前端自行計算） |
 | 🟡 P2 | **Fail Ball API** | 失效 BGA Ball 的分佈資料，用於繪製分布圖 | ⬜ 待討論 |
 
@@ -339,6 +366,18 @@ interface SearchHistoryEntry {
   lotId: string;
   searchedAt: string;   // ISO string
   hasAnyFail: boolean;  // 是否有任一 HBIN 有 fail 資料（用於 badge 顯示）
+}
+
+// FailTrayChart 格子狀態（前端計算，不對應後端欄位）
+type CellStatus = 'orange' | 'blue' | 'gray';
+// orange = IO ball 在 dieResults（Top Die Fail）
+// blue   = 真實 DUT 位置（含無 IO ball 資訊的 DUT）
+// gray   = 補位格（超出 total_qty 範圍，dutNo=0）
+
+interface TrayCell {
+  dutNo: number;      // dut_no（補位格為 0）
+  ballName: string;   // 第一個非空 ball_name（補位或無 IO ball 時為 ''）
+  status: CellStatus;
 }
 ```
 

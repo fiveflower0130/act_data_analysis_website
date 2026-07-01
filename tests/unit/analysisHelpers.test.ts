@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { countFrequency, getTopKeys, computeAnalysis } from '../../src/features/dashboard/utils/analysisHelpers';
-import type { FailSampleItem } from '../../src/types/api';
+import { countFrequency, getTopKeys, computeAnalysis, buildTrayPages } from '../../src/features/dashboard/utils/analysisHelpers';
+import type { FailSampleItem, TraySpec } from '../../src/types/api';
 
 // ─── 測試輔助：建立 FailSampleItem ─────────────────────────────────────────────
 
@@ -144,5 +144,88 @@ describe('computeAnalysis()', () => {
     expect(result.ioFailCount).toBe(3);
     // '' 被過濾，U7 出現 2 次
     expect(result.dieResults).toEqual([{ die: 'U7', balls: ['AY10'] }]);
+  });
+});
+
+// ─── buildTrayPages ────────────────────────────────────────────────────────────
+
+const mkTray = (col: number, row: number): TraySpec => ({ col_count: col, row_count: row });
+
+describe('buildTrayPages()', () => {
+  it('totalDuts=0 → 回傳空陣列', () => {
+    expect(buildTrayPages([], [], mkTray(5, 4), 0)).toEqual([]);
+  });
+
+  it('容量為 0 → 回傳空陣列', () => {
+    expect(buildTrayPages([mkItem(1, ['U7'], ['AY10'])], [], mkTray(0, 5), 3)).toEqual([]);
+  });
+
+  it('單頁：DUT 位置 = tray 容量，每格 dutNo 正確', () => {
+    const spec = mkTray(2, 3); // 6 格
+    const items = [1, 2, 3, 4].map((n) => mkItem(n, ['U7'], ['AY10']));
+    const pages = buildTrayPages(items, [], spec, 6);
+    expect(pages).toHaveLength(1);
+    expect(pages[0]).toHaveLength(6);
+    // 真實 DUT 位置（1-6）一律非 gray；不在 dutMap 的 DUT → blue
+    expect(pages[0].every((c) => c.status !== 'gray')).toBe(true);
+    // dut 1-4 在 dutMap（dieResults 為空 → blue），5-6 不在 dutMap → blue
+    expect(pages[0].every((c) => c.status === 'blue')).toBe(true);
+  });
+
+  it('不在 ioPinFailItems 的 DUT 位置 → blue（視同 Fail）', () => {
+    // ioPinFailItems 只有 DUT#1；totalDuts=4 → 位置 2,3,4 不在 dutMap → blue
+    const items = [mkItem(1, ['U7'], ['AY10'])];
+    const pages = buildTrayPages(items, [], mkTray(2, 2), 4);
+    expect(pages[0][0].status).not.toBe('gray'); // DUT#1 在 dutMap
+    expect(pages[0][1].status).toBe('blue');      // DUT#2 不在 dutMap → blue
+    expect(pages[0][2].status).toBe('blue');      // DUT#3 不在 dutMap → blue
+    expect(pages[0][3].status).toBe('blue');      // DUT#4 不在 dutMap → blue
+  });
+
+  it('totalDuts < 容量：最後一頁以 dutNo=0 佔位補滿', () => {
+    const spec = mkTray(3, 2); // 6 格
+    const items = [1, 2, 3, 4].map((n) => mkItem(n, ['U7'], ['AY10']));
+    const pages = buildTrayPages(items, [], spec, 4);
+    expect(pages).toHaveLength(1);
+    expect(pages[0]).toHaveLength(6);
+    expect(pages[0].map((c) => c.dutNo)).toEqual([1, 2, 3, 4, 0, 0]);
+    expect(pages[0][4]).toMatchObject({ dutNo: 0, ballName: '', status: 'gray' });
+  });
+
+  it('多頁：totalDuts 超過一頁容量', () => {
+    const spec = mkTray(5, 2); // 10 格/頁
+    const items = [1, 3, 5, 7, 9].map((n) => mkItem(n, ['U7'], ['AY10']));
+    const pages = buildTrayPages(items, [], spec, 15);
+    expect(pages).toHaveLength(2);
+    expect(pages[0]).toHaveLength(10);
+    expect(pages[1]).toHaveLength(10);
+    // 第二頁 DUT 11-15（都不在 dutMap → blue），然後 dutNo=0 佔位（gray）
+    expect(pages[1].slice(0, 5).every((c) => c.status === 'blue' && c.dutNo > 0)).toBe(true);
+    expect(pages[1].slice(5).every((c) => c.dutNo === 0 && c.status === 'gray')).toBe(true);
+  });
+
+  it('顏色：ball 在 topBalls → orange（Top Die Fail）', () => {
+    const items = [mkItem(1, ['U7'], ['AY10'])];
+    const dieResults = [{ die: 'U7', balls: ['AY10'] }];
+    const pages = buildTrayPages(items, dieResults, mkTray(2, 1), 2);
+    expect(pages[0][0].status).toBe('orange');
+    expect(pages[0][0].ballName).toBe('AY10');
+  });
+
+  it('顏色：ball 不在 topBalls → blue', () => {
+    const items = [mkItem(1, ['U7'], ['F15'])];
+    const dieResults = [{ die: 'U7', balls: ['AY10'] }]; // F15 不在 topBalls
+    const pages = buildTrayPages(items, dieResults, mkTray(2, 1), 2);
+    expect(pages[0][0].status).toBe('blue');
+    expect(pages[0][0].ballName).toBe('F15');
+  });
+
+  it('佔位格（dutNo=0）：超出 totalDuts 的格子才為 dutNo=0', () => {
+    // totalDuts=1，tray 容量=2 → 第 2 格超出範圍，為佔位格
+    const items = [mkItem(1, ['U7'], ['AY10'])];
+    const dieResults = [{ die: 'U7', balls: ['AY10'] }];
+    const pages = buildTrayPages(items, dieResults, mkTray(2, 1), 1);
+    expect(pages[0][0]).toMatchObject({ dutNo: 1, status: 'orange' });     // 真實 DUT
+    expect(pages[0][1]).toMatchObject({ dutNo: 0, ballName: '', status: 'gray' }); // 佔位格
   });
 });

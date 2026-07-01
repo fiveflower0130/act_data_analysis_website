@@ -1,6 +1,6 @@
 # ACT Failure Analysis System Frontend — 待辦事項清單
 
-> 最後更新：2026-06-09（10:30）
+> 最後更新：2026-06-30
 > 分析工具：GitHub Copilot
 > 說明：本文件記錄前端專案的待辦事項，依優先度分類管理，並於每次變更後同步更新狀態與修改紀錄。
 
@@ -36,15 +36,16 @@
 
 | # | 狀態 | 問題描述 | 位置 |
 |---|------|----------|------|
-| 6 | 🔄 | 主儀表板頁（LOT 搜尋 + 歷史記錄 + Fail Mode 篩選 + 版面 1:4 佈局 + 4 個圖表佔位元件） | `src/features/dashboard/` |
+| 6 | ✅ | 主儀表板頁（LOT 搜尋 + 歷史記錄 + Fail Mode 篩選 + 版面 1:4 佈局 + 4 個圖表元件） | `src/features/dashboard/` |
 | 7 | ✅ | Fail Sample List 表格元件（固定高度響應式 CSS override、統計至標題右側、showSizeChanger=false、Badge 統一綠色） | `src/features/dashboard/components/FailSampleList.tsx` |
 | 24 | ✅ | ResultsPanel 分析文本實作（IO pin fail 統計、最高頻 die/ball 計算、平局全列、total_qty 型別同步） | `src/features/dashboard/components/ResultsPanel.tsx` |
-| 23 | ✅ | 撰寫 Dashboard 模組單元測試（dashboardStore 15 tests + analysisHelpers 15 tests） | `tests/unit/` |
+| 23 | ✅ | 撰寫 Dashboard 模組單元測試（dashboardStore + analysisHelpers，68 tests 通過） | `tests/unit/` |
 | 25 | ✅ | 響應式版面設計（tokens 斷點/排版、useResponsiveTokens hook、所有頁面套用） | `src/styles/tokens.ts`、`src/hooks/`、各功能頁 |
 | 26 | ✅ | 環境變數設定（`.env/` 資料夾、`.env`/`.env.dev`，vite.config.ts `envDir`，區分正式/開發環境） | `.env/`、`vite.config.ts`、`package.json` |
 | 27 | ✅ | IIS 佈署指南與 `public/web.config` SPA 路由設定 | `docs/deployment/iis-deployment.md`、`public/web.config` |
-| 9 | ⬜ | Fail Die / Fail Die Rate 圖表元件 | `src/features/analysis/` |
-| 10 | ⬜ | Fail Ball 圖表元件 | `src/features/analysis/` |
+| 9 | ✅ | Top 1 Fail Die 疊層圖（Cytoscape.js + 節點著色）與 Fail Die Rate 直方圖（ECharts） | `src/features/dashboard/components/FailDieChart.tsx`、`FailDieRateChart.tsx` |
+| 10 | ✅ | Fail Ball 圖表（ECharts 水平柱狀圖，Top 10 Ball，IO/POWER 切換） | `src/features/dashboard/components/FailBallChart.tsx` |
+| 28 | ✅ | Fail Sample on Tray 圖表（CSS Grid 位置圖，orange/blue 著色，多頁導航，dark/light tooltip） | `src/features/dashboard/components/FailTrayChart.tsx` |
 | 11 | ⬜ | Netlist 管理頁（上傳、列表） | `src/features/netlist/` |
 
 ---
@@ -56,7 +57,7 @@
 | 12 | ⬜ | 歷史紀錄頁 | `src/features/history/` |
 | 13 | ⬜ | 使用者管理頁（admin） | `src/features/users/` |
 | 14 | ⬜ | 分析報告匯出功能 | `src/features/export/` |
-| 15 | ⬜ | 深色 / 淺色主題切換 | `src/styles/` |
+| 15 | ✅ | 深色 / 淺色主題切換（Navbar toggle，dark/light token 完整支援） | `src/styles/tokens.ts`、`src/stores/themeStore.ts` |
 
 ---
 
@@ -90,3 +91,13 @@
 | 2026-06-09 | #27 | ✅ 完成：建立 `public/web.config`（SPA 路由 + Option B 反向代理 comment）；建立 `docs/deployment/iis-deployment.md`（完整 IIS 佈署指南） | Dante |
 | 2026-06-09 | 修正 | ✅ 修正 LoginPage 標題由 "ACT Data Analytics AI" → "ACT Failure Analysis System" | Dante |
 | 2026-06-09 | 文件 | 更新 `.github/instructions/` 內 docs/reports → docs/records 參照；補充 project-overview 新增 docs/deployment 說明 | Dante |
+| 2026-06-25 | #9 | ✅ 完成：Top 1 Fail Die（Cytoscape.js 疊層節點圖）+ Fail Die Rate（ECharts 水平柱狀圖），以 stacking-die API 取得層次結構 | Dante |
+| 2026-06-25 | #10 | ✅ 完成：FailBallChart（ECharts 水平柱狀圖，Top 10 Ball Name，IO/POWER 切換，暗色 tooltip） | Dante |
+| 2026-06-25 | #6 | ✅ 完成：Dashboard 4 個圖表佔位元件全部替換為正式元件（Fail Die / Fail Die Rate / Fail Ball / Fail Tray） | Dante |
+| 2026-06-25 | #15 | ✅ 完成：dark/light 主題切換（themeStore + Navbar toggle，所有元件套用 colorMode token） | Dante |
+| 2026-06-25 | 修正 | ✅ 修正：Fail Sample List POWER variant（getFailSamplePower API，dashboardStore POWER cache） | Dante |
+| 2026-06-25 | 修正 | ✅ 修正：SearchHistory 新增刪除紀錄與展開收合功能 | Dante |
+| 2026-06-30 | #28 | ✅ 完成：FailTrayChart（Fail Sample on Tray，CSS Grid，orange/blue/gray 著色，多頁導航，Tray 規格 API） | Dante |
+| 2026-06-30 | #28 | ✅ 修正：FailTrayChart Tooltip dark/light 主題色（color + overlayInnerStyle）；格子加邊框（border: colorMode.border）；灰色格 light mode 淡藍灰 | Dante |
+| 2026-06-30 | 修正 | ✅ 統一 4 個 Dashboard 圖表卡片標題格式：Lot ID → HBinLabel（例：Short / Open） | Dante |
+| 2026-06-30 | 文件 | 同步更新 to-do-list.md、W27 工作紀錄、design-decisions-qa.md、frontend-contract.md | Dante |

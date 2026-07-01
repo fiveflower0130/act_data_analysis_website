@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { Card, Typography, Spin, Empty } from 'antd';
 import ReactECharts from 'echarts-for-react';
 import useDashboardStore from '../../../stores/dashboardStore';
+import { HBinLabel } from '../../../types/api';
 import { useThemeColors } from '../../../hooks/useThemeColors';
 import { getStackingDie } from '../../../api/netlist';
 import { useResponsiveTokens } from '../../../hooks/useResponsiveTokens';
@@ -52,7 +53,7 @@ const FailDieRateChart = () => {
   const [layerError, setLayerError]       = useState<string | null>(null);
   const lastFetchedProgram = useRef<string | null>(null);
 
-  const title = `Fail Die Rate${currentLotId ? ` — ${currentLotId}` : ''}`;
+  const title = `Fail Die Rate${currentHbin ? ` — ${HBinLabel[currentHbin]}` : ''}`;
   // 依 test_program 取得疊層結構（快取避免重複請求）
   useEffect(() => {
     const program = failSampleData?.test_program ?? null;
@@ -110,7 +111,7 @@ const FailDieRateChart = () => {
 
     return {
       backgroundColor: 'transparent',
-      grid: { top: 20, bottom: 44, left: 52, right: 12 },
+      grid: { top: 22, bottom: 12, left: 12, right: 12 },
       tooltip: {
         trigger: 'axis',
         backgroundColor: COLOR_TOOLTIP_BG,
@@ -130,7 +131,7 @@ const FailDieRateChart = () => {
         type: 'category',
         name: 'Die Location',
         nameLocation: 'middle',
-        nameGap: 26,
+        nameGap: 32,
         nameTextStyle: { color: colorMode.textMuted, fontSize: 11 },
         data: rateData.map((d) => d.unity),
         axisLine: { lineStyle: { color: colorMode.border } },
@@ -141,7 +142,7 @@ const FailDieRateChart = () => {
         type: 'value',
         name: 'Fail Rate (%)',
         nameLocation: 'middle',
-        nameGap: 40,
+        nameGap: 22,
         nameTextStyle: { color: colorMode.textMuted, fontSize: 11 },
         min: 0,
         max: 100,  // 固定 0~100%，不隨資料變動若要改為浮動則寫成 max: yMax

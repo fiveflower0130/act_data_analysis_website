@@ -3,7 +3,7 @@ import SearchPanel from './components/SearchPanel';
 import SearchHistory from './components/SearchHistory';
 import DashboardHeader from './components/DashboardHeader';
 import FailSampleList from './components/FailSampleList';
-import PlaceholderChart from './components/PlaceholderChart';
+import FailTrayChart from './components/FailTrayChart';
 import FailDieChart from './components/FailDieChart';
 import FailDieRateChart from './components/FailDieRateChart';
 import FailBallChart from './components/FailBallChart';
@@ -102,7 +102,7 @@ const DashboardPage = () => {
               overflow: 'hidden',             // 避免圖表溢出
             }}
           >
-            <PlaceholderChart title="Fail Sample on Tray" subtitle="Tray 排列圖，功能開發中" />
+            <FailTrayChart />
             <FailDieChart />
             <FailBallChart />
             <FailDieRateChart />

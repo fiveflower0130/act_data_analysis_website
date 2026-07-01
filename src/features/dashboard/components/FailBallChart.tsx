@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { Card, Empty, Segmented, Spin, Typography } from 'antd';
 import ReactECharts from 'echarts-for-react';
 import useDashboardStore from '../../../stores/dashboardStore';
+import { HBinLabel } from '../../../types/api';
 import { useThemeColors } from '../../../hooks/useThemeColors';
 import { calcTopBalls } from '../utils/analysisHelpers';
 import { useResponsiveTokens } from '../../../hooks/useResponsiveTokens';
@@ -31,7 +32,7 @@ const FailBallChart = () => {
     ? getCurrentFailSample()
     : getCurrentFailSamplePower();
 
-  const title = `Fail Ball${currentLotId ? ` — ${currentLotId}` : ''}`;
+  const title = `Fail Ball${currentHbin ? ` — ${HBinLabel[currentHbin]}` : ''}`;
 
   // 計算 Top N ball names
   const topBalls = useMemo(() => {
@@ -49,7 +50,7 @@ const FailBallChart = () => {
 
     return {
       backgroundColor: 'transparent',
-      grid: { top: 20, bottom: 52, left: 44, right: 12 },
+      grid: { top: 22, bottom: 12, left: 12, right: 12},
       tooltip: {
         trigger: 'axis',
         backgroundColor: COLOR_TOOLTIP_BG,
@@ -85,7 +86,7 @@ const FailBallChart = () => {
         type: 'value',
         name: 'Fail Count (ea)',
         nameLocation: 'middle',
-        nameGap: 32,
+        nameGap: 22,
         nameTextStyle: { color: colorMode.textMuted, fontSize: 11 },
         min: 0,
         max: yMax,

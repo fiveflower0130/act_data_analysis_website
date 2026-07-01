@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Card, Typography, Spin, Empty, Tooltip } from 'antd';
 import useDashboardStore from '../../../stores/dashboardStore';
+import { HBinLabel } from '../../../types/api';
 import { useThemeColors } from '../../../hooks/useThemeColors';
 import { getStackingDie } from '../../../api/netlist';
 import { useResponsiveTokens } from '../../../hooks/useResponsiveTokens';
@@ -138,7 +139,7 @@ const FailDieChart = () => {
   const [layerError, setLayerError] = useState<string | null>(null);
   const lastFetchedProgram = useRef<string | null>(null);
 
-  const title = `Top 1 Fail Die${currentLotId ? ` — ${currentLotId}` : ''}`;
+  const title = `Top 1 Fail Die${currentHbin ? ` — ${HBinLabel[currentHbin]}` : ''}`;
   // 量測容器寬度
   useEffect(() => {
     const el = containerRef.current;

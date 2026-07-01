@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Card, Typography, Spin, Empty, Tooltip } from 'antd';
 import useDashboardStore from '../../../stores/dashboardStore';
+import { HBinLabel } from '../../../types/api';
 import { useThemeColors } from '../../../hooks/useThemeColors';
 import { getStackingDie } from '../../../api/netlist';
 import type { StackingDieLayer } from '../../../types/api';
@@ -348,7 +349,7 @@ const FailDieChart = () => {
       size="small"
       title={
         <span style={{ color: colorMode.textPrimary, fontSize: 13, fontWeight: 600 }}>
-          Top 1 Fail Die
+          {`Top 1 Fail Die${currentHbin ? ` — ${HBinLabel[currentHbin]}` : ''}`}
         </span>
       }
       /*卡片外框*/

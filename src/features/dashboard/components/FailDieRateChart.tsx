@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { Card, Typography, Spin, Empty } from 'antd';
 import ReactECharts from 'echarts-for-react';
 import useDashboardStore from '../../../stores/dashboardStore';
+import { HBinLabel } from '../../../types/api';
 import { useThemeColors } from '../../../hooks/useThemeColors';
 import { getStackingDie } from '../../../api/netlist';
 import type { FailSampleItem, StackingDieLayer } from '../../../types/api';
@@ -50,7 +51,7 @@ const FailDieRateChart = () => {
   const [layerError, setLayerError]       = useState<string | null>(null);
   const lastFetchedProgram = useRef<string | null>(null);
 
-  const title = `Fail Die Rate${currentLotId ? ` — ${currentLotId}` : ''}`;
+  const title = `Fail Die Rate${currentHbin ? ` — ${HBinLabel[currentHbin]}` : ''}`;
   // 依 test_program 取得疊層結構（快取避免重複請求）
   useEffect(() => {
     const program = failSampleData?.test_program ?? null;

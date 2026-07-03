@@ -1,6 +1,6 @@
 # ACT Failure Analysis System Frontend — 待辦事項清單
 
-> 最後更新：2026-06-30
+> 最後更新：2026-07-02
 > 分析工具：GitHub Copilot
 > 說明：本文件記錄前端專案的待辦事項，依優先度分類管理，並於每次變更後同步更新狀態與修改紀錄。
 
@@ -46,7 +46,7 @@
 | 9 | ✅ | Top 1 Fail Die 疊層圖（Cytoscape.js + 節點著色）與 Fail Die Rate 直方圖（ECharts） | `src/features/dashboard/components/FailDieChart.tsx`、`FailDieRateChart.tsx` |
 | 10 | ✅ | Fail Ball 圖表（ECharts 水平柱狀圖，Top 10 Ball，IO/POWER 切換） | `src/features/dashboard/components/FailBallChart.tsx` |
 | 28 | ✅ | Fail Sample on Tray 圖表（CSS Grid 位置圖，orange/blue 著色，多頁導航，dark/light tooltip） | `src/features/dashboard/components/FailTrayChart.tsx` |
-| 11 | ⬜ | Netlist 管理頁（上傳、列表） | `src/features/netlist/` |
+| 11 | 🔄 | Netlist 管理頁 — 上傳子功能需求與版面設計已確認（見 design-decisions-qa.md 條目 17），待 2 項後端欄位（`uploaded_by_name`、失敗紀錄 `test_program`）到位後開始實作；歷史紀錄／Summary/Histogram 子功能待後續討論 | `src/features/netlist/` |
 
 ---
 
@@ -101,3 +101,4 @@
 | 2026-06-30 | #28 | ✅ 修正：FailTrayChart Tooltip dark/light 主題色（color + overlayInnerStyle）；格子加邊框（border: colorMode.border）；灰色格 light mode 淡藍灰 | Dante |
 | 2026-06-30 | 修正 | ✅ 統一 4 個 Dashboard 圖表卡片標題格式：Lot ID → HBinLabel（例：Short / Open） | Dante |
 | 2026-06-30 | 文件 | 同步更新 to-do-list.md、W27 工作紀錄、design-decisions-qa.md、frontend-contract.md | Dante |
+| 2026-07-02 | #11 | 🔄 Netlist 上傳子功能需求討論完成並確認版面線框圖，新增 design-decisions-qa.md 條目 17；發現 2 項待後端配合欄位（`uploaded_by_name`、失敗紀錄 `test_program`），已補充至 frontend-contract.md 第四節，前端待欄位到位後開始實作 | Dante |

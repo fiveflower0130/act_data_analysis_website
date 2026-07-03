@@ -3,7 +3,7 @@
 > **文件說明**：本文件為前端視角的 API 使用合約，記錄前端目前實際呼叫的 API 端點、TypeScript 介面定義、
 > 發現的問題，以及待後端提供的新 API 需求。供前後端 agent 協作時快速對齊。
 >
-> **最後更新**：2026-06-30（新增 2.8 節 tray 端點，更新第四節狀態，補充 TraySpec 型別）
+> **最後更新**：2026-07-02（第四節新增 Netlist 上傳頁待後端配合的 2 項欄位需求，詳見設計決策 QA 條目 17）
 > **對應後端規格文件**：`.github/instructions/api-contract-structure.instructions.md`（後端 Agent 維護，唯一的 API 規格來源）
 > **本文件性質**：前端視角的「實作對照報告」——記錄前端目前實際使用哪些端點、與上述規格文件的落差、以及前端專屬型別；**本身不是規格來源**，若內容有疑義請一律以 `api-contract-structure.instructions.md` 為準
 > **前端 API 層位置**：`src/api/`、`src/types/api.ts`
@@ -334,6 +334,8 @@ const ApiErrorCode = {
 | 🟡 P2 | **Fail Sample on Tray API** | 前端以 `GET /netlist/programs/{test_program}/tray` 取得 Tray 規格，DUT 位置由 `fail_sample.dut_no` 對應（詳見 2.8 節） | ✅ 後端完成，✅ **前端已實作**（2026-06-30） |
 | 🟡 P2 | **Fail Die Rate API** | 各層 Die 的失效率統計，前端目前依 2.6 節 `stacking-die` 資料自行計算比率，暫無獨立後端 API 需求 | ❌ 不適用（前端自行計算） |
 | 🟡 P2 | **Fail Ball API** | 失效 BGA Ball 的分佈資料，用於繪製分布圖 | ⬜ 待討論 |
+| 🟡 P2 | **Netlist 上傳者名稱** | `GET /api/v1/netlist/programs` 目前只回傳上傳時間與檔名，`uploaded_by`（UUID）未輸出。建議後端 JOIN `users` 表，回應新增 `uploaded_by_name` 欄位，供 Netlist 上傳頁歷史紀錄表格顯示（詳見設計決策 QA 條目 17） | ⬜ 待後端提供 |
+| 🟠 P1 | **Netlist 上傳失敗紀錄的 test_program** | `audit_logs.request_body` 目前無論上傳成功或失敗皆為 `null`，無法得知失敗當下的 `test_program`。需後端於 upload API 將 `test_program` 寫入 `audit_logs.request_body`（或等效欄位），前端才能在失敗紀錄顯示對應的 test_program（詳見設計決策 QA 條目 17） | ⬜ 待後端提供，前端此欄位實作暫緩 |
 
 ---
 

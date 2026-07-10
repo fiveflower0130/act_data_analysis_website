@@ -3,7 +3,7 @@
 > **文件說明**：本文件為前端視角的 API 使用合約，記錄前端目前實際呼叫的 API 端點、TypeScript 介面定義、
 > 發現的問題，以及待後端提供的新 API 需求。供前後端 agent 協作時快速對齊。
 >
-> **最後更新**：2026-07-02（第四節新增 Netlist 上傳頁待後端配合的 2 項欄位需求，詳見設計決策 QA 條目 17）
+> **最後更新**：2026-07-08（第四節新增歷史紀錄查詢 API、匯出方案、使用狀況埋點等待後端配合事項，詳見設計決策 QA 條目 18；同日補上歷史紀錄查詢 API 的確認端點路徑，並同步 ACT Dashboard 移植端點改名決策，見 Backend ADR-014）
 > **對應後端規格文件**：`.github/instructions/api-contract-structure.instructions.md`（後端 Agent 維護，唯一的 API 規格來源）
 > **本文件性質**：前端視角的「實作對照報告」——記錄前端目前實際使用哪些端點、與上述規格文件的落差、以及前端專屬型別；**本身不是規格來源**，若內容有疑義請一律以 `api-contract-structure.instructions.md` 為準
 > **前端 API 層位置**：`src/api/`、`src/types/api.ts`
@@ -14,7 +14,7 @@
 
 | 項目 | 值 |
 |------|-----|
-| Base URL | `http://localhost:8001`（可由 `VITE_API_BASE_URL` 環境變數覆蓋） |
+| Base URL | 正式環境`http://localhost:8001`、測試開發環境`http://localhost:8002`（可由 `VITE_API_BASE_URL` 環境變數覆蓋） |
 | Content-Type | `application/json` |
 | Timeout | 30,000 ms |
 | Auth 方式 | JWT Bearer Token，從 `localStorage['access_token']` 取得，由 axios request interceptor 自動附加 |
@@ -223,7 +223,7 @@ interface StackingDieLayer {
 
 ---
 
-### 2.8 `GET /api/v1/netlist/programs/{test_program}/tray`
+### 2.7 `GET /api/v1/netlist/programs/{test_program}/tray`
 
 **用途**：查詢指定 Test Program 的 Tray 規格（欄數 × 列數），用於繪製 Fail Sample on Tray 位置格子圖。
 
@@ -250,7 +250,7 @@ interface TraySpec {
 
 ---
 
-### 2.7 `GET /api/v1/data/search`（已定義，尚未使用）
+### 2.8 `GET /api/v1/data/search`（已定義，尚未使用）
 
 **用途**：依 LOT ID + HBIN 取得完整測試結果原始資料。
 
@@ -331,11 +331,14 @@ const ApiErrorCode = {
 |--------|------|------|------|
 | 🟠 P1 | **Token Refresh API** | 後端已完成（`POST /api/v1/auth/refresh`，Rolling Refresh Token）。前端已實作 refresh 邏輯（詳見 2.3 節）。 | ✅ 後端完成，✅ **前端已實作** |
 | 🟡 P2 | **Fail Die API** | 依 LOT ID / Test Program 取得 Stacking Die 層次結構，用於繪製疊 Die 圖。後端提供 `GET /netlist/programs/{test_program}/stacking-die`（詳見 2.6 節）。 | ✅ 後端完成，✅ **前端已實作**（2026-06-25 稽核確認） |
-| 🟡 P2 | **Fail Sample on Tray API** | 前端以 `GET /netlist/programs/{test_program}/tray` 取得 Tray 規格，DUT 位置由 `fail_sample.dut_no` 對應（詳見 2.8 節） | ✅ 後端完成，✅ **前端已實作**（2026-06-30） |
+| 🟡 P2 | **Fail Sample on Tray API** | 前端以 `GET /netlist/programs/{test_program}/tray` 取得 Tray 規格，DUT 位置由 `fail_sample.dut_no` 對應（詳見 2.7 節） | ✅ 後端完成，✅ **前端已實作**（2026-06-30） |
 | 🟡 P2 | **Fail Die Rate API** | 各層 Die 的失效率統計，前端目前依 2.6 節 `stacking-die` 資料自行計算比率，暫無獨立後端 API 需求 | ❌ 不適用（前端自行計算） |
 | 🟡 P2 | **Fail Ball API** | 失效 BGA Ball 的分佈資料，用於繪製分布圖 | ⬜ 待討論 |
-| 🟡 P2 | **Netlist 上傳者名稱** | `GET /api/v1/netlist/programs` 目前只回傳上傳時間與檔名，`uploaded_by`（UUID）未輸出。建議後端 JOIN `users` 表，回應新增 `uploaded_by_name` 欄位，供 Netlist 上傳頁歷史紀錄表格顯示（詳見設計決策 QA 條目 17） | ⬜ 待後端提供 |
-| 🟠 P1 | **Netlist 上傳失敗紀錄的 test_program** | `audit_logs.request_body` 目前無論上傳成功或失敗皆為 `null`，無法得知失敗當下的 `test_program`。需後端於 upload API 將 `test_program` 寫入 `audit_logs.request_body`（或等效欄位），前端才能在失敗紀錄顯示對應的 test_program（詳見設計決策 QA 條目 17） | ⬜ 待後端提供，前端此欄位實作暫緩 |
+| 🟡 P2 | **Netlist 上傳者名稱** | `GET /api/v1/netlist/programs` 目前只回傳上傳時間與檔名，`uploaded_by`（UUID）未輸出。建議後端 JOIN `users` 表，回應新增 `uploaded_by_name` 欄位，供**資料上傳頁**左欄「已上傳檔案」清單、**歷史紀錄頁**「上傳紀錄」主題顯示（詳見設計決策 QA 條目 18） | ⬜ 待後端提供 |
+| 🟠 P1 | **上傳失敗紀錄的 test_program** | `audit_logs.request_body` 目前無論上傳成功或失敗皆為 `null`，無法得知失敗當下的 `test_program`。需後端於 upload API 將 `test_program` 寫入 `audit_logs.request_body`（或等效欄位），前端才能在**歷史紀錄頁「上傳紀錄」主題**的失敗紀錄顯示對應的 test_program（詳見設計決策 QA 條目 18，原記載於條目 17，顯示位置隨頁面拆分調整） | ⬜ 待後端提供，前端此欄位實作暫緩 |
+| 🟠 P1 | **歷史紀錄查詢 API（全新）** | `src/features/history/` 需要查詢端點，支援：① 主題切換 ② 依角色權限過濾可見範圍（`viewer` 完全無法存取；`engineer` 可見 `viewer`+`engineer` 範圍，並可指定「只看自己」或用使用者清單多選縮小範圍）③ 時間區間（含「最近7天／最近1個月」快速選項 + 自訂範圍）④ 依主題動態的其他搜尋條件（例：上傳紀錄→test_program、登入紀錄→IP/裝置、使用狀況→功能名稱）⑤ 分頁。**端點命名已確認**（見 Backend to-do-list.md #72~#75）：`GET /api/v1/history/login`、`GET /api/v1/history/uploads`、`GET /api/v1/history/usage`（詳見設計決策 QA 條目 18） | 🔄 後端已規劃端點路徑，尚未實作（`usage` 主題另待埋點方案定案） |
+| 🟡 P2 | **匯出 API（Excel/CSV）** | 歷史紀錄表格需支援匯出，尚未決定是「後端提供下載端點」或「前端直接用查詢結果在瀏覽器端產生檔案」。若前端產生，套件選型（`xlsx` / `exceljs`）建議與 to-do #34（ACT Dashboard HW Bin List 匯出）共用同一份決策，避免專案內安裝兩套不同的 Excel 產生套件 | ⬜ 待討論實作方式（前端 or 後端） |
+| 🟡 P2 | **使用狀況埋點方案（全新，範疇最大）** | 歷史紀錄頁「使用狀況」主題（滑鼠操作、點選頁面、停留時間、最常用功能）需要前端新增操作事件收集機制，以及後端對應的儲存與查詢 API。目前**完全沒有設計**，非單純畫面開發，需先有獨立一輪討論定案技術方案（前端收集哪些事件、如何節流/批次上送、後端如何儲存與查詢）後才能定義出具體 API 規格（詳見設計決策 QA 條目 18） | ⬜ 未設計，待專門討論 |
 
 ---
 

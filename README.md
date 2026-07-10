@@ -1,73 +1,55 @@
-# React + TypeScript + Vite
+# ACT Failure Analysis System — Frontend
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+ACT 測試資料智慧分析平台的前端（React 19 + TypeScript + Vite）。供 ASE 5920 測試工程師（RD / PE / EE）與管理員查詢 Lot 的 Fail Sample 分析結果，並以圖表呈現 Fail Die、Fail Ball、Fail Sample on Tray 等分析視角。
 
-Currently, two official plugins are available:
+詳細專案規劃、架構與決策紀錄請見 `CLAUDE.md` 與 `.github/instructions/`；開發前請先確認 `to-do-list.md`。
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+## 技術棧
 
-## React Compiler
+React 19 · TypeScript 6 · Vite 8 · Zustand 5 · Ant Design 6 · ECharts 6 · Cytoscape.js · React Router 7 · Axios · Vitest 4
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+完整版本號與選型理由見 `.github/instructions/tech-stack.instructions.md`。
 
-## Expanding the ESLint configuration
+## 開發環境需求
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+- Node.js v22.13.1 LTS（建議以 nvm-windows 管理）
+- 後端 FastAPI 服務（`D:\ACT\Failure Analysis System\Backend\`）運行於 port 8001
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+## 快速開始
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+npm install
+npm run dev        # 啟動開發伺服器（Vite，proxy /api → localhost:8001）
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+## 常用指令
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+| 指令 | 用途 |
+|------|------|
+| `npm run dev` | 啟動開發伺服器 |
+| `npm run build` | TypeScript 型別檢查 + production build（輸出至 `dist/`） |
+| `npm run lint` | ESLint 檢查 |
+| `npm run test` | Vitest 互動模式 |
+| `npm run test:run` | Vitest 單次執行 |
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+## 目錄結構
+
 ```
+src/
+├── api/        # Axios instance 與各模組 API 呼叫函式
+├── components/ # 共用 UI 元件
+├── features/   # 功能模組（auth / dashboard / analysis / netlist / history / users）
+├── hooks/      # 共用 React Hook（響應式斷點、主題色彩）
+├── layouts/    # 全域版面（Navbar、Sidebar、MainLayout）
+├── router/     # React Router 設定與路由守衛
+├── stores/     # Zustand 狀態管理（auth / dashboard / theme）
+├── styles/     # 設計系統 Token、Ant Design 主題
+├── types/      # TypeScript 型別定義
+└── utils/      # 工具函式（含 logging 模組）
+```
+
+完整職責說明見 `.github/instructions/project-architecture.instructions.md`。
+
+## 部署
+
+正式環境部署於 IIS（Windows Server 2022 內建）+ URL Rewrite Module，完整步驟見 `docs/deployment/iis-deployment.md`。

@@ -1,6 +1,6 @@
 # ACT Failure Analysis System Frontend — 待辦事項清單
 
-> 最後更新：2026-07-02
+> 最後更新：2026-07-08
 > 分析工具：GitHub Copilot
 > 說明：本文件記錄前端專案的待辦事項，依優先度分類管理，並於每次變更後同步更新狀態與修改紀錄。
 
@@ -46,7 +46,26 @@
 | 9 | ✅ | Top 1 Fail Die 疊層圖（Cytoscape.js + 節點著色）與 Fail Die Rate 直方圖（ECharts） | `src/features/dashboard/components/FailDieChart.tsx`、`FailDieRateChart.tsx` |
 | 10 | ✅ | Fail Ball 圖表（ECharts 水平柱狀圖，Top 10 Ball，IO/POWER 切換） | `src/features/dashboard/components/FailBallChart.tsx` |
 | 28 | ✅ | Fail Sample on Tray 圖表（CSS Grid 位置圖，orange/blue 著色，多頁導航，dark/light tooltip） | `src/features/dashboard/components/FailTrayChart.tsx` |
-| 11 | 🔄 | Netlist 管理頁 — 上傳子功能需求與版面設計已確認（見 design-decisions-qa.md 條目 17），待 2 項後端欄位（`uploaded_by_name`、失敗紀錄 `test_program`）到位後開始實作；歷史紀錄／Summary/Histogram 子功能待後續討論 | `src/features/netlist/` |
+| 11 | 🔄 | 資料上傳頁 — 範疇收斂為單純上傳功能（原規劃的歷史紀錄子功能已拆分至 #12）。版面 v2 已確認（見 design-decisions-qa.md 條目 18）：左欄上傳主題下拉＋已上傳檔案清單（依檔名搜尋＋上傳者資訊），右欄上傳區＋覆蓋警示＋佇列（全部上傳批次送出，失敗不重試）。待後端 `uploaded_by_name` 欄位到位後開始實作 | `src/features/netlist/` |
+| 12 | 🔄 | 歷史紀錄頁 — 範疇擴大為登入/上傳/使用狀況三主題通用查詢頁（原規劃在 Netlist 內的上傳歷史子功能已併入本項，見 design-decisions-qa.md 條目 18）。版面 v2 已確認：左欄主題下拉＋查詢對象（全部+可複選使用者搜尋／只看自己）＋時間區間（快速選項+自訂）＋其他搜尋條件（依主題動態），右欄上表格+匯出、下統計圖表（構思中）。**待後端全新歷史紀錄查詢 API 開發**，使用狀況主題另待埋點方案討論定案（見 frontend-contract.md 第四節） | `src/features/history/` |
+
+---
+
+## 🟠 P1 — ACT Dashboard 模組移植
+
+> 來源：`D:\ACT\ACT_dashboard_web\refactor-frontend-tasks.md`（舊系統 ASP.NET MVC 的 ACT Dashboard 篩選器 + 直方圖 + HW Bin List 移植至本系統）。全部依賴後端新增端點（Backend 尚需開發，見 Backend 專案 to-do-list.md），後端端點就緒前僅能先行開發型別與元件骨架。
+>
+> **API 命名說明（2026-07-08 修正）**：後端不採用 `/api/v1/act/*` 前綴（理由見 Backend `docs/decisions/ADR-014-act-dashboard-api-naming.md`），改依功能分為三個 domain：`/api/v1/filters/*`（7 層篩選器）、`/api/v1/histogram/*`、`/api/v1/hw-bin-list/*`。以下項目已同步更新端點描述。
+
+| # | 狀態 | 問題描述 | 位置 |
+|---|------|----------|------|
+| 29 | ⬜ | ACT Dashboard 型別定義：`FilterParams`、`FilterResponse`、`HistogramParams`、`HistogramRecalcParams`、`HistogramData`、`HwBinListItem`（依賴後端 `/api/v1/filters/*`、`/api/v1/histogram/*`、`/api/v1/hw-bin-list/*` 端點） | `src/types/api.ts` |
+| 30 | ⬜ | ACT Dashboard API 封裝：7 個篩選器端點（`/api/v1/filters/*`）+ 2 個 Histogram 端點（`/api/v1/histogram`、`/api/v1/histogram/recalculate`）+ 1 個 HW Bin List 端點（`/api/v1/hw-bin-list`） | `src/api/act.ts` |
+| 31 | ⬜ | ACT Dashboard Zustand Store：7 層篩選條件共用狀態（pageName/日期/bd/tester/lotId/waferId/testMode/testItem/site）+ 下游清空邏輯（依賴後端 `/api/v1/filters/*` 端點） | `src/stores/actStore.ts` |
+| 32 | ⬜ | 7 層篩選器元件（串聯式 Select，依序 bd→tester→lotId→waferId→testMode→testItem→site，改變上層需清空下游並重新 fetch）（依賴後端 `/api/v1/filters/*` 端點） | `src/features/act/components/ActFilterPanel.tsx` |
+| 33 | ⬜ | Histogram 頁面：統計資訊區（固定 Spec / New Spec 計算結果）+ ECharts 直方圖（4 條 spec 標記線）+ 重新計算模式（X Min/X Max/Bin Width）（依賴後端 `/api/v1/histogram/*` 端點） | `src/features/act/pages/HistogramPage.tsx` |
+| 34 | ⬜ | HW Bin List 頁面：Ant Design Table（20 個欄位，含 Top1/2/3 Fail）+ Excel 匯出功能（需先確認選用 xlsx 或 exceljs 套件，目前專案尚未安裝任一套件；套件選型與 #12 歷史紀錄匯出共用同一份決策）（依賴後端 `/api/v1/hw-bin-list` 端點） | `src/features/act/pages/HwBinListPage.tsx` |
+| 35 | ⬜ | 路由設定：新增 `/act/histogram`、`/act/hw-bin-list` 兩條路由，Sidebar 新增 ACT 分組選單項目 | `src/router/`、`src/layouts/` |
 
 ---
 
@@ -54,14 +73,27 @@
 
 | # | 狀態 | 問題描述 | 位置 |
 |---|------|----------|------|
-| 12 | ⬜ | 歷史紀錄頁 | `src/features/history/` |
 | 13 | ⬜ | 使用者管理頁（admin） | `src/features/users/` |
 | 14 | ⬜ | 分析報告匯出功能 | `src/features/export/` |
 | 15 | ✅ | 深色 / 淺色主題切換（Navbar toggle，dark/light token 完整支援） | `src/styles/tokens.ts`、`src/stores/themeStore.ts` |
 
+> 以下為 ACT Dashboard 模組移植完成後建議評估的優化項目（來源：`refactor-frontend-tasks.md` 優化建議 O-F1~O-F7），不影響第一版功能對等移植。
+
+| # | 狀態 | 問題描述 | 位置 |
+|---|------|----------|------|
+| 36 | ⬜ | 篩選條件同步至 URL Query String（`useSearchParams`），支援重整/分享連結保留查詢條件 | `src/features/act/` |
+| 37 | ⬜ | 日期範圍快速選項（`RangePicker presets`：最近7天/30天/本月） | `src/features/act/components/ActFilterPanel.tsx` |
+| 38 | ⬜ | 篩選結果筆數預覽 Badge（需後端提供輕量 count 端點） | `src/features/act/` |
+| 39 | ⬜ | HW Bin List 虛擬滾動或後端分頁（資料量大時的效能優化） | `src/features/act/pages/HwBinListPage.tsx` |
+| 40 | ⬜ | Histogram 多圖並列比較功能 | `src/features/act/pages/HistogramPage.tsx` |
+| 41 | ⬜ | X 軸 Label 精度與旋轉優化（`toPrecision(4)` + `axisLabel.rotate: 45`） | `src/features/act/pages/HistogramPage.tsx` |
+| 42 | ⬜ | Top3 欄位改為結構化資料 `top_fails: [{item, fail_rate}]`（需配合後端調整，見 Backend O-B3） | `src/features/act/pages/HwBinListPage.tsx` |
+
 ---
 
 ## 修改紀錄
+
+> **歸檔說明**：2026-05-29 ～ 2026-06-30 期間的完整修改歷史已收錄於對應週報（`docs/records/20260529_W22.md`、`20260601_W23.md`、`20260609_W24.md`、`20260630_W27.md`），此處不再重複列出逐筆細節，僅保留週報尚未涵蓋的最新異動。
 
 | 日期 | 項目 | 變更內容 | 負責人 |
 |------|------|----------|--------|
@@ -102,3 +134,8 @@
 | 2026-06-30 | 修正 | ✅ 統一 4 個 Dashboard 圖表卡片標題格式：Lot ID → HBinLabel（例：Short / Open） | Dante |
 | 2026-06-30 | 文件 | 同步更新 to-do-list.md、W27 工作紀錄、design-decisions-qa.md、frontend-contract.md | Dante |
 | 2026-07-02 | #11 | 🔄 Netlist 上傳子功能需求討論完成並確認版面線框圖，新增 design-decisions-qa.md 條目 17；發現 2 項待後端配合欄位（`uploaded_by_name`、失敗紀錄 `test_program`），已補充至 frontend-contract.md 第四節，前端待欄位到位後開始實作 | Dante |
+| 2026-07-07 | 文件 | 稽核並修正文件矛盾與過期內容：修正部署方案決策矛盾（design-decisions-qa.md 條目3 補充 IIS 修正說明）、整份改寫 ui-ux-design.instructions.md 反映現況、更新 project-architecture/tech-stack 文件日期與內容、修正 frontend-contract.md 章節編號錯亂（2.7/2.8）、重寫 README.md、刪除過期錯誤日誌檔案 errpr_info.txt、CLAUDE.md 補充 docs/reports 參考列、歸檔本文件舊修改紀錄 | Dante |
+| 2026-07-07 | #29~#35 | 新增：依 `D:\ACT\ACT_dashboard_web\refactor-frontend-tasks.md` 合併 ACT Dashboard 模組移植任務（型別、API、Store、篩選器、Histogram 頁、HW Bin List 頁、路由），列為 P1，依賴 Backend 新增 `/api/v1/act/*` 端點 | Dante |
+| 2026-07-07 | #36~#42 | 新增：ACT Dashboard 模組移植完成後的優化建議項目（URL同步、日期快捷、筆數預覽、虛擬滾動、多圖比較、X軸精度、Top3結構化），列為 P3 | Dante |
+| 2026-07-08 | #11, #12 | 🔄 與產線人員討論後，原規劃在 Netlist 頁內的「上傳＋歷史紀錄」拆為兩個獨立頁面：#11 資料上傳（範疇收斂為純上傳）、#12 歷史紀錄（範疇擴大為登入/上傳/使用狀況三主題，由 P3 移至 P2，與 #11 併排開發）。版面 v2 已確認，新增 design-decisions-qa.md 條目 18；frontend-contract.md 第四節新增 3 項待後端事項（全新歷史紀錄查詢 API、匯出方案待決、使用狀況埋點方案待設計） | Dante |
+| 2026-07-08 | #29~#35 | ACT Dashboard 模組移植端點命名修正：後端不採用 `/api/v1/act/*`（見 Backend ADR-014），改為 `/api/v1/filters/*`、`/api/v1/histogram/*`、`/api/v1/hw-bin-list/*`，同步更新 #29~#34 端點描述；對應 Backend to-do-list.md 新增「資料上傳與歷史紀錄後端需求」區塊（#71~#78） | Dante (Claude Code) |

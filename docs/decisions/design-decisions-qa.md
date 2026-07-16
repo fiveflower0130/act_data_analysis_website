@@ -2,7 +2,7 @@
 
 > **說明**：本文件以問答（QA）方式記錄專案建置過程中所有重要的技術討論、選型決策與議題結論，供日後回顧、交接或擴展時參考。
 > **維護規則**：每當有新的技術討論或架構決策時，應在本文件補充新條目。
-> **最後更新**：2026-07-08
+> **最後更新**：2026-07-10
 
 ---
 
@@ -26,6 +26,7 @@
 16. [Dashboard 圖表 Tooltip 主題處理](#16-dashboard-圖表-tooltip-主題處理)
 17. [Netlist 上傳頁面需求與版面設計](#17-netlist-上傳頁面需求與版面設計)
 18. [資料上傳與歷史紀錄拆分為獨立頁面](#18-資料上傳與歷史紀錄拆分為獨立頁面)
+19. [Agent 開發分工原則](#19-agent-開發分工原則)
 
 ---
 
@@ -651,6 +652,28 @@ Ant Design `<Tooltip>` 預設使用 antd theme token，在 dark/light 切換時�
 1. 三個歷史紀錄主題（登入/上傳/使用狀況）的統計圖表細節與是否本期實作
 2. 使用狀況埋點方案（前端如何收集操作事件、後端如何儲存與查詢）完全未設計，需另開討論
 3. 匯出 Excel/CSV 由前端或後端產生，套件選型（xlsx vs exceljs）需與 to-do #34 一併決定
+
+---
+
+## 19. Agent 開發分工原則
+
+**Q：如果要使用 agent 進行開發和分工，該怎麼分配？這個原則要寫進哪份文件？能通用於 GitHub Copilot 嗎？**
+
+**背景**：專案初期已由 Backend 的 `ADR-010`（前後端分離，由獨立 Agent 各自負責開發）決定 Frontend／Backend 各自一顆主力開發 Agent。隨專案發展，Backend 又新增了 `api-contract-checker`、`docs-consistency-checker` 兩個 `.claude/agents/` 唯讀稽核 Agent，Frontend 也有自己的 `.claude/agents/api-contract-checker.md`。使用者提問是否該再進一步切分更多常駐 Agent 做開發分工。
+
+**權威來源**：本條目為**跨 repo 決策的 Frontend 側記錄**，完整討論過程、考量選項、准入門檻請見 Backend `docs/decisions/ADR-015-agent-division-of-labor.md`，本條目不重複全文，僅記錄與 Frontend 相關的結論。
+
+**決策摘要**（詳見 ADR-015）：
+
+| 議題 | 結論 |
+|------|------|
+| 開發工作怎麼分配 | 維持 ADR-010 的 Frontend／Backend 兩顆主力開發 Agent，不再依模組/層級（如再切一個「UI Agent」）繼續切分常駐 Agent，避免多個 Agent 同時改動同一份 codebase 造成衝突 |
+| 平行工作怎麼處理 | 可平行、不修改程式碼的工作（研究、稽核、報告產出）用臨時 subagent／fork 處理，完成即收掉，不保留常駐身份 |
+| 什麼時候該新增常駐 `.claude/agents/*.md` | 只有「會重複執行」且「唯讀不修改檔案」的稽核工作才值得升級為常駐 Agent（例如 `api-contract-checker`）；一次性任務或會修改檔案的工作，一律留在主力 FE/BE Agent 手上 |
+| 要不要寫進 Skill 文件 | 不用。這是架構層級的分工原則，記錄在 ADR（Backend）／本 QA 條目（Frontend），Skill 是 Claude Code 自己的可重複調用 prompt 機制（如 `/週報`），性質不同，不應混在一起 |
+| 能否通用於 GitHub Copilot | **原則可以，機制不行**。分工原則寫在 `CLAUDE.md` 與 `.github/copilot-instructions.md`（兩邊都能讀取），對 Copilot 使用者同樣適用；但 `.claude/agents/*.md` 常駐 Agent 定義檔、fork／Task 臨時 subagent 是 Claude Code 專屬工具能力，Copilot 沒有對等機制，改用 Copilot 時「唯讀稽核 Agent」的角色需要人工比照 Agent 定義檔內文手動執行 |
+
+**理由**：本專案 Frontend 目前只有 `api-contract-checker` 一個常駐 Agent，尚未有新增更多 Agent 的急迫需求，先以此決策作為未來評估的依據，避免隨專案成長無章法地增生常駐 Agent。
 
 ---
 

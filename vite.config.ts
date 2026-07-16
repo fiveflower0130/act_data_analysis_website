@@ -1,6 +1,12 @@
+import { readFileSync } from 'node:fs'
+import { fileURLToPath, URL } from 'node:url'
 import { defineConfig } from 'vitest/config'
 import { loadEnv } from 'vite'
 import react from '@vitejs/plugin-react'
+
+// 讀取 package.json 版本號，注入為全域常數 __APP_VERSION__，供前端顯示目前 release 版本
+const pkgPath = fileURLToPath(new URL('./package.json', import.meta.url))
+const { version: appVersion } = JSON.parse(readFileSync(pkgPath, 'utf-8')) as { version: string }
 
 // https://vite.dev/config/
 export default defineConfig(({ mode }) => {
@@ -10,6 +16,9 @@ export default defineConfig(({ mode }) => {
 
   return {
     envDir: '.env',
+    define: {
+      __APP_VERSION__: JSON.stringify(appVersion),
+    },
     plugins: [react()],
     server: {
       host: '0.0.0.0',  // 監聽所有網路介面，允許外部機器連線

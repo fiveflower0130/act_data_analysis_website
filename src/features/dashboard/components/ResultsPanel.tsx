@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { Card, Typography, Badge } from 'antd';
+import { Card, Typography } from 'antd';
 import useDashboardStore from '../../../stores/dashboardStore';
 import { HBinLabel } from '../../../types/api';
 import { useThemeColors } from '../../../hooks/useThemeColors';

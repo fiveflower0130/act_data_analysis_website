@@ -1,6 +1,6 @@
 # ACT Failure Analysis System Frontend — 待辦事項清單
 
-> 最後更新：2026-07-10
+> 最後更新：2026-07-21
 > 分析工具：GitHub Copilot / Claude Code Fable
 > 說明：本文件記錄前端專案的待辦事項，**依模組分類**（依專案實際功能領域劃分），每個模組獨立一個區塊，優先級（P0~P3）改為表格欄位而非區塊標題；模組結構比照 Backend `to-do-list.md`，模組命名盡量對齊，方便兩邊對照。
 
@@ -48,7 +48,7 @@
 | 6 | P2 | ✅ | 主儀表板頁（LOT 搜尋 + 歷史記錄 + Fail Mode 篩選 + 版面 1:4 佈局 + 4 個圖表元件） | `src/features/dashboard/` |
 | 7 | P2 | ✅ | Fail Sample List 表格元件（固定高度響應式 CSS override、統計至標題右側、showSizeChanger=false、Badge 統一綠色） | `src/features/dashboard/components/FailSampleList.tsx` |
 | 9 | P2 | ✅ | Top 1 Fail Die 疊層圖（Cytoscape.js + 節點著色）與 Fail Die Rate 直方圖（ECharts） | `src/features/dashboard/components/FailDieChart.tsx`、`FailDieRateChart.tsx` |
-| 10 | P2 | ✅ | Fail Ball 圖表（ECharts 水平柱狀圖，Top 10 Ball，IO/POWER 切換） | `src/features/dashboard/components/FailBallChart.tsx` |
+| 10 | P2 | ✅ | Fail Ball 圖表（ECharts 長條圖，Top 10 Ball，IO/POWER 切換） | `src/features/dashboard/components/FailBallChart.tsx` |
 | 15 | P3 | ✅ | 深色 / 淺色主題切換（Navbar toggle，dark/light token 完整支援） | `src/styles/tokens.ts`、`src/stores/themeStore.ts` |
 | 24 | P2 | ✅ | ResultsPanel 分析文本實作（IO pin fail 統計、最高頻 die/ball 計算、平局全列、total_qty 型別同步） | `src/features/dashboard/components/ResultsPanel.tsx` |
 | 25 | P2 | ✅ | 響應式版面設計（tokens 斷點/排版、useResponsiveTokens hook、所有頁面套用） | `src/styles/tokens.ts`、`src/hooks/`、各功能頁 |
@@ -161,3 +161,4 @@
 | 2026-07-08 | #29~#35 | ACT Dashboard 模組移植端點命名修正：後端不採用 `/api/v1/act/*`（見 Backend ADR-014），改為 `/api/v1/filters/*`、`/api/v1/histogram/*`、`/api/v1/hw-bin-list/*`，同步更新 #29~#34 端點描述；對應 Backend to-do-list.md 新增「資料上傳與歷史紀錄後端需求」區塊（#71~#78） | Dante (Claude Code) |
 | 2026-07-10 | 文件 | 新增 design-decisions-qa.md 條目 19（Agent 開發分工原則，Frontend 側摘要，權威來源見 Backend ADR-015）；CLAUDE.md 情境參考文件表補上對應列 | Dante (Claude Code) |
 | 2026-07-10 | 結構重構 | **to-do-list.md 全面改版**：從「依優先級分區塊（另外獨立出「ACT Dashboard 模組移植」P1 區塊，P3 區塊內又嵌一層子表格）」改為「依模組分類，優先級改為表格欄位」，比照 Backend 同類重構。整理出 6 個模組（認證與版面基礎／Dashboard 核心功能／測試與部署／ACT Dashboard 移植／資料上傳與歷史紀錄／未來規劃）。**所有項目編號維持不變**（原本即無 #8，非本次遺漏），純粹重新分組，未新增或刪除任何項目。同步刪除從未使用的空資料夾 `src/features/analysis/` 並清理文件引用、新增 `.claude/agents/docs-consistency-checker.md`、修正 `api-contract-structure.instructions.md` 版本標記過期問題（詳見各文件自身修改紀錄） | Dante (Claude Code) |
+| 2026-07-21 | #10, #28 | 🔍 文件修正（不涉及程式碼變更）：依目前原始碼重新核對 `docs/records/20260630_W27.md`、`docs/reports/20260708_ACT-Frontend-Report.md` 兩份文件中 Fail Sample on Tray（#28）與 Fail Ball（#10）的說明。① Fail Tray：補齊 IO/POWER 切換說明與快取機制、修正 Tooltip 主題描述（實際為固定深色，非跟隨主題）、修正格子邊框描述（實際 0px，視覺分隔來自 grid gap）。② Fail Ball：新增完整 IO/POWER 快取流程圖（原僅表格四字帶過），修正誤植的 X/Y 軸對應與圖表方向描述（實際為類別軸在 X、數值軸在 Y 的長條圖，非水平柱狀圖），本表 #10 描述同步修正用詞。兩份文件的流程圖已互相同步 | Dante (Claude Code) |

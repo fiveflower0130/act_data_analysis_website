@@ -1,6 +1,6 @@
 # ACT Failure Analysis System — 網頁開發報告（第二階段）
 
-> 報告日期：2026-07-08
+> 報告日期：2026-07-08（2026-07-21 修正第二章內容：① Fail Sample on Tray 補齊 POWER Pin 支援說明、修正與 `docs/records/20260630_W27.md` 不同步的流程圖與 Tooltip 主題行為描述；② Fail Ball 新增 IO/POWER 快取流程圖、修正誤植的 X/Y 軸與圖表方向描述）
 > 撰寫者：Dante
 > 版本：v2.0（第二階段功能上線 + 第三階段規劃）
 > 承接：`20260611_ACT-Frontend-Report.md`（v1.0，第一階段 Release）——本報告僅涵蓋 v1.0 之後的新進度，第一階段已完成內容（登入、LOT 搜尋、Fail Sample List、響應式版面等）請參閱前份報告，不重複列出。
@@ -48,36 +48,74 @@ v1.0 報告中列為「第二階段」的四張圖表，目前**已全數完成�
 |------|------|---------|---------|
 | Fail Die（疊層圖） | `FailDieChart.tsx` | Cytoscape.js 節點/邊關係圖 | `GET /netlist/programs/{test_program}/stacking-die` |
 | Fail Die Rate | `FailDieRateChart.tsx` | ECharts 水平柱狀圖 | 前端依 stacking-die 資料自行計算失效率 |
-| Fail Ball | `FailBallChart.tsx` | ECharts 水平柱狀圖（Top 10 Ball，IO/POWER 切換） | 前端依 fail-sample 資料自行計算 |
-| Fail Sample on Tray | `FailTrayChart.tsx` | CSS Grid 位置格圖 | `GET /netlist/programs/{test_program}/tray` |
+| Fail Ball | `FailBallChart.tsx` | ECharts 長條圖（Top 10 Ball，IO/POWER 切換） | 前端依 fail-sample 資料自行計算 |
+| Fail Sample on Tray | `FailTrayChart.tsx` | CSS Grid 位置格圖，提供 IO／POWER 切換（`Segmented`） | `GET /netlist/programs/{test_program}/tray` |
 
 四張圖表卡片內部結構統一為：`[圖示] 標題 → 副標說明 → 分隔線 → 圖表內容`，維持一致的視覺語言。
 
-### 2.1 Fail Sample on Tray 著色邏輯
+> **修正（2026-07-21）**：Fail Ball／Fail Die Rate 原表格描述為「水平柱狀圖」，經比對程式碼（`xAxis` 為類別軸 Ball Name／Die Location，`yAxis` 為數值軸），實際呈現為**類別軸在 X、數值軸在 Y 的長條圖**（非橫向長條），Fail Ball 一列已修正用詞為「長條圖」。
 
-Tray 圖是四張圖表中邏輯最複雜的一個，經過三次版本修正才確認正確計算方式：
+### 2.1 Fail Ball：IO／POWER 切換與計算邏輯
+
+Fail Ball 圖與 Fail Sample on Tray 共用同一套 IO／POWER 快取機制：使用者按下搜尋時，`dashboardStore.search` 已針對 4 個 HBIN **並行取齊** IO／POWER 兩種 `fail_sample` 資料（共 8 支請求），分別存入 `failSampleCache`／`failSamplePowerCache`。因此圖表上以 `Segmented` 切換 IO/POWER，只是切換讀取哪個快取，**不會觸發新的 API 請求**。
 
 ```mermaid
 flowchart TD
-    A["取得 TraySpec\n(col_count × row_count)"] --> B["格子總數 = total_qty\n(MongoDB 回傳的實際失效 DUT 總數)"]
-    B --> C["ioPinFailItems = fail_sample 中\nball_name 非空的項目"]
-    C --> D["dutMap = ioPinFailItems\n依 dut_no 建索引"]
-    D --> E{"格子位置的 dutNo\n在 dutMap 中？"}
-    E -->|是| F["🟠 橘色\nTop1 Fail（ball 對應 dieResults）"]
-    E -->|否，但為真實 DUT 位置| G["🔵 藍色\nFail Sample（無 IO ball 資訊，可能為 POWER fail）"]
+    S["搜尋 Lot ID"] --> P["dashboardStore.search\n4 HBIN 並行 × IO/POWER\n共 8 支請求"]
+    P --> CI["failSampleCache（IO）"]
+    P --> CP["failSamplePowerCache（POWER）"]
+    V["Segmented IO/POWER 切換\n（不重新呼叫 API）"] -->|IO| CI
+    V -->|POWER| CP
+    CI --> FD["failSampleData"]
+    CP --> FD
+    FD -->|fail_sample| CTB["calcTopBalls\nTop 10 Ball Name"]
+    CTB --> EC["ECharts 長條圖\nX軸=Ball Name／Y軸=Fail Count\nTop1 橘色／其餘藍色"]
+```
+
+> **修正（2026-07-21）**：本節為新增內容，原報告只在表格內以「IO/POWER 切換」四字帶過，未繪製流程圖；而 `docs/records/20260630_W27.md` 舊版流程圖雖有列出 `getCurrentFailSample / getCurrentFailSamplePower` 兩個函式，但未畫出 Segmented 切換與「切換不重打 API」這個關鍵行為，現已兩份文件同步補齊。
+
+### 2.2 Fail Sample on Tray：IO／POWER 切換與著色邏輯
+
+Tray 圖是四張圖表中邏輯最複雜的一個，經過三次版本修正才確認正確計算方式，並提供 **IO／POWER 切換**（`Segmented`，與 FailBallChart 相同 UX），可分別檢視兩種 Pin 類型的失效分佈。
+
+**資料來源與快取**：IO／POWER 兩種 `fail_sample` 資料在使用者按下搜尋時，已針對 4 個 HBIN **並行一次取齊**（`getFailSample` × 4 ＋ `getFailSamplePower` × 4，共 8 支請求），分別存入 `failSampleCache` 與 `failSamplePowerCache`。因此圖表上切換 IO／POWER 只是切換讀取哪個快取，**不會觸發新的 API 請求**、也沒有延遲。Tray 規格（`TraySpec`）則是另一組獨立、依 `test_program` 懶加載並快取的資料，第一次用到某個 `test_program` 才會呼叫 `GET /netlist/programs/{test_program}/tray`。
+
+```mermaid
+flowchart TD
+    S["搜尋 Lot ID"] --> P["dashboardStore.search\n4 HBIN 並行 × IO/POWER\n共 8 支請求"]
+    P --> CI["failSampleCache（IO）"]
+    P --> CP["failSamplePowerCache（POWER）"]
+    V["Segmented IO/POWER 切換\n（不重新呼叫 API）"] -->|IO| CI
+    V -->|POWER| CP
+    CI --> FD["failSampleData"]
+    CP --> FD
+    FD -->|fail_sample| CA["computeAnalysis\nioPinFailItems + dieResults"]
+    FD -->|test_program| TS["fetchTraySpec\n（懶加載，依 test_program 快取）"]
+    CA --> BTP["buildTrayPages"]
+    TS -->|col_count × row_count| BTP
+    FD -->|total_qty| BTP
+    BTP --> E{"格子位置的 dutNo\n在 ioPinFailItems 中？"}
+    E -->|是，且 ball 在 dieResults.balls| F["🟠 橘色\nTop 1 Fail"]
+    E -->|否（含真實 DUT 位置）| G["🔵 藍色\nFail Sample（無對應 ball 資訊）"]
     E -->|超出 total_qty 範圍| H["⚪ 灰色\n補位格（dutNo = 0）"]
 ```
 
-**關鍵釐清**：在 Fail HBIN 下搜尋到的 DUT 本身即為失效品，因此「非 IO fail」的 DUT 位置一律顯示藍色（代表仍是 Fail Sample），灰色僅保留給「超出實際 Tray 數量」的純補位格，避免灰色被誤讀為「正常」。
+**關鍵釐清**：在 Fail HBIN 下搜尋到的 DUT 本身即為失效品，因此「非 Top1 Fail」的 DUT 位置一律顯示藍色（代表仍是 Fail Sample），灰色僅保留給「超出實際 Tray 數量」的純補位格，避免灰色被誤讀為「正常」。此著色邏輯在 IO／POWER 兩種模式下共用同一套函式，差別只在於傳入的 `ball_name` 對應 IO Pin 或 POWER Pin。
 
-### 2.2 Tooltip 主題處理
+> **命名提醒**：程式碼內部變數仍沿用 `ioPinFailItems`／`ioFailCount` 命名（沿襲自最初只有 IO 版本的時期），POWER 模式下同一套函式直接套用在 POWER Pin 資料上，並非只服務 IO，避免依變數名誤解為「POWER 沒有支援」。
 
-Dashboard 有兩種 tooltip 來源，dark/light 切換時的行為刻意不同：
+### 2.3 Tooltip 主題處理
+
+> **修正（2026-07-21）**：本節原描述「Ant Design `<Tooltip>` 跟隨主題動態切換」，經比對目前原始碼後確認**與實際行為不符**，已修正如下。
+
+Dashboard 四張圖表的 tooltip 分別來自 ECharts 與 Ant Design `<Tooltip>` 兩種元件，但**實際上兩者目前都固定使用深色背景，不隨 dark/light 主題切換**：
 
 | Tooltip 來源 | 使用元件 | 主題行為 |
 |------|------|------|
-| ECharts | FailBallChart、FailDieRateChart | 固定深色背景，不隨主題切換（避免動態切換 option 的複雜度，深色 tooltip 在兩種主題下皆清晰） |
-| Ant Design `<Tooltip>` | FailTrayChart、FailDieChart | 手動傳入 `color` 與 `overlayInnerStyle`，跟隨 `useThemeColors()` 動態切換 |
+| ECharts | FailBallChart、FailDieRateChart | 固定 `COLOR_TOOLTIP_BG = '#1A2332'`，不隨主題切換（避免動態切換 option 的複雜度） |
+| Ant Design `<Tooltip>` | FailTrayChart、FailDieChart | 固定傳入 `color={'#1A2332'}`，**未傳入 `overlayInnerStyle`**，同樣不隨 `useThemeColors()` 動態切換 |
+
+深色 tooltip 在兩種主題背景下皆維持清晰可讀，因此目前四張圖表的呈現效果其實是一致的；唯一差異只在於底層元件不同（ECharts option vs. AntD `<Tooltip>` prop），並非「AntD 動態、ECharts 固定」的差異。
 
 ---
 

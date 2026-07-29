@@ -1,6 +1,6 @@
 # ACT Failure Analysis System Frontend — 待辦事項清單
 
-> 最後更新：2026-06-30
+> 最後更新：2026-07-29
 > 分析工具：GitHub Copilot
 > 說明：本文件記錄前端專案的待辦事項，依優先度分類管理，並於每次變更後同步更新狀態與修改紀錄。
 
@@ -29,6 +29,7 @@
 | 5 | ✅ | 認證模組（Login 頁、JWT 流程、路由守衛整合、UI 修正） | `src/features/auth/` |
 | 21 | ✅ | 建立測試環境（Vitest + Testing Library）並撰寫 auth 模組單元測試 | `tests/` |
 | 22 | ✅ | 撰寫 Logger 模組單元測試 | `tests/unit/logging.test.ts` |
+| 29 | ✅ | v1.5.0 release 前單元測試補強（client.ts JWT 攔截器、themeStore、PrivateRoute、calcTopBalls、dashboardStore 缺漏場景，66→108 tests）+ 覆蓋率門檻（服務/model 專用）+ 測試報告工具（xunit-viewer） | `tests/unit/client.test.ts`、`tests/unit/themeStore.test.ts`、`tests/components/PrivateRoute.test.tsx`、`vite.config.ts` |
 
 ---
 
@@ -101,3 +102,7 @@
 | 2026-06-30 | #28 | ✅ 修正：FailTrayChart Tooltip dark/light 主題色（color + overlayInnerStyle）；格子加邊框（border: colorMode.border）；灰色格 light mode 淡藍灰 | Dante |
 | 2026-06-30 | 修正 | ✅ 統一 4 個 Dashboard 圖表卡片標題格式：Lot ID → HBinLabel（例：Short / Open） | Dante |
 | 2026-06-30 | 文件 | 同步更新 to-do-list.md、W27 工作紀錄、design-decisions-qa.md、frontend-contract.md | Dante |
+| 2026-07-29 | #29 | ✅ 完成：release v1.5.0 前單元測試盤點與補強——新增 `client.test.ts`（JWT 攔截器 12 tests）、`themeStore.test.ts`（4 tests）、`PrivateRoute.test.tsx`（2 tests），並補齊 `calcTopBalls()`（analysisHelpers）與 `dashboardStore`（getCurrentFailSamplePower/removeFromHistory/fetchTraySpec/getTraySpec/hasAnyFail/POWER 快取）測試場景，總測試數 66→108 全數通過 | Dante |
+| 2026-07-29 | #29 | ✅ 完成：安裝 `@vitest/coverage-v8`，於 `vite.config.ts` 設定覆蓋率門檻（僅 `src/api/client.ts`、`src/stores/**`、`src/features/dashboard/utils/**`、`PrivateRoute.tsx`：statements/lines 85%、functions 75%、branches 65%），新增 `npm run test:coverage` | Dante |
+| 2026-07-29 | #29 | ✅ 完成：安裝 `xunit-viewer`，Vitest 改用 `junit` reporter 輸出 XML 後轉換為單一靜態 HTML 測試結果報告，新增 `npm run test:report`；報告輸出統一收整於 `test-report/result/`（測試結果）與 `test-report/coverage/`（覆蓋率），已加入 `.gitignore` | Dante |
+| 2026-07-29 | 文件 | 同步更新 to-do-list.md、design-decisions-qa.md（條目 17）、README.md | Dante |

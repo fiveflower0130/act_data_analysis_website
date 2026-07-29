@@ -2,7 +2,7 @@
 
 > **說明**：本文件以問答（QA）方式記錄專案建置過程中所有重要的技術討論、選型決策與議題結論，供日後回顧、交接或擴展時參考。
 > **維護規則**：每當有新的技術討論或架構決策時，應在本文件補充新條目。
-> **最後更新**：2026-06-30
+> **最後更新**：2026-07-29
 
 ---
 
@@ -24,6 +24,7 @@
 14. [FailTrayChart 著色資料來源演進](#14-failtarychart-著色資料來源演進)
 15. [FailTrayChart 非 IO-fail DUT 的著色語意](#15-failtarychart-非-io-fail-dut-的著色語意)
 16. [Dashboard 圖表 Tooltip 主題處理](#16-dashboard-圖表-tooltip-主題處理)
+17. [v1.5.0 單元測試補強與覆蓋率／測試報告工具導入](#17-v150-單元測試補強與覆蓋率測試報告工具導入)
 
 ---
 
@@ -473,6 +474,48 @@ Ant Design `<Tooltip>` 預設使用 antd theme token，在 dark/light 切換時�
 | 文字色 | `#FFFFFF`（textPrimary） | `#1A2332`（textPrimary） |
 
 **決策**：✅ Ant Design Tooltip 明確傳入 `color` 與 `overlayInnerStyle`，跟隨 `useThemeColors()` 切換。
+
+---
+
+## 17. v1.5.0 單元測試補強與覆蓋率／測試報告工具導入
+
+**Q：release v1.5.0 前，現有單元測試是否有遺漏，以及能否產出覆蓋率報告？**
+
+**背景**：release 前盤點測試現況，發現：
+- 只有 5 個測試檔案、66 個測試，`src/api/client.ts`（JWT 主動/被動刷新攔截器，全站風險最高的程式碼）完全沒有測試
+- `src/stores/themeStore.ts`、`src/router/PrivateRoute.tsx`、`calcTopBalls()`（`analysisHelpers.ts`）也是零測試
+- `dashboardStore.ts` 缺少 `getCurrentFailSamplePower()`、`removeFromHistory()`、`fetchTraySpec()`/`getTraySpec()`、`hasAnyFail` 判斷、POWER 快取等場景
+- 專案完全沒有安裝覆蓋率工具（`@vitest/coverage-v8`/`-istanbul` 皆未安裝），`vite.config.ts` 也沒有 `coverage` 設定
+
+**新增測試**：補齊上述缺口，新增 `tests/unit/client.test.ts`（12 tests）、`tests/unit/themeStore.test.ts`（4 tests）、`tests/components/PrivateRoute.test.tsx`（2 tests），並在既有 `analysisHelpers.test.ts`／`dashboardStore.test.ts` 補充對應測試，總測試數由 66 → 108，全數通過。
+
+**覆蓋率門檻設計**：
+
+**決策**：✅ **只對「重要 service（`src/api/client.ts`）與 model（`src/stores/*`）/ 純函式邏輯（`src/features/dashboard/utils/*`）與路由守衛（`PrivateRoute.tsx`）」設定覆蓋率門檻**，圖表元件（含 ECharts / Cytoscape）暫不強制。
+
+**理由**：
+- 這些模組是邏輯核心、風險最高，且不依賴重量級第三方視覺化函式庫，測試成本合理
+- Dashboard 圖表元件測試需大量 mock ECharts/Cytoscape，投入產出比低，故暫不列入強制門檻（沿用先前決策：元件測試優先度較低）
+- Dante 過去前端專案的慣例：重點只設在 service／process 上，並設定 90% 起步；本專案依現況（`client.ts` branch 覆蓋率 74.35%）微調為 statements/lines 85%、functions 75%、branches 65%，未達標時 `npm run test:coverage` 會失敗（已手動驗證：故意調高門檻至 99% 會產生 `ERROR: Coverage for ... does not meet threshold` 並以 exit code 1 失敗）
+
+**測試報告產出方式**：
+
+**決策**：✅ 測試結果報告改用 **`xunit-viewer`**（將 Vitest `junit` reporter 輸出的 XML 轉換為單一自包含靜態 HTML），覆蓋率報告使用 Vitest 內建 `coverage.reporter: ['text', 'html', 'lcov']`。
+
+**討論過程**：
+- 最初嘗試 Vitest 內建 `reporters: ['default', 'html']`（需搭配 `@vitest/ui`），但此 HTML 報告是 SPA，內部以 `fetch` 讀取 `html.meta.json.gz`，瀏覽器基於安全性限制不允許 `file://` 協定發出 fetch，因此**無法直接雙擊開啟**，必須額外執行 `npx vite preview --outDir test-report` 架設本地伺服器
+- Dante 認為「看測試報告還要多開一個網頁伺服器」不合理，且不如覆蓋率報告（Istanbul 產出，純靜態、雙擊即開）方便
+- 改用 `xunit-viewer` 將 `junit.xml` 轉為單一靜態 HTML 檔，雙擊可直接開啟，符合「方便截圖存檔／貼 PPT」的使用情境
+- 排版取捨：`xunit-viewer` 樣板固定、無法透過 CLI 自訂左右兩欄排版（需自寫 Handlebars 樣板才能達到與 `@vitest/ui` 相同的排版），故維持其預設樣板，暫不投入客製化
+
+**目錄結構**：`test-report/result/`（測試結果：`junit.xml` + `index.html`）與 `test-report/coverage/`（覆蓋率報告），兩者皆為 `test-report/` 底下的產物，`.gitignore` 排除整個 `test-report/`
+
+**指令**：
+| 指令 | 用途 |
+|------|------|
+| `npm run test:run` | 單次執行全部測試，不產報告（日常開發用） |
+| `npm run test:coverage` | 執行測試並產出覆蓋率報告（含門檻檢查） |
+| `npm run test:report` | 執行測試 + 覆蓋率 + 產出 `xunit-viewer` 靜態測試結果報告（一鍵產出全部報告） |
 
 ---
 

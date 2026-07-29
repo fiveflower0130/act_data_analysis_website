@@ -16,7 +16,8 @@ vi.mock('../../src/utils/logging', () => ({
 
 import useDashboardStore from '../../src/stores/dashboardStore';
 import { getFailSample as mockGetFailSample, getFailSamplePower as mockGetFailSamplePower } from '../../src/api/analysis';
-import type { FailSampleResult, HBinValue } from '../../src/types/api';
+import { getTray as mockGetTray } from '../../src/api/netlist';
+import type { FailSampleResult, HBinValue, TraySpec } from '../../src/types/api';
 
 // ─── 測試輔助 ─────────────────────────────────────────────────────────────────
 
@@ -211,6 +212,200 @@ describe('dashboardStore', () => {
       useDashboardStore.setState({ searchError: '發生錯誤' });
       useDashboardStore.getState().clearError();
       expect(useDashboardStore.getState().searchError).toBeNull();
+    });
+  });
+
+  // ─── getCurrentFailSamplePower ─────────────────────────────────────────────
+
+  describe('getCurrentFailSamplePower()', () => {
+    it('currentLotId 為 null → 回傳 null', () => {
+      expect(useDashboardStore.getState().getCurrentFailSamplePower()).toBeNull();
+    });
+
+    it('有快取資料 → 回傳對應 hbin 的 POWER 結果', () => {
+      useDashboardStore.setState({
+        currentLotId: 'LOT001',
+        currentHbin: 4,
+        failSamplePowerCache: { LOT001: { 4: mkResult(4, 3) } },
+      });
+      const result = useDashboardStore.getState().getCurrentFailSamplePower();
+      expect(result).not.toBeNull();
+      expect(result?.hbin).toBe(4);
+      expect(result?.total_duts).toBe(3);
+    });
+
+    it('快取中沒有對應 hbin → 回傳 null', () => {
+      useDashboardStore.setState({
+        currentLotId: 'LOT001',
+        currentHbin: 5,
+        failSamplePowerCache: { LOT001: { 4: mkResult(4, 3) } },
+      });
+      expect(useDashboardStore.getState().getCurrentFailSamplePower()).toBeNull();
+    });
+  });
+
+  // ─── search() — POWER 快取 & hasAnyFail ─────────────────────────────────────
+
+  describe('search() — POWER 快取與 hasAnyFail', () => {
+    it('IO/POWER 皆並行取得並各自快取', async () => {
+      vi.mocked(mockGetFailSample)
+        .mockImplementation((_, hbin) => apiOk(mkResult(hbin as HBinValue, 5)) as never);
+      vi.mocked(mockGetFailSamplePower)
+        .mockImplementation((_, hbin) => apiOk(mkResult(hbin as HBinValue, 2)) as never);
+
+      await act(async () => {
+        await useDashboardStore.getState().search('test001');
+      });
+
+      const state = useDashboardStore.getState();
+      expect(state.failSampleCache['TEST001'][3]?.total_duts).toBe(5);
+      expect(state.failSamplePowerCache['TEST001'][3]?.total_duts).toBe(2);
+    });
+
+    it('POWER 部分 HBIN 404 → 該 hbin 存 null，不影響其他快取', async () => {
+      vi.mocked(mockGetFailSample)
+        .mockImplementation((_, hbin) => apiOk(mkResult(hbin as HBinValue, 1)) as never);
+      vi.mocked(mockGetFailSamplePower).mockImplementation((_, hbin) => {
+        if (hbin === 4) return api404() as never;
+        return apiOk(mkResult(hbin as HBinValue, 1)) as never;
+      });
+
+      await act(async () => {
+        await useDashboardStore.getState().search('test001');
+      });
+
+      const powerCache = useDashboardStore.getState().failSamplePowerCache['TEST001'];
+      expect(powerCache[4]).toBeNull();
+      expect(powerCache[3]).not.toBeNull();
+    });
+
+    it('IO 結果有 fail 樣本 → hasAnyFail 為 true', async () => {
+      vi.mocked(mockGetFailSample)
+        .mockImplementation((_, hbin) => apiOk(mkResult(hbin as HBinValue, hbin === 3 ? 10 : 0)) as never);
+
+      await act(async () => {
+        await useDashboardStore.getState().search('test001');
+      });
+
+      const entry = useDashboardStore.getState().searchHistory[0];
+      expect(entry.hasAnyFail).toBe(true);
+    });
+
+    it('IO 結果全無 fail 樣本 → hasAnyFail 為 false', async () => {
+      vi.mocked(mockGetFailSample)
+        .mockImplementation((_, hbin) => apiOk(mkResult(hbin as HBinValue, 0)) as never);
+
+      await act(async () => {
+        await useDashboardStore.getState().search('test001');
+      });
+
+      const entry = useDashboardStore.getState().searchHistory[0];
+      expect(entry.hasAnyFail).toBe(false);
+    });
+
+    it('hasAnyFail 只看 IO 資料，即使 POWER 有 fail 也不影響', async () => {
+      vi.mocked(mockGetFailSample)
+        .mockImplementation((_, hbin) => apiOk(mkResult(hbin as HBinValue, 0)) as never);
+      vi.mocked(mockGetFailSamplePower)
+        .mockImplementation((_, hbin) => apiOk(mkResult(hbin as HBinValue, 10)) as never);
+
+      await act(async () => {
+        await useDashboardStore.getState().search('test001');
+      });
+
+      const entry = useDashboardStore.getState().searchHistory[0];
+      expect(entry.hasAnyFail).toBe(false);
+    });
+  });
+
+  // ─── removeFromHistory ───────────────────────────────────────────────────────
+
+  describe('removeFromHistory()', () => {
+    beforeEach(() => {
+      useDashboardStore.setState({
+        searchHistory: [
+          { lotId: 'LOT001', searchedAt: '2026-01-01T00:00:00.000Z', hasAnyFail: true },
+          { lotId: 'LOT002', searchedAt: '2026-01-02T00:00:00.000Z', hasAnyFail: false },
+        ],
+        failSampleCache: {
+          LOT001: { 3: mkResult(3, 1) },
+          LOT002: { 3: mkResult(3, 0) },
+        },
+        failSamplePowerCache: {
+          LOT001: { 3: mkResult(3, 1) },
+          LOT002: { 3: mkResult(3, 0) },
+        },
+        currentLotId: 'LOT001',
+      });
+    });
+
+    it('應從 searchHistory 移除指定 lotId', () => {
+      useDashboardStore.getState().removeFromHistory('LOT002');
+      const { searchHistory } = useDashboardStore.getState();
+      expect(searchHistory.map((h) => h.lotId)).toEqual(['LOT001']);
+    });
+
+    it('應同時清除 IO 與 POWER 快取', () => {
+      useDashboardStore.getState().removeFromHistory('LOT002');
+      const state = useDashboardStore.getState();
+      expect(state.failSampleCache['LOT002']).toBeUndefined();
+      expect(state.failSamplePowerCache['LOT002']).toBeUndefined();
+      // 未刪除的 lotId 保留
+      expect(state.failSampleCache['LOT001']).toBeDefined();
+    });
+
+    it('刪除的是目前選取的 lotId → currentLotId 重設為 null', () => {
+      useDashboardStore.getState().removeFromHistory('LOT001');
+      expect(useDashboardStore.getState().currentLotId).toBeNull();
+    });
+
+    it('刪除的不是目前選取的 lotId → currentLotId 維持不變', () => {
+      useDashboardStore.getState().removeFromHistory('LOT002');
+      expect(useDashboardStore.getState().currentLotId).toBe('LOT001');
+    });
+  });
+
+  // ─── fetchTraySpec / getTraySpec ─────────────────────────────────────────────
+
+  describe('fetchTraySpec() / getTraySpec()', () => {
+    const mkSpec = (col: number, row: number): TraySpec => ({ col_count: col, row_count: row });
+
+    it('getTraySpec：尚未快取 → 回傳 null', () => {
+      expect(useDashboardStore.getState().getTraySpec('PGM_A')).toBeNull();
+    });
+
+    it('fetchTraySpec 成功 → 快取規格，getTraySpec 可取得', async () => {
+      vi.mocked(mockGetTray).mockResolvedValue(
+        { data: { code: 200, message: 'OK', data: mkSpec(8, 10) } } as never,
+      );
+
+      await act(async () => {
+        await useDashboardStore.getState().fetchTraySpec('PGM_A');
+      });
+
+      expect(mockGetTray).toHaveBeenCalledWith('PGM_A');
+      const spec = useDashboardStore.getState().getTraySpec('PGM_A');
+      expect(spec).toEqual(mkSpec(8, 10));
+    });
+
+    it('已快取（即使值為 undefined 內容）→ 不重複呼叫 API', async () => {
+      useDashboardStore.setState({ traySpecCache: { PGM_A: mkSpec(8, 10) } });
+
+      await act(async () => {
+        await useDashboardStore.getState().fetchTraySpec('PGM_A');
+      });
+
+      expect(mockGetTray).not.toHaveBeenCalled();
+    });
+
+    it('API 失敗 → 不拋出例外，且不寫入快取', async () => {
+      vi.mocked(mockGetTray).mockRejectedValue(new Error('Network Error'));
+
+      await act(async () => {
+        await expect(useDashboardStore.getState().fetchTraySpec('PGM_B')).resolves.toBeUndefined();
+      });
+
+      expect(useDashboardStore.getState().getTraySpec('PGM_B')).toBeNull();
     });
   });
 });

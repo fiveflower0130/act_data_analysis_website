@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { countFrequency, getTopKeys, computeAnalysis, buildTrayPages } from '../../src/features/dashboard/utils/analysisHelpers';
+import { countFrequency, getTopKeys, computeAnalysis, buildTrayPages, calcTopBalls } from '../../src/features/dashboard/utils/analysisHelpers';
 import type { FailSampleItem, TraySpec } from '../../src/types/api';
 
 // ─── 測試輔助：建立 FailSampleItem ─────────────────────────────────────────────
@@ -227,5 +227,77 @@ describe('buildTrayPages()', () => {
     const pages = buildTrayPages(items, dieResults, mkTray(2, 1), 1);
     expect(pages[0][0]).toMatchObject({ dutNo: 1, status: 'orange' });     // 真實 DUT
     expect(pages[0][1]).toMatchObject({ dutNo: 0, ballName: '', status: 'gray' }); // 佔位格
+  });
+});
+
+// ─── calcTopBalls ──────────────────────────────────────────────────────────────
+
+describe('calcTopBalls()', () => {
+  it('空陣列 → 回傳空陣列', () => {
+    expect(calcTopBalls([])).toEqual([]);
+  });
+
+  it('DUT 內 ball_name 為空陣列 → 不計入統計', () => {
+    const items = [mkItem(1, [], []), mkItem(2, [], [])];
+    expect(calcTopBalls(items)).toEqual([]);
+  });
+
+  it('正確累加同一 DUT 內重複出現的 ball_name（不去重）', () => {
+    const items = [mkItem(1, ['U1', 'U1'], ['AY10', 'AY10'])];
+    const result = calcTopBalls(items);
+    expect(result).toEqual([{ ball: 'AY10', count: 2 }]);
+  });
+
+  it('跨多個 DUT 累加同一 ball_name 出現次數', () => {
+    const items = [
+      mkItem(1, ['U1'], ['AY10']),
+      mkItem(2, ['U1'], ['AY10']),
+      mkItem(3, ['U2'], ['BZ5']),
+    ];
+    const result = calcTopBalls(items);
+    expect(result).toEqual([
+      { ball: 'AY10', count: 2 },
+      { ball: 'BZ5', count: 1 },
+    ]);
+  });
+
+  it('依 count 由高到低降序排序', () => {
+    const items = [
+      mkItem(1, ['U1'], ['A']),
+      mkItem(2, ['U2'], ['B']),
+      mkItem(3, ['U2'], ['B']),
+      mkItem(4, ['U2'], ['B']),
+      mkItem(5, ['U3'], ['C']),
+      mkItem(6, ['U3'], ['C']),
+    ];
+    const result = calcTopBalls(items);
+    expect(result.map((r) => r.ball)).toEqual(['B', 'C', 'A']);
+    expect(result.map((r) => r.count)).toEqual([3, 2, 1]);
+  });
+
+  it('預設只取前 10 筆（topN 預設值）', () => {
+    const items = Array.from({ length: 15 }, (_, i) => mkItem(i + 1, [`U${i}`], [`Ball${i}`]));
+    const result = calcTopBalls(items);
+    expect(result).toHaveLength(10);
+  });
+
+  it('自訂 topN 參數：只取前 N 筆', () => {
+    const items = [
+      mkItem(1, ['U1'], ['A']),
+      mkItem(2, ['U2'], ['B']),
+      mkItem(3, ['U2'], ['B']),
+      mkItem(4, ['U3'], ['C']),
+      mkItem(5, ['U3'], ['C']),
+      mkItem(6, ['U3'], ['C']),
+    ];
+    const result = calcTopBalls(items, 2);
+    expect(result).toHaveLength(2);
+    expect(result.map((r) => r.ball)).toEqual(['C', 'B']);
+  });
+
+  it('忽略空字串的 ball_name', () => {
+    const items = [mkItem(1, ['U1', 'U2'], ['', 'AY10'])];
+    const result = calcTopBalls(items);
+    expect(result).toEqual([{ ball: 'AY10', count: 1 }]);
   });
 });

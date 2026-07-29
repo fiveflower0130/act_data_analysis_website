@@ -1,7 +1,7 @@
 {
   "name": "act-failure-analysis-frontend",
   "private": true,
-  "version": "1.2.0",
+  "version": "1.5.0",
   "type": "module",
   "scripts": {
     "dev": "vite --mode dev",
@@ -9,7 +9,9 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "test": "vitest",
-    "test:run": "vitest run"
+    "test:run": "vitest run",
+    "test:coverage": "vitest run --coverage",
+    "test:report": "vitest run --coverage && xunit-viewer --results=test-report/result/junit.xml --output=test-report/result/index.html --title=\"ACT Frontend Test Report\""
   },
   "dependencies": {
     "@ant-design/icons": "^6.2.5",
@@ -36,6 +38,7 @@
     "@types/react": "^19.2.15",
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^6.0.1",
+    "@vitest/coverage-v8": "^4.1.10",
     "eslint": "^10.3.0",
     "eslint-plugin-react-hooks": "^7.1.1",
     "eslint-plugin-react-refresh": "^0.5.2",
@@ -44,6 +47,7 @@
     "typescript": "~6.0.2",
     "typescript-eslint": "^8.59.2",
     "vite": "^8.0.12",
-    "vitest": "^4.1.7"
+    "vitest": "^4.1.7",
+    "xunit-viewer": "^10.6.1"
   }
 }

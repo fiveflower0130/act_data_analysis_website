@@ -2,35 +2,39 @@
 
 > **說明**：本文件以問答（QA）方式記錄專案建置過程中所有重要的技術討論、選型決策與議題結論，供日後回顧、交接或擴展時參考。
 > **維護規則**：每當有新的技術討論或架構決策時，應在本文件補充新條目。
-> **最後更新**：2026-07-10
+> **最後更新**：2026-07-29
 
 ---
 
 ## 目錄
 
-1. [前端框架選型](#1-前端框架選型)
-2. [是否改用 Python 開發前端](#2-是否改用-python-開發前端)
-3. [Windows Server 2022 部署方式](#3-windows-server-2022-部署方式)
-4. [Node.js 環境安裝](#4-nodejs-環境安裝)
-5. [前端 Logging 策略](#5-前端-logging-策略)
-6. [UI Library 選型](#6-ui-library-選型)
-7. [狀態管理選型](#7-狀態管理選型)
-8. [HTTP Client 選型](#8-http-client-選型)
-9. [測試框架選型](#9-測試框架選型)
-10. [圖表套件選型](#10-圖表套件選型)
-11. [目錄結構設計](#11-目錄結構設計)
-12. [測試目錄位置](#12-測試目錄位置)
-13. [Fail Sample on Tray 呈現方式](#13-fail-sample-on-tray-呈現方式)
-14. [FailTrayChart 著色資料來源演進](#14-failtarychart-著色資料來源演進)
-15. [FailTrayChart 非 IO-fail DUT 的著色語意](#15-failtarychart-非-io-fail-dut-的著色語意)
-16. [Dashboard 圖表 Tooltip 主題處理](#16-dashboard-圖表-tooltip-主題處理)
-17. [Netlist 上傳頁面需求與版面設計](#17-netlist-上傳頁面需求與版面設計)
-18. [資料上傳與歷史紀錄拆分為獨立頁面](#18-資料上傳與歷史紀錄拆分為獨立頁面)
-19. [Agent 開發分工原則](#19-agent-開發分工原則)
+- [ACT Failure Analysis System Frontend — 設計決策 QA 紀錄](#act-failure-analysis-system-frontend--設計決策-qa-紀錄)
+  - [目錄](#目錄)
+  - [1. 前端框架選型 (Phase 1)](#1-前端框架選型-phase-1)
+  - [2. 是否改用 Python 開發前端 (Phase 1)](#2-是否改用-python-開發前端-phase-1)
+  - [3. Windows Server 2022 部署方式 (Phase 1)](#3-windows-server-2022-部署方式-phase-1)
+  - [4. Node.js 環境安裝 (Phase 1)](#4-nodejs-環境安裝-phase-1)
+  - [5. 前端 Logging 策略 (Phase 1)](#5-前端-logging-策略-phase-1)
+  - [6. UI Library 選型 (Phase 1)](#6-ui-library-選型-phase-1)
+  - [7. 狀態管理選型 (Phase 1)](#7-狀態管理選型-phase-1)
+  - [8. HTTP Client 選型 (Phase 1)](#8-http-client-選型-phase-1)
+  - [9. 測試框架選型 (Phase 1)](#9-測試框架選型-phase-1)
+  - [10. 圖表套件選型 (Phase 1)](#10-圖表套件選型-phase-1)
+  - [11. 目錄結構設計 (Phase 1)](#11-目錄結構設計-phase-1)
+  - [12. 測試目錄位置 (Phase 1)](#12-測試目錄位置-phase-1)
+  - [13. Fail Sample on Tray 呈現方式 (Phase 1)](#13-fail-sample-on-tray-呈現方式-phase-1)
+  - [14. FailTrayChart 著色資料來源演進 (Phase 1)](#14-failtraychart-著色資料來源演進-phase-1)
+  - [15. FailTrayChart 非 IO-fail DUT 的著色語意 (Phase 1)](#15-failtraychart-非-io-fail-dut-的著色語意-phase-1)
+  - [16. Dashboard 圖表 Tooltip 主題處理 (Phase 1)](#16-dashboard-圖表-tooltip-主題處理-phase-1)
+  - [17. v1.5.0 單元測試補強與覆蓋率／測試報告工具導入 (Phase 1)](#17-v150-單元測試補強與覆蓋率測試報告工具導入-phase-1)
+  - [18. Netlist 上傳頁面需求與版面設計 (Phase 2)](#18-netlist-上傳頁面需求與版面設計-phase-2)
+  - [19. 資料上傳與歷史紀錄拆分為獨立頁面](#19-資料上傳與歷史紀錄拆分為獨立頁面)
+  - [20. Agent 開發分工原則](#20-agent-開發分工原則)
+
 
 ---
 
-## 1. 前端框架選型
+## 1. 前端框架選型 (Phase 1)
 
 **Q：前端框架要選用 React、Svelte 還是 Vue？**
 
@@ -54,7 +58,7 @@
 
 ---
 
-## 2. 是否改用 Python 開發前端
+## 2. 是否改用 Python 開發前端 (Phase 1)
 
 **Q：前端是否改用 Python 框架開發（如 Taipy、NiceGUI 等）？**
 
@@ -81,7 +85,7 @@
 
 ---
 
-## 3. Windows Server 2022 部署方式
+## 3. Windows Server 2022 部署方式 (Phase 1)
 
 **Q：網站部署要用內建的 IIS 還是另外架設 Apache？還是其他方案？**
 
@@ -135,7 +139,7 @@ server {
 
 ---
 
-## 4. Node.js 環境安裝
+## 4. Node.js 環境安裝 (Phase 1)
 
 **Q：Windows Server 2022 上如何安裝 Node.js 與相關工具？**
 
@@ -162,7 +166,7 @@ server {
 
 ---
 
-## 5. 前端 Logging 策略
+## 5. 前端 Logging 策略 (Phase 1)
 
 **Q：前端是否需要 Logging？用什麼方式實作？**
 
@@ -198,7 +202,7 @@ server {
 
 ---
 
-## 6. UI Library 選型
+## 6. UI Library 選型 (Phase 1)
 
 **Q：UI Library 要用哪個？**
 
@@ -216,7 +220,7 @@ server {
 
 ---
 
-## 7. 狀態管理選型
+## 7. 狀態管理選型 (Phase 1)
 
 **Q：狀態管理要用 Redux 還是其他方案？**
 
@@ -230,7 +234,7 @@ server {
 
 ---
 
-## 8. HTTP Client 選型
+## 8. HTTP Client 選型 (Phase 1)
 
 **Q：HTTP client 要用 fetch API 還是 Axios？**
 
@@ -255,7 +259,7 @@ server {
 
 ---
 
-## 9. 測試框架選型
+## 9. 測試框架選型 (Phase 1)
 
 **Q：測試框架要用 Jest 還是其他方案？**
 
@@ -295,7 +299,7 @@ server {
 
 ---
 
-## 10. 圖表套件選型
+## 10. 圖表套件選型 (Phase 1)
 
 **Q：圖表要用哪個套件？Cytoscape.js 是否適合？**
 
@@ -312,7 +316,7 @@ server {
 
 ---
 
-## 11. 目錄結構設計
+## 11. 目錄結構設計 (Phase 1)
 
 **Q：前端 source code 如何組織目錄結構？**
 
@@ -338,7 +342,7 @@ src/
 
 ---
 
-## 12. 測試目錄位置
+## 12. 測試目錄位置 (Phase 1)
 
 **Q：測試檔案應放在 `src/` 內（co-located）還是獨立的 `tests/` 目錄？**
 
@@ -366,9 +370,7 @@ tests/
 
 ---
 
----
-
-## 13. Fail Sample on Tray 呈現方式
+## 13. Fail Sample on Tray 呈現方式 (Phase 1)
 
 **Q：Fail Sample on Tray 圖表要用什麼技術實作？**
 
@@ -393,7 +395,7 @@ tests/
 
 ---
 
-## 14. FailTrayChart 著色資料來源演進
+## 14. FailTrayChart 著色資料來源演進 (Phase 1)
 
 **Q：Tray 圖的資料來源與格子數量應如何計算？**
 
@@ -419,7 +421,7 @@ tests/
 
 ---
 
-## 15. FailTrayChart 非 IO-fail DUT 的著色語意
+## 15. FailTrayChart 非 IO-fail DUT 的著色語意 (Phase 1)
 
 **Q：Tray 上不在 ioPinFailItems 的 DUT 位置，應顯示灰色還是藍色？**
 
@@ -443,7 +445,7 @@ tests/
 
 ---
 
-## 16. Dashboard 圖表 Tooltip 主題處理
+## 16. Dashboard 圖表 Tooltip 主題處理 (Phase 1)
 
 **Q：ECharts tooltip 與 Ant Design Tooltip 在 dark/light 切換時如何保持一致？**
 
@@ -489,7 +491,49 @@ Ant Design `<Tooltip>` 預設使用 antd theme token，在 dark/light 切換時�
 
 ---
 
-## 17. Netlist 上傳頁面需求與版面設計
+## 17. v1.5.0 單元測試補強與覆蓋率／測試報告工具導入 (Phase 1)
+
+**Q：release v1.5.0 前，現有單元測試是否有遺漏，以及能否產出覆蓋率報告？**
+
+**背景**：release 前盤點測試現況，發現：
+- 只有 5 個測試檔案、66 個測試，`src/api/client.ts`（JWT 主動/被動刷新攔截器，全站風險最高的程式碼）完全沒有測試
+- `src/stores/themeStore.ts`、`src/router/PrivateRoute.tsx`、`calcTopBalls()`（`analysisHelpers.ts`）也是零測試
+- `dashboardStore.ts` 缺少 `getCurrentFailSamplePower()`、`removeFromHistory()`、`fetchTraySpec()`/`getTraySpec()`、`hasAnyFail` 判斷、POWER 快取等場景
+- 專案完全沒有安裝覆蓋率工具（`@vitest/coverage-v8`/`-istanbul` 皆未安裝），`vite.config.ts` 也沒有 `coverage` 設定
+
+**新增測試**：補齊上述缺口，新增 `tests/unit/client.test.ts`（12 tests）、`tests/unit/themeStore.test.ts`（4 tests）、`tests/components/PrivateRoute.test.tsx`（2 tests），並在既有 `analysisHelpers.test.ts`／`dashboardStore.test.ts` 補充對應測試，總測試數由 66 → 108，全數通過。
+
+**覆蓋率門檻設計**：
+
+**決策**：✅ **只對「重要 service（`src/api/client.ts`）與 model（`src/stores/*`）/ 純函式邏輯（`src/features/dashboard/utils/*`）與路由守衛（`PrivateRoute.tsx`）」設定覆蓋率門檻**，圖表元件（含 ECharts / Cytoscape）暫不強制。
+
+**理由**：
+- 這些模組是邏輯核心、風險最高，且不依賴重量級第三方視覺化函式庫，測試成本合理
+- Dashboard 圖表元件測試需大量 mock ECharts/Cytoscape，投入產出比低，故暫不列入強制門檻（沿用先前決策：元件測試優先度較低）
+- Dante 過去前端專案的慣例：重點只設在 service／process 上，並設定 90% 起步；本專案依現況（`client.ts` branch 覆蓋率 74.35%）微調為 statements/lines 85%、functions 75%、branches 65%，未達標時 `npm run test:coverage` 會失敗（已手動驗證：故意調高門檻至 99% 會產生 `ERROR: Coverage for ... does not meet threshold` 並以 exit code 1 失敗）
+
+**測試報告產出方式**：
+
+**決策**：✅ 測試結果報告改用 **`xunit-viewer`**（將 Vitest `junit` reporter 輸出的 XML 轉換為單一自包含靜態 HTML），覆蓋率報告使用 Vitest 內建 `coverage.reporter: ['text', 'html', 'lcov']`。
+
+**討論過程**：
+- 最初嘗試 Vitest 內建 `reporters: ['default', 'html']`（需搭配 `@vitest/ui`），但此 HTML 報告是 SPA，內部以 `fetch` 讀取 `html.meta.json.gz`，瀏覽器基於安全性限制不允許 `file://` 協定發出 fetch，因此**無法直接雙擊開啟**，必須額外執行 `npx vite preview --outDir test-report` 架設本地伺服器
+- Dante 認為「看測試報告還要多開一個網頁伺服器」不合理，且不如覆蓋率報告（Istanbul 產出，純靜態、雙擊即開）方便
+- 改用 `xunit-viewer` 將 `junit.xml` 轉為單一靜態 HTML 檔，雙擊可直接開啟，符合「方便截圖存檔／貼 PPT」的使用情境
+- 排版取捨：`xunit-viewer` 樣板固定、無法透過 CLI 自訂左右兩欄排版（需自寫 Handlebars 樣板才能達到與 `@vitest/ui` 相同的排版），故維持其預設樣板，暫不投入客製化
+
+**目錄結構**：`test-report/result/`（測試結果：`junit.xml` + `index.html`）與 `test-report/coverage/`（覆蓋率報告），兩者皆為 `test-report/` 底下的產物，`.gitignore` 排除整個 `test-report/`
+
+**指令**：
+| 指令 | 用途 |
+|------|------|
+| `npm run test:run` | 單次執行全部測試，不產報告（日常開發用） |
+| `npm run test:coverage` | 執行測試並產出覆蓋率報告（含門檻檢查） |
+| `npm run test:report` | 執行測試 + 覆蓋率 + 產出 `xunit-viewer` 靜態測試結果報告（一鍵產出全部報告） |
+
+---
+
+## 18. Netlist 上傳頁面需求與版面設計 (Phase 2)
 
 > ⚠️ **版面已於條目 18 修正並定案（2026-07-08 確認 v2）**：本條目最初規劃「上傳」與「上傳歷史」共用同一版面（條件切換），與產線人員討論後改為拆成兩個獨立頁面（資料上傳／歷史紀錄）。本條目的**版本管理、失敗不重試、上傳權限**等決策仍然有效，但「歷史紀錄可見範圍」「上傳者顯示」「失敗紀錄 test_program 顯示」等段落所描述的版面已被條目 18 取代，請以條目 18 為準。
 
@@ -559,7 +603,7 @@ Ant Design `<Tooltip>` 預設使用 antd theme token，在 dark/light 切換時�
 
 ---
 
-## 18. 資料上傳與歷史紀錄拆分為獨立頁面
+## 19. 資料上傳與歷史紀錄拆分為獨立頁面
 
 **Q：原本規劃在同一版面、透過條件切換的「檔案上傳」與「上傳歷史紀錄」，是否要拆成兩個獨立頁面？**
 
@@ -655,7 +699,7 @@ Ant Design `<Tooltip>` 預設使用 antd theme token，在 dark/light 切換時�
 
 ---
 
-## 19. Agent 開發分工原則
+## 20. Agent 開發分工原則
 
 **Q：如果要使用 agent 進行開發和分工，該怎麼分配？這個原則要寫進哪份文件？能通用於 GitHub Copilot 嗎？**
 
@@ -675,6 +719,5 @@ Ant Design `<Tooltip>` 預設使用 antd theme token，在 dark/light 切換時�
 
 **理由**：本專案 Frontend 目前只有 `api-contract-checker` 一個常駐 Agent，尚未有新增更多 Agent 的急迫需求，先以此決策作為未來評估的依據，避免隨專案成長無章法地增生常駐 Agent。
 
----
 
 *本文件持續更新，每次有重要技術討論或架構決策時補充新條目。*

@@ -1,6 +1,6 @@
 # ACT Failure Analysis System Frontend — 待辦事項清單
 
-> 最後更新：2026-07-21
+> 最後更新：2026-07-29
 > 分析工具：GitHub Copilot / Claude Code Fable
 > 說明：本文件記錄前端專案的待辦事項，**依模組分類**（依專案實際功能領域劃分），每個模組獨立一個區塊，優先級（P0~P3）改為表格欄位而非區塊標題；模組結構比照 Backend `to-do-list.md`，模組命名盡量對齊，方便兩邊對照。
 
@@ -65,6 +65,7 @@
 | 23 | P2 | ✅ | 撰寫 Dashboard 模組單元測試（dashboardStore + analysisHelpers，68 tests 通過） | `tests/unit/` |
 | 26 | P2 | ✅ | 環境變數設定（`.env/` 資料夾、`.env`/`.env.dev`，vite.config.ts `envDir`，區分正式/開發環境） | `.env/`、`vite.config.ts`、`package.json` |
 | 27 | P2 | ✅ | IIS 佈署指南與 `public/web.config` SPA 路由設定 | `docs/deployment/iis-deployment.md`、`public/web.config` |
+| 43 | P1 | ✅ | v1.5.0 release 前單元測試盤點與補強：新增 `client.test.ts`（JWT 攔截器 12 tests）、`themeStore.test.ts`（4 tests）、`PrivateRoute.test.tsx`（2 tests），補齊 `calcTopBalls()`（analysisHelpers）與 `dashboardStore`（getCurrentFailSamplePower/removeFromHistory/fetchTraySpec/getTraySpec/hasAnyFail/POWER 快取）測試場景（66→108 tests）；新增覆蓋率門檻（僅 `src/api/client.ts`、`src/stores/**`、`src/features/dashboard/utils/**`、`PrivateRoute.tsx`）與 `xunit-viewer` 測試報告工具（`npm run test:coverage`、`npm run test:report`，輸出統一收整於 `test-report/`） | `tests/unit/client.test.ts`、`tests/unit/themeStore.test.ts`、`tests/components/PrivateRoute.test.tsx`、`vite.config.ts` |
 
 ---
 
@@ -97,8 +98,8 @@
 
 | # | 優先級 | 狀態 | 問題描述 | 位置 |
 |---|--------|------|----------|------|
-| 11 | P2 | 🔄 | 資料上傳頁 — 範疇收斂為單純上傳功能（原規劃的歷史紀錄子功能已拆分至 #12）。版面 v2 已確認（見 design-decisions-qa.md 條目 18）：左欄上傳主題下拉＋已上傳檔案清單（依檔名搜尋＋上傳者資訊），右欄上傳區＋覆蓋警示＋佇列（全部上傳批次送出，失敗不重試）。待後端 `uploaded_by_name` 欄位到位後開始實作 | `src/features/netlist/` |
-| 12 | P2 | 🔄 | 歷史紀錄頁 — 範疇擴大為登入/上傳/使用狀況三主題通用查詢頁（原規劃在 Netlist 內的上傳歷史子功能已併入本項，見 design-decisions-qa.md 條目 18）。版面 v2 已確認：左欄主題下拉＋查詢對象（全部+可複選使用者搜尋／只看自己）＋時間區間（快速選項+自訂）＋其他搜尋條件（依主題動態），右欄上表格+匯出、下統計圖表（構思中）。**待後端全新歷史紀錄查詢 API 開發**，使用狀況主題另待埋點方案討論定案（見 frontend-contract.md 第四節） | `src/features/history/` |
+| 11 | P2 | 🔄 | 資料上傳頁 — 範疇收斂為單純上傳功能（原規劃的歷史紀錄子功能已拆分至 #12）。版面 v2 已確認（見 design-decisions-qa.md 條目 19）：左欄上傳主題下拉＋已上傳檔案清單（依檔名搜尋＋上傳者資訊），右欄上傳區＋覆蓋警示＋佇列（全部上傳批次送出，失敗不重試）。待後端 `uploaded_by_name` 欄位到位後開始實作 | `src/features/netlist/` |
+| 12 | P2 | 🔄 | 歷史紀錄頁 — 範疇擴大為登入/上傳/使用狀況三主題通用查詢頁（原規劃在 Netlist 內的上傳歷史子功能已併入本項，見 design-decisions-qa.md 條目 19）。版面 v2 已確認：左欄主題下拉＋查詢對象（全部+可複選使用者搜尋／只看自己）＋時間區間（快速選項+自訂）＋其他搜尋條件（依主題動態），右欄上表格+匯出、下統計圖表（構思中）。**待後端全新歷史紀錄查詢 API 開發**，使用狀況主題另待埋點方案討論定案（見 frontend-contract.md 第四節） | `src/features/history/` |
 
 ---
 
@@ -162,3 +163,7 @@
 | 2026-07-10 | 文件 | 新增 design-decisions-qa.md 條目 19（Agent 開發分工原則，Frontend 側摘要，權威來源見 Backend ADR-015）；CLAUDE.md 情境參考文件表補上對應列 | Dante (Claude Code) |
 | 2026-07-10 | 結構重構 | **to-do-list.md 全面改版**：從「依優先級分區塊（另外獨立出「ACT Dashboard 模組移植」P1 區塊，P3 區塊內又嵌一層子表格）」改為「依模組分類，優先級改為表格欄位」，比照 Backend 同類重構。整理出 6 個模組（認證與版面基礎／Dashboard 核心功能／測試與部署／ACT Dashboard 移植／資料上傳與歷史紀錄／未來規劃）。**所有項目編號維持不變**（原本即無 #8，非本次遺漏），純粹重新分組，未新增或刪除任何項目。同步刪除從未使用的空資料夾 `src/features/analysis/` 並清理文件引用、新增 `.claude/agents/docs-consistency-checker.md`、修正 `api-contract-structure.instructions.md` 版本標記過期問題（詳見各文件自身修改紀錄） | Dante (Claude Code) |
 | 2026-07-21 | #10, #28 | 🔍 文件修正（不涉及程式碼變更）：依目前原始碼重新核對 `docs/records/20260630_W27.md`、`docs/reports/20260708_ACT-Frontend-Report.md` 兩份文件中 Fail Sample on Tray（#28）與 Fail Ball（#10）的說明。① Fail Tray：補齊 IO/POWER 切換說明與快取機制、修正 Tooltip 主題描述（實際為固定深色，非跟隨主題）、修正格子邊框描述（實際 0px，視覺分隔來自 grid gap）。② Fail Ball：新增完整 IO/POWER 快取流程圖（原僅表格四字帶過），修正誤植的 X/Y 軸對應與圖表方向描述（實際為類別軸在 X、數值軸在 Y 的長條圖，非水平柱狀圖），本表 #10 描述同步修正用詞。兩份文件的流程圖已互相同步 | Dante (Claude Code) |
+| 2026-07-29 | #43 | ✅ 完成：release v1.5.0 前單元測試盤點與補強——新增 `client.test.ts`（JWT 攔截器 12 tests）、`themeStore.test.ts`（4 tests）、`PrivateRoute.test.tsx`（2 tests），並補齊 `calcTopBalls()`（analysisHelpers）與 `dashboardStore`（getCurrentFailSamplePower/removeFromHistory/fetchTraySpec/getTraySpec/hasAnyFail/POWER 快取）測試場景，總測試數 66→108 全數通過 | Dante |
+| 2026-07-29 | #43 | ✅ 完成：安裝 `@vitest/coverage-v8`，於 `vite.config.ts` 設定覆蓋率門檻（僅 `src/api/client.ts`、`src/stores/**`、`src/features/dashboard/utils/**`、`PrivateRoute.tsx`：statements/lines 85%、functions 75%、branches 65%），新增 `npm run test:coverage` | Dante |
+| 2026-07-29 | #43 | ✅ 完成：安裝 `xunit-viewer`，Vitest 改用 `junit` reporter 輸出 XML 後轉換為單一靜態 HTML 測試結果報告，新增 `npm run test:report`；報告輸出統一收整於 `test-report/result/`（測試結果）與 `test-report/coverage/`（覆蓋率），已加入 `.gitignore` | Dante |
+| 2026-07-29 | 文件 | 同步更新 to-do-list.md、design-decisions-qa.md（條目 17）、README.md | Dante |

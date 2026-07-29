@@ -42,8 +42,9 @@ CLAUDE.md
 # macOS
 .DS_Store
 
-# 測試覆蓋率
+# 測試覆蓋率與測試結果報告（npm run test:report 產出，含 test-report/coverage、test-report/result）
 coverage/
+test-report/
 
 # Python
 __pycache__/

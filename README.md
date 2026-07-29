@@ -1,55 +1,92 @@
-# ACT Failure Analysis System — Frontend
+# ACT Failure Analysis System Frontend
 
-ACT 測試資料智慧分析平台的前端（React 19 + TypeScript + Vite）。供 ASE 5920 測試工程師（RD / PE / EE）與管理員查詢 Lot 的 Fail Sample 分析結果，並以圖表呈現 Fail Die、Fail Ball、Fail Sample on Tray 等分析視角。
+ACT 測試資料分析平台前端（React 19 + TypeScript + Vite + Zustand + Ant Design + ECharts + Cytoscape.js）。
 
-詳細專案規劃、架構與決策紀錄請見 `CLAUDE.md` 與 `.github/instructions/`；開發前請先確認 `to-do-list.md`。
+## 測試（Testing）
 
-## 技術棧
-
-React 19 · TypeScript 6 · Vite 8 · Zustand 5 · Ant Design 6 · ECharts 6 · Cytoscape.js · React Router 7 · Axios · Vitest 4
-
-完整版本號與選型理由見 `.github/instructions/tech-stack.instructions.md`。
-
-## 開發環境需求
-
-- Node.js v22.13.1 LTS（建議以 nvm-windows 管理）
-- 後端 FastAPI 服務（`D:\ACT\Failure Analysis System\Backend\`）運行於 port 8001
-
-## 快速開始
-
-```bash
-npm install
-npm run dev        # 啟動開發伺服器（Vite，proxy /api → localhost:8001）
-```
-
-## 常用指令
+本專案使用 [Vitest](https://vitest.dev/) + [Testing Library](https://testing-library.com/) 撰寫單元測試，測試檔案統一放在根目錄 `tests/`（`tests/unit/` 純邏輯測試、`tests/components/` 元件測試）。
 
 | 指令 | 用途 |
 |------|------|
-| `npm run dev` | 啟動開發伺服器 |
-| `npm run build` | TypeScript 型別檢查 + production build（輸出至 `dist/`） |
-| `npm run lint` | ESLint 檢查 |
-| `npm run test` | Vitest 互動模式 |
-| `npm run test:run` | Vitest 單次執行 |
+| `npm run test` | 監看模式（watch），會持續執行全部測試並等待檔案變動 |
+| `npm run test:run` | 單次執行全部測試後退出（不產報告，日常開發／CI 快速檢查用） |
+| `npm run test:coverage` | 單次執行全部測試 + 產出覆蓋率報告（`test-report/coverage/index.html`，靜態頁面可直接雙擊開啟） |
+| `npm run test:report` | 執行測試 + 覆蓋率 + 產出測試結果靜態報告（`test-report/result/index.html`，透過 [xunit-viewer](https://github.com/lukejpreston/xunit-viewer) 將 JUnit XML 轉為單一自包含 HTML，可直接雙擊開啟、適合截圖存檔） |
 
-## 目錄結構
+覆蓋率門檻僅設定於關鍵 service（`src/api/client.ts`）與 model／純函式邏輯（`src/stores/*`、`src/features/dashboard/utils/*`、`src/router/PrivateRoute.tsx`），未達標時 `npm run test:coverage` 會失敗；圖表元件（ECharts/Cytoscape）暫不強制測試覆蓋率，詳見 `docs/decisions/design-decisions-qa.md` 條目 17。
 
+---
+
+# React + TypeScript + Vite
+
+This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+
+Currently, two official plugins are available:
+
+- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
+- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+
+## React Compiler
+
+The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+
+## Expanding the ESLint configuration
+
+If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+
+```js
+export default defineConfig([
+  globalIgnores(['dist']),
+  {
+    files: ['**/*.{ts,tsx}'],
+    extends: [
+      // Other configs...
+
+      // Remove tseslint.configs.recommended and replace with this
+      tseslint.configs.recommendedTypeChecked,
+      // Alternatively, use this for stricter rules
+      tseslint.configs.strictTypeChecked,
+      // Optionally, add this for stylistic rules
+      tseslint.configs.stylisticTypeChecked,
+
+      // Other configs...
+    ],
+    languageOptions: {
+      parserOptions: {
+        project: ['./tsconfig.node.json', './tsconfig.app.json'],
+        tsconfigRootDir: import.meta.dirname,
+      },
+      // other options...
+    },
+  },
+])
 ```
-src/
-├── api/        # Axios instance 與各模組 API 呼叫函式
-├── components/ # 共用 UI 元件
-├── features/   # 功能模組（auth / dashboard / analysis / netlist / history / users）
-├── hooks/      # 共用 React Hook（響應式斷點、主題色彩）
-├── layouts/    # 全域版面（Navbar、Sidebar、MainLayout）
-├── router/     # React Router 設定與路由守衛
-├── stores/     # Zustand 狀態管理（auth / dashboard / theme）
-├── styles/     # 設計系統 Token、Ant Design 主題
-├── types/      # TypeScript 型別定義
-└── utils/      # 工具函式（含 logging 模組）
+
+You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+
+```js
+// eslint.config.js
+import reactX from 'eslint-plugin-react-x'
+import reactDom from 'eslint-plugin-react-dom'
+
+export default defineConfig([
+  globalIgnores(['dist']),
+  {
+    files: ['**/*.{ts,tsx}'],
+    extends: [
+      // Other configs...
+      // Enable lint rules for React
+      reactX.configs['recommended-typescript'],
+      // Enable lint rules for React DOM
+      reactDom.configs.recommended,
+    ],
+    languageOptions: {
+      parserOptions: {
+        project: ['./tsconfig.node.json', './tsconfig.app.json'],
+        tsconfigRootDir: import.meta.dirname,
+      },
+      // other options...
+    },
+  },
+])
 ```
-
-完整職責說明見 `.github/instructions/project-architecture.instructions.md`。
-
-## 部署
-
-正式環境部署於 IIS（Windows Server 2022 內建）+ URL Rewrite Module，完整步驟見 `docs/deployment/iis-deployment.md`。

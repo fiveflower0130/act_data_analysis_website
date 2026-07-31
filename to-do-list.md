@@ -1,6 +1,6 @@
 # ACT Failure Analysis System Frontend — 待辦事項清單
 
-> 最後更新：2026-07-29
+> 最後更新：2026-07-31
 > 分析工具：GitHub Copilot / Claude Code Fable
 > 說明：本文件記錄前端專案的待辦事項，**依模組分類**（依專案實際功能領域劃分），每個模組獨立一個區塊，優先級（P0~P3）改為表格欄位而非區塊標題；模組結構比照 Backend `to-do-list.md`，模組命名盡量對齊，方便兩邊對照。
 
@@ -21,6 +21,18 @@
 | `P1` | 高優先 |
 | `P2` | 中優先 |
 | `P3` | 低優先 |
+
+---
+
+## 版本規劃（Phase II Roadmap）
+
+> Phase I（認證與版面基礎／Dashboard 核心功能／測試與部署）已於 v1.5.0 全數完成。以下為 Phase II 各版本規劃，對應項目與細節見各模組表格；版本號與範圍可能依開發狀況微調。
+
+| 版本 | 內容 | 對應項目 | 狀態 |
+|------|------|----------|------|
+| v1.6.0 | 資料上傳頁（純上傳功能） | #11 | 🔄 待後端 `uploaded_by_name` 欄位到位後開始 |
+| v1.7.0 | 歷史紀錄頁（登入/上傳/使用狀況三主題查詢） | #12 | 🔄 待後端全新歷史紀錄查詢 API |
+| v2.0.0 | ACT Dashboard 移植（Histogram + HW Bin List） | #29~#42 | ⬜ 待後端 `/api/v1/filters\|histogram\|hw-bin-list` 端點；範圍可能伴隨主頁改版整合，待後續確認 |
 
 ---
 
@@ -167,3 +179,4 @@
 | 2026-07-29 | #43 | ✅ 完成：安裝 `@vitest/coverage-v8`，於 `vite.config.ts` 設定覆蓋率門檻（僅 `src/api/client.ts`、`src/stores/**`、`src/features/dashboard/utils/**`、`PrivateRoute.tsx`：statements/lines 85%、functions 75%、branches 65%），新增 `npm run test:coverage` | Dante |
 | 2026-07-29 | #43 | ✅ 完成：安裝 `xunit-viewer`，Vitest 改用 `junit` reporter 輸出 XML 後轉換為單一靜態 HTML 測試結果報告，新增 `npm run test:report`；報告輸出統一收整於 `test-report/result/`（測試結果）與 `test-report/coverage/`（覆蓋率），已加入 `.gitignore` | Dante |
 | 2026-07-29 | 文件 | 同步更新 to-do-list.md、design-decisions-qa.md（條目 17）、README.md | Dante |
+| 2026-07-31 | 文件 | 新增「版本規劃（Phase II Roadmap）」區塊：v1.6.0 資料上傳（#11）、v1.7.0 歷史紀錄（#12）、v2.0.0 ACT Dashboard 移植（#29~#42，範圍可能伴隨主頁改版整合，待後續確認） | Dante |

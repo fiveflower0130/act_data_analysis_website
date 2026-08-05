@@ -181,3 +181,4 @@
 | 2026-07-29 | 文件 | 同步更新 to-do-list.md、design-decisions-qa.md（條目 17）、README.md | Dante |
 | 2026-07-31 | 文件 | 新增「版本規劃（Phase II Roadmap）」區塊：v1.6.0 資料上傳（#11）、v1.7.0 歷史紀錄（#12）、v2.0.0 ACT Dashboard 移植（#29~#42，範圍可能伴隨主頁改版整合，待後續確認） | Dante |
 | 2026-08-05 | 修正 | ✅ 同步後端 API 規格更新：`GET /data/search` 回應格式 Breaking Change（`customer`／`test_program`／`tester` 提升至最外層，`sites[].lot_info` 僅留 `site_id`／`site_qty`，新增 `qty`／`wafer_id`），修正 `src/types/api.ts` 的 `SearchResult`／`SiteSearchResult`，新增 `SiteSummaryInfo`；同步 `frontend-contract.md` 2.4、2.8～2.11 節記載新增模組六 Fail Sample Import 查詢/匯出端點（尚未接入 UI）；`fail-sample`／`fail-sample-power` 呼叫方式確認不變（無需修改）；108 tests 全數通過 | Dante |
+| 2026-08-05 | 版本 | ✅ 版本號升級 1.5.0 → 1.5.1（package.json/package-lock.json），發布本次 API 合約修正 patch 版本 | Dante |

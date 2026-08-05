@@ -1,6 +1,6 @@
 # ACT Failure Analysis System Frontend — 待辦事項清單
 
-> 最後更新：2026-07-31
+> 最後更新：2026-08-05
 > 分析工具：GitHub Copilot / Claude Code Fable
 > 說明：本文件記錄前端專案的待辦事項，**依模組分類**（依專案實際功能領域劃分），每個模組獨立一個區塊，優先級（P0~P3）改為表格欄位而非區塊標題；模組結構比照 Backend `to-do-list.md`，模組命名盡量對齊，方便兩邊對照。
 
@@ -180,3 +180,5 @@
 | 2026-07-29 | #43 | ✅ 完成：安裝 `xunit-viewer`，Vitest 改用 `junit` reporter 輸出 XML 後轉換為單一靜態 HTML 測試結果報告，新增 `npm run test:report`；報告輸出統一收整於 `test-report/result/`（測試結果）與 `test-report/coverage/`（覆蓋率），已加入 `.gitignore` | Dante |
 | 2026-07-29 | 文件 | 同步更新 to-do-list.md、design-decisions-qa.md（條目 17）、README.md | Dante |
 | 2026-07-31 | 文件 | 新增「版本規劃（Phase II Roadmap）」區塊：v1.6.0 資料上傳（#11）、v1.7.0 歷史紀錄（#12）、v2.0.0 ACT Dashboard 移植（#29~#42，範圍可能伴隨主頁改版整合，待後續確認） | Dante |
+| 2026-08-05 | 修正 | ✅ 同步後端 API 規格更新：`GET /data/search` 回應格式 Breaking Change（`customer`／`test_program`／`tester` 提升至最外層，`sites[].lot_info` 僅留 `site_id`／`site_qty`，新增 `qty`／`wafer_id`），修正 `src/types/api.ts` 的 `SearchResult`／`SiteSearchResult`，新增 `SiteSummaryInfo`；同步 `frontend-contract.md` 2.4、2.8～2.11 節記載新增模組六 Fail Sample Import 查詢/匯出端點（尚未接入 UI）；`fail-sample`／`fail-sample-power` 呼叫方式確認不變（無需修改）；108 tests 全數通過 | Dante |
+| 2026-08-05 | 版本 | ✅ 版本號升級 1.5.0 → 1.5.1（package.json/package-lock.json），發布本次 API 合約修正 patch 版本 | Dante |

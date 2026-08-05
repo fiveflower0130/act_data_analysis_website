@@ -3,7 +3,7 @@
 > **文件說明**：本文件為前端視角的 API 使用合約，記錄前端目前實際呼叫的 API 端點、TypeScript 介面定義、
 > 發現的問題，以及待後端提供的新 API 需求。供前後端 agent 協作時快速對齊。
 >
-> **最後更新**：2026-07-08（第四節新增歷史紀錄查詢 API、匯出方案、使用狀況埋點等待後端配合事項，詳見設計決策 QA 條目 18；同日補上歷史紀錄查詢 API 的確認端點路徑，並同步 ACT Dashboard 移植端點改名決策，見 Backend ADR-014）
+> **最後更新**：2026-08-05（後端 `GET /data/search` 回應格式 Breaking Change 同步、新增模組六 Fail Sample Import 查詢/匯出端點記載，詳見第五節）
 > **對應後端規格文件**：`.github/instructions/api-contract-structure.instructions.md`（後端 Agent 維護，唯一的 API 規格來源）
 > **本文件性質**：前端視角的「實作對照報告」——記錄前端目前實際使用哪些端點、與上述規格文件的落差、以及前端專屬型別；**本身不是規格來源**，若內容有疑義請一律以 `api-contract-structure.instructions.md` 為準
 > **前端 API 層位置**：`src/api/`、`src/types/api.ts`
@@ -135,6 +135,11 @@ interface RefreshResponse {
 
 ### 2.4 `GET /api/v1/analysis/fail-sample`
 
+> **後端內部資料來源說明（2026-08-05）**：`hbin=3` 時後端會優先查詢 Fail Sample Import
+> 匯入的批次資料，查無對應批次才 fallback 至原始 MongoDB `site` 資料。此判斷完全在
+> 後端內部處理，**本端點的 request/response 格式與前端呼叫方式完全不變**，僅記錄於此
+> 供未來排查資料來源疑問時參考。
+
 **用途**：依 LOT ID + HBIN 取得 Fail Sample List 分析結果。
 
 **Headers**：`Authorization: Bearer <access_token>`
@@ -260,29 +265,31 @@ lot_id: string
 hbin: number
 ```
 
-**Response `data`**：
+**Response `data`**（2026-08-05 起：批次共用欄位提升至最外層，`sites[].lot_info`
+僅保留各自不同的欄位；此格式與 Fail Sample Import 的
+`GET /data/fail-sample-import/{batch_id}` 完全一致，見 2.9 節）：
 ```typescript
 interface SearchResult {
+  customer: string;
+  test_program: string;
   lot_id: string;
+  wafer_id: string | null;
   hbin: number;
   execution_mode: string;
+  tester: string;
+  date: string;
+  qty: number;
   sites: SiteSearchResult[];
 }
 
 interface SiteSearchResult {
-  lot_info: LotSiteInfo;
+  lot_info: SiteSummaryInfo;
   test_result_value: TestResultValueItem[];
 }
 
-interface LotSiteInfo {
-  file_id: number;
-  lot_id: string;
+interface SiteSummaryInfo {
   site_id: string;
-  execution_mode: string;
-  date: string;
-  tester: string;
-  customer: string;
-  test_program: string;
+  site_qty: number;
 }
 
 // 動態結構：固定欄位 + 每個 test item 為一個 key
@@ -303,7 +310,89 @@ interface TestItemResult {
 }
 ```
 
+> **⚠️ Breaking Change（2026-08-05）**：`customer`／`test_program`／`tester` 原本重複
+> 記錄在每個 `sites[].lot_info` 內，現已改為只在最外層出現一次；`sites[].lot_info`
+> 只保留 `site_id`／`site_qty`。同時新增最外層 `qty`（總 Fail DUT 數）與 `wafer_id`
+> （`site` 資料源固定為 `null`）欄位。前端型別 `src/types/api.ts` 的 `SearchResult`／
+> `SiteSearchResult` 已同步更新，新增 `SiteSummaryInfo` 型別取代原本共用的
+> `LotSiteInfo`（`LotSiteInfo` 保留供 `GET /data/lots/{lot_id}` 使用，該端點前端尚未實作）。
+
 **狀態**：前端已定義介面，**尚未接入任何 UI 元件**。
+
+---
+
+### 2.9 `GET /api/v1/data/fail-sample-import`（新增，2026-08-05，已定義，尚未使用）
+
+**用途**：查詢已匯入的 Fail Sample 批次清單（僅 metadata，不含 `sites` 明細），供未來
+「已匯入批次」查詢/管理頁面使用。
+
+**Query Parameters（皆選填）**：
+```
+lot_id: string
+hbin: number            // >= 1
+execution_mode: string  // "RT" | "AT"
+date_from: string
+date_to: string
+limit: number            // 預設 50，範圍 1~200
+offset: number            // 預設 0
+```
+
+**Response `data`**：
+```typescript
+interface FailSampleImportListResult {
+  items: FailSampleImportListItem[];
+  total: number;
+  limit: number;
+  offset: number;
+}
+
+interface FailSampleImportListItem {
+  batch_id: string;
+  customer: string;
+  test_program: string;
+  lot_id: string;
+  wafer_id: string | null;
+  hbin: number;
+  execution_mode: string;
+  tester: string;
+  date: string;
+  qty: number;
+  imported_at: string;
+  source_file: string | null;
+}
+```
+
+**狀態**：後端已提供，前端尚未定義型別或串接，屬未來 Phase II 待評估功能（非本次資料
+上傳頁 #11 範疇，是否/何時開發待與使用者確認）。
+
+---
+
+### 2.10 `GET /api/v1/data/fail-sample-import/{batch_id}`（新增，2026-08-05，已定義，尚未使用）
+
+**用途**：查詢單一匯入批次的完整內容，格式與 2.8 節 `SearchResult` 完全一致，額外附上
+`batch_id`／`imported_at`／`source_file` 三個欄位。
+
+**Response `data`**：
+```typescript
+interface FailSampleImportDetail extends SearchResult {
+  batch_id: string;
+  imported_at: string;
+  source_file: string | null;
+}
+```
+
+**常見錯誤**：`batch_id` 不存在時回傳 `404`（`data: null`）。
+
+**狀態**：後端已提供，前端尚未使用。
+
+---
+
+### 2.11 `GET /api/v1/data/fail-sample-import/{batch_id}/csv`（新增，2026-08-05，已定義，尚未使用）
+
+**用途**：將指定批次原始資料匯出為 CSV 檔案下載（`Content-Type: text/csv`，非統一 JSON
+格式）。需 `engineer` 或 `admin` 角色（權限比一般查詢更嚴格）。
+
+**狀態**：後端已提供，前端尚未使用。
 
 ---
 
@@ -351,6 +440,7 @@ const ApiErrorCode = {
 | 2026-06-03 | 後端 `POST /auth/login` Response 新增 `refresh_token` 欄位；錯誤代碼新增 `1009`（LDAP 服務不可用）；前端需同步更新 | ✅ P1-1 + P1-2 前端已實作（2026-06-03） |
 | 2026-06-25 | 本文件先前記載 `GET /data/search` 回應含 `qty`、`LotSiteInfo.site_qty` 欄位，但對照後端權威規格 `.github/instructions/api-contract-structure.instructions.md` 與 `src/types/api.ts` 實際定義，該端點並無此二欄位，屬本文件記載錯誤 | ✅ 已修正（移除錯誤欄位記載，2.7 節） |
 | 2026-06-25 | `fail-sample-power`、`stacking-die` 兩端點後端已提供且前端已實作（`src/api/analysis.ts`、`src/api/netlist.ts`），但本文件「二、已使用的 API 端點」遲未記載，且第四節仍將 Fail Die API 誤標為「待討論」 | ✅ 已修正（補上 2.5 / 2.6 節，更新第四節狀態） |
+| 2026-08-05 | 後端 API 規格更新：`GET /data/search` 回應格式調整為 Breaking Change（`customer`／`test_program`／`tester` 提升至最外層，`sites[].lot_info` 僅留 `site_id`／`site_qty`，新增最外層 `qty`／`wafer_id`）；新增模組六 Fail Sample Import 三個查詢/匯出端點；`fail-sample`／`fail-sample-power` 呼叫方式確認不變。前端 `src/types/api.ts` 的 `SearchResult`／`SiteSearchResult` 已同步更新，新增 `SiteSummaryInfo` 型別 | ✅ 已修正（2.4、2.8～2.11 節） |
 
 ---
 

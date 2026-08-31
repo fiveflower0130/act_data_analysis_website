@@ -1,6 +1,6 @@
 # ACT Failure Analysis System Frontend — 待辦事項清單
 
-> 最後更新：2026-08-05
+> 最後更新：2026-08-17
 > 分析工具：GitHub Copilot / Claude Code Fable
 > 說明：本文件記錄前端專案的待辦事項，**依模組分類**（依專案實際功能領域劃分），每個模組獨立一個區塊，優先級（P0~P3）改為表格欄位而非區塊標題；模組結構比照 Backend `to-do-list.md`，模組命名盡量對齊，方便兩邊對照。
 
@@ -182,3 +182,5 @@
 | 2026-07-31 | 文件 | 新增「版本規劃（Phase II Roadmap）」區塊：v1.6.0 資料上傳（#11）、v1.7.0 歷史紀錄（#12）、v2.0.0 ACT Dashboard 移植（#29~#42，範圍可能伴隨主頁改版整合，待後續確認） | Dante |
 | 2026-08-05 | 修正 | ✅ 同步後端 API 規格更新：`GET /data/search` 回應格式 Breaking Change（`customer`／`test_program`／`tester` 提升至最外層，`sites[].lot_info` 僅留 `site_id`／`site_qty`，新增 `qty`／`wafer_id`），修正 `src/types/api.ts` 的 `SearchResult`／`SiteSearchResult`，新增 `SiteSummaryInfo`；同步 `frontend-contract.md` 2.4、2.8～2.11 節記載新增模組六 Fail Sample Import 查詢/匯出端點（尚未接入 UI）；`fail-sample`／`fail-sample-power` 呼叫方式確認不變（無需修改）；108 tests 全數通過 | Dante |
 | 2026-08-05 | 版本 | ✅ 版本號升級 1.5.0 → 1.5.1（package.json/package-lock.json），發布本次 API 合約修正 patch 版本 | Dante |
+| 2026-08-17 | 文件 | 導入 graphify 程式碼知識圖譜工具（與 Backend 共用父目錄 `D:\ACT\Failure Analysis System\graphify-out\` 的跨 repo 圖譜）；`CLAUDE.md` 與 `.github/copilot-instructions.md` 新增「程式碼關聯查詢（graphify）」使用規範與全域規則「跨檔案關聯先查圖譜」；repo 內建立 `graphify-out` junction 指向父目錄共用圖譜（已加入 `.gitignore`），查詢指令免帶 `--graph` 即可解析，詳細安裝紀錄見 Backend `to-do-list.md` 2026-08-17 條目 | Dante (Claude Fable 5) |
+| 2026-08-17 | 版控 | `git-workflow.instructions.md` 新增「AI 指示文件備份機制」一節：本 repo 的 `.github/`、`CLAUDE.md`、`.claude/` 已納入獨立備份 repo `..\ai-config-backup\`（僅推私人 GitHub private，嚴禁加入公司 GitLab），大幅修改指示文件後執行該 repo 的 `sync.ps1` 同步 | Dante (Claude Fable 5) |

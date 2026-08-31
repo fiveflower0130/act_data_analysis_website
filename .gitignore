@@ -50,3 +50,6 @@ test-report/
 __pycache__/
 *.pyc
 .venv/
+
+# graphify 知識圖譜（junction 指向父目錄共用圖譜，不進版控）
+graphify-out/

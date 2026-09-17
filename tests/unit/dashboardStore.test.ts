@@ -365,6 +365,55 @@ describe('dashboardStore', () => {
     });
   });
 
+  // ─── invalidateFailSampleCache ──────────────────────────────────────────────
+
+  describe('invalidateFailSampleCache()', () => {
+    beforeEach(() => {
+      useDashboardStore.setState({
+        failSampleCache: {
+          LOT001: {
+            2: mkResult(2, 1),
+            3: mkResult(3, 2),
+            4: mkResult(4, 3),
+          },
+          LOT002: { 3: mkResult(3, 4) },
+        },
+        failSamplePowerCache: {
+          LOT001: {
+            2: mkResult(2, 5),
+            3: mkResult(3, 6),
+            4: mkResult(4, 7),
+          },
+          LOT002: { 3: mkResult(3, 8) },
+        },
+      });
+    });
+
+    it('帶入 hbin 時只清除指定 Lot 的指定 HBIN，IO 與 POWER 其餘快取保留', () => {
+      useDashboardStore.getState().invalidateFailSampleCache('LOT001', 3);
+
+      const state = useDashboardStore.getState();
+      expect(state.failSampleCache.LOT001[3]).toBeUndefined();
+      expect(state.failSampleCache.LOT001[2]).toBeDefined();
+      expect(state.failSampleCache.LOT001[4]).toBeDefined();
+      expect(state.failSamplePowerCache.LOT001[3]).toBeUndefined();
+      expect(state.failSamplePowerCache.LOT001[2]).toBeDefined();
+      expect(state.failSamplePowerCache.LOT001[4]).toBeDefined();
+      expect(state.failSampleCache.LOT002[3]).toBeDefined();
+      expect(state.failSamplePowerCache.LOT002[3]).toBeDefined();
+    });
+
+    it('未帶入 hbin 時清除指定 Lot 的全部 IO 與 POWER 快取', () => {
+      useDashboardStore.getState().invalidateFailSampleCache('LOT001');
+
+      const state = useDashboardStore.getState();
+      expect(state.failSampleCache.LOT001).toBeUndefined();
+      expect(state.failSamplePowerCache.LOT001).toBeUndefined();
+      expect(state.failSampleCache.LOT002).toBeDefined();
+      expect(state.failSamplePowerCache.LOT002).toBeDefined();
+    });
+  });
+
   // ─── fetchTraySpec / getTraySpec ─────────────────────────────────────────────
 
   describe('fetchTraySpec() / getTraySpec()', () => {

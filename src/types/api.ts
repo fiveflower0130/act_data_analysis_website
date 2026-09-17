@@ -104,8 +104,80 @@ export interface NetlistProgram {
   test_program: string;
   filename: string;
   security_level: string | null;
+  uploaded_by: string | null;
   uploaded_at: string;
   updated_at: string;
+}
+
+/** Netlist 上傳結果 */
+export interface NetlistUploadResult {
+  test_program: string;
+  filename: string;
+  security_level: string | null;
+  action: 'created' | 'updated';
+}
+
+/** Fail Sample Import 清單查詢參數 */
+export interface FailSampleImportListParams {
+  lot_id?: string;
+  hbin?: number;
+  execution_mode?: string;
+  date_from?: string;
+  date_to?: string;
+  limit?: number;
+  offset?: number;
+}
+
+/** Fail Sample Import 批次摘要（清單不含 sites 明細） */
+export interface FailSampleImportBatchSummary {
+  batch_id: string;
+  customer: string;
+  test_program: string;
+  lot_id: string;
+  wafer_id: string | null;
+  hbin: number;
+  execution_mode: string;
+  tester: string;
+  date: string;
+  qty: number;
+  imported_at: string;
+  source_file: string | null;
+  uploaded_by: string | null;
+}
+
+/** Fail Sample Import 清單回應 */
+export interface FailSampleImportListResponse {
+  items: FailSampleImportBatchSummary[];
+  total: number;
+  limit: number;
+  offset: number;
+}
+
+/** Fail Sample Import 上傳結果 */
+export interface FailSampleImportUploadResult {
+  batch_id: string;
+  chunk_count: number;
+  site_count: number;
+  test_result_value_count: number;
+}
+
+/** 使用者清單項目（欄位 id 與 UserInfo.user_id 不同） */
+export interface UserListItem {
+  id: string;
+  user_no: string;
+  display_name: string;
+  email: string;
+  department: string;
+  division: string;
+  role: UserRole;
+  is_active: boolean;
+  last_login_at: string;
+}
+
+/** 使用者清單查詢參數 */
+export interface UserListParams {
+  skip?: number;
+  limit?: number;
 }
 
 /** Fail Sample 單筆資料 */

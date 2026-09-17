@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import { Layout, Avatar, Dropdown, Typography, Space, Tooltip } from 'antd';
 import { LogOut, User, Activity, Sun, Moon } from 'lucide-react';
-import { Outlet, useNavigate } from 'react-router-dom';
+import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import useAuthStore from '../stores/authStore';
 import useThemeStore from '../stores/themeStore';
 import { useResponsiveTokens } from '../hooks/useResponsiveTokens';
@@ -15,6 +15,7 @@ const MainLayout = () => {
   const { user, token, logout, restoreSession } = useAuthStore();
   const { mode, toggleTheme } = useThemeStore();
   const navigate = useNavigate();
+  const location = useLocation();
   const responsive = useResponsiveTokens();
   const colorMode = useThemeColors();
 
@@ -32,6 +33,8 @@ const MainLayout = () => {
     navigate('/login', { replace: true });
   };
 
+  const isDashboardActive = location.pathname === '/' || location.pathname === '/dashboard';
+
   const userMenuItems = [
     {
       key: 'logout',
@@ -48,7 +51,14 @@ const MainLayout = () => {
   ];
 
   return (
-    <Layout style={{ minHeight: '100vh', background: colorMode.base }}>
+    <Layout
+      style={{
+        height: '100dvh',
+        minHeight: '100vh',
+        overflow: 'hidden',
+        background: colorMode.base,
+      }}
+    >
       {/* ── Navbar ── */}
       <Header
         style={{
@@ -65,15 +75,51 @@ const MainLayout = () => {
           zIndex: 100,
         }}
       >
-        <Space align="center" size={8}>
-          <Activity size={responsive.isMobile ? 16 : 20} color={colorMode.primary} strokeWidth={2} />
-          <Text strong style={{ 
-              color: colorMode.textPrimary, 
-              fontSize: responsive.typography.sectionTitle,
-              letterSpacing: 0 
-            }}>
-            ACT Failure Analysis AI
-          </Text>
+        <Space align="center" size={responsive.isMobile ? 8 : 18}>
+          <Space align="center" size={8}>
+            <Activity size={responsive.isMobile ? 16 : 20} color={colorMode.primary} strokeWidth={2} />
+            <Text strong style={{
+                color: colorMode.textPrimary,
+                fontSize: responsive.typography.sectionTitle,
+                letterSpacing: 0,
+              }}>
+              ACT Failure Analysis AI
+            </Text>
+          </Space>
+
+          <Space size={4} align="center">
+            <NavLink
+              to="/dashboard"
+              end
+              style={({ isActive }) => ({
+                padding: '6px 10px',
+                borderRadius: 6,
+                color: isDashboardActive || isActive ? colorMode.primaryLight : colorMode.textSecondary,
+                background: isDashboardActive || isActive ? colorMode.border : 'transparent',
+                fontSize: responsive.typography.body,
+                fontWeight: isDashboardActive || isActive ? 600 : 400,
+                whiteSpace: 'nowrap',
+              })}
+            >
+              Dashboard
+            </NavLink>
+            {(user?.role === 'engineer' || user?.role === 'admin') && (
+              <NavLink
+                to="/upload"
+                style={({ isActive }) => ({
+                  padding: '6px 10px',
+                  borderRadius: 6,
+                  color: isActive ? colorMode.primaryLight : colorMode.textSecondary,
+                  background: isActive ? colorMode.border : 'transparent',
+                  fontSize: responsive.typography.body,
+                  fontWeight: isActive ? 600 : 400,
+                  whiteSpace: 'nowrap',
+                })}
+              >
+                File Upload
+              </NavLink>
+            )}
+          </Space>
         </Space>
 
         <Space size={12} align="center">
@@ -120,7 +166,14 @@ const MainLayout = () => {
       </Header>
 
       {/* ── Page Content（各功能頁自行管理左右欄佈局）── */}
-      <Content style={{ flex: 1, overflow: 'hidden', display: 'flex' }}>
+      <Content
+        style={{
+          flex: '1 1 auto',
+          minHeight: 0,
+          overflow: 'hidden',
+          display: 'flex',
+        }}
+      >
         <Outlet />
       </Content>
     </Layout>
@@ -128,4 +181,3 @@ const MainLayout = () => {
 };
 
 export default MainLayout;
-

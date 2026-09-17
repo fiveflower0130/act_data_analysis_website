@@ -1,6 +1,6 @@
 # ACT Failure Analysis System Frontend — 待辦事項清單
 
-> 最後更新：2026-08-17
+> 最後更新：2026-09-16
 > 分析工具：GitHub Copilot / Claude Code Fable
 > 說明：本文件記錄前端專案的待辦事項，**依模組分類**（依專案實際功能領域劃分），每個模組獨立一個區塊，優先級（P0~P3）改為表格欄位而非區塊標題；模組結構比照 Backend `to-do-list.md`，模組命名盡量對齊，方便兩邊對照。
 
@@ -30,7 +30,7 @@
 
 | 版本 | 內容 | 對應項目 | 狀態 |
 |------|------|----------|------|
-| v1.6.0 | 資料上傳頁（純上傳功能） | #11 | 🔄 待後端 `uploaded_by_name` 欄位到位後開始 |
+| v1.6.0 | 資料上傳頁（Netlist + Fail Sample 雙主題） | #11 | ✅ |
 | v1.7.0 | 歷史紀錄頁（登入/上傳/使用狀況三主題查詢） | #12 | 🔄 待後端全新歷史紀錄查詢 API |
 | v2.0.0 | ACT Dashboard 移植（Histogram + HW Bin List） | #29~#42 | ⬜ 待後端 `/api/v1/filters\|histogram\|hw-bin-list` 端點；範圍可能伴隨主頁改版整合，待後續確認 |
 
@@ -110,7 +110,7 @@
 
 | # | 優先級 | 狀態 | 問題描述 | 位置 |
 |---|--------|------|----------|------|
-| 11 | P2 | 🔄 | 資料上傳頁 — 範疇收斂為單純上傳功能（原規劃的歷史紀錄子功能已拆分至 #12）。版面 v2 已確認（見 design-decisions-qa.md 條目 19）：左欄上傳主題下拉＋已上傳檔案清單（依檔名搜尋＋上傳者資訊），右欄上傳區＋覆蓋警示＋佇列（全部上傳批次送出，失敗不重試）。待後端 `uploaded_by_name` 欄位到位後開始實作 | `src/features/netlist/` |
+| 11 | P2 | ✅ | 資料上傳頁 — 完成 Netlist 與 Fail Sample 雙主題、左欄清單與 client-side 搜尋、複選佇列、逐筆上傳狀態、JSON 解析與錯誤處理、主題切換清空佇列、engineer/admin 角色守衛及 Navbar 導覽。同步後端 `uploaded_by` 工號欄位並直接顯示工號；Fail Sample 上傳成功後清除 Dashboard 對應 Lot 的 IO／POWER 快取。Fail Sample 詳情與 CSV 匯出移至歷史紀錄頁 #12 | `src/features/netlist/`、`src/stores/uploadStore.ts`、`src/stores/dashboardStore.ts` |
 | 12 | P2 | 🔄 | 歷史紀錄頁 — 範疇擴大為登入/上傳/使用狀況三主題通用查詢頁（原規劃在 Netlist 內的上傳歷史子功能已併入本項，見 design-decisions-qa.md 條目 19）。版面 v2 已確認：左欄主題下拉＋查詢對象（全部+可複選使用者搜尋／只看自己）＋時間區間（快速選項+自訂）＋其他搜尋條件（依主題動態），右欄上表格+匯出、下統計圖表（構思中）。**待後端全新歷史紀錄查詢 API 開發**，使用狀況主題另待埋點方案討論定案（見 frontend-contract.md 第四節） | `src/features/history/` |
 
 ---
@@ -184,3 +184,9 @@
 | 2026-08-05 | 版本 | ✅ 版本號升級 1.5.0 → 1.5.1（package.json/package-lock.json），發布本次 API 合約修正 patch 版本 | Dante |
 | 2026-08-17 | 文件 | 導入 graphify 程式碼知識圖譜工具（與 Backend 共用父目錄 `D:\ACT\Failure Analysis System\graphify-out\` 的跨 repo 圖譜）；`CLAUDE.md` 與 `.github/copilot-instructions.md` 新增「程式碼關聯查詢（graphify）」使用規範與全域規則「跨檔案關聯先查圖譜」；repo 內建立 `graphify-out` junction 指向父目錄共用圖譜（已加入 `.gitignore`），查詢指令免帶 `--graph` 即可解析，詳細安裝紀錄見 Backend `to-do-list.md` 2026-08-17 條目 | Dante (Claude Fable 5) |
 | 2026-08-17 | 版控 | `git-workflow.instructions.md` 新增「AI 指示文件備份機制」一節：本 repo 的 `.github/`、`CLAUDE.md`、`.claude/` 已納入獨立備份 repo `..\ai-config-backup\`（僅推私人 GitHub private，嚴禁加入公司 GitLab），大幅修改指示文件後執行該 repo 的 `sync.ps1` 同步 | Dante (Claude Fable 5) |
+| 2026-09-01 | #11 | ✅ 完成資料上傳頁：Netlist／Fail Sample 雙主題、清單查詢、檔案佇列與狀態、API 串接、`/users` 姓名對照表預留、`/upload` 角色守衛、Navbar 導覽與測試；Fail Sample 詳情與 CSV 匯出留待 #12 歷史紀錄頁 | Dante (GitHub Copilot) |
+| 2026-09-01 | #11 | 依使用者實測修正資料上傳頁 UI：Navbar 使用 `File Upload`、左右欄改為 27:73 比例、左欄清單改為填滿選擇器與說明欄之間的剩餘空間並於區塊內捲動、清單補上傳者「—」佔位、識別資訊允許換行、移除右欄重複標題，並建立穩定視窗高度鏈 | Dante (GitHub Copilot) |
+| 2026-09-02 | #11 | 同步後端 `uploaded_by` 規格：Netlist／Fail Sample 清單以工號回傳，前端改用 `/users` 對照顯示姓名並支援工號 fallback；新增 Fail Sample 上傳成功後清除 Dashboard 對應 Lot 的 IO／POWER 快取（格式 A/B payload 均支援） | Dante (GitHub Copilot) |
+| 2026-09-03 | #11 | 依使用者確認將 Netlist／Fail Sample 清單的上傳者欄位改為直接顯示 `uploaded_by` 工號；移除資料上傳頁 `/users` 姓名對照邏輯，保留 `getUsers()` API wrapper 與使用者型別供未來歷史紀錄／使用者管理功能使用 | Dante (GitHub Copilot) |
+| 2026-09-03 | 文件 | 導入 diagram-design 圖表工具（安裝與測試紀錄見 Backend `to-do-list.md` 同日條目）；`CLAUDE.md` 與 `.github/copilot-instructions.md` 新增「圖表繪製（mermaid vs diagram-design）」規範：日常文件（to-do-list／週報／QA 紀錄／instructions）維持 mermaid，`docs/reports/` 對外報告與簡報用圖改用 diagram-design，圖檔置於 `docs/reports/assets/` | Dante (Claude Opus 5) |
+| 2026-09-16 | #11 | 修正 `Upload.Dragger` 的 `accept` 過濾不對稱：改用 `{ format, filter: 'native' }`，讓拖曳與點選都統一由 `beforeUpload` 驗證副檔名；新增多檔拖曳回歸測試 | Dante (GitHub Copilot) |

@@ -2,7 +2,7 @@
 
 > **說明**：本文件以問答（QA）方式記錄專案建置過程中所有重要的技術討論、選型決策與議題結論，供日後回顧、交接或擴展時參考。
 > **維護規則**：每當有新的技術討論或架構決策時，應在本文件補充新條目。
-> **最後更新**：2026-07-29
+> **最後更新**：2026-09-15
 
 ---
 
@@ -30,6 +30,7 @@
   - [18. Netlist 上傳頁面需求與版面設計 (Phase 2)](#18-netlist-上傳頁面需求與版面設計-phase-2)
   - [19. 資料上傳與歷史紀錄拆分為獨立頁面](#19-資料上傳與歷史紀錄拆分為獨立頁面)
   - [20. Agent 開發分工原則](#20-agent-開發分工原則)
+  - [21. 資料上傳頁雙主題實作](#21-資料上傳頁雙主題實作)
 
 
 ---
@@ -550,7 +551,7 @@ Ant Design `<Tooltip>` 預設使用 antd theme token，在 dark/light 切換時�
 | 上傳權限 | ✅ 僅 `engineer`（含）以上可上傳 | 依 5920 產線人員確認的角色權限 |
 | 歷史紀錄可見範圍 | ✅ `viewer` 無歷史紀錄功能（主選單不顯示此項）；`engineer` 可見 `viewer` + `engineer` 兩種角色的上傳紀錄 | 依角色權限設計 |
 | 「只看自己」篩選 | ✅ 加入「只顯示自己的資料」切換開關，與「上傳者」下拉篩選並列 | `engineer` 預設可見全部，此開關為快速篩選，不用每次從下拉選單找自己 |
-| 上傳者顯示 | 🔄 待後端配合：`GET /api/v1/netlist/programs` 目前僅回傳上傳時間與檔名，`uploaded_by`（UUID）欄位未輸出。建議後端 JOIN `users` 表，直接回傳 `uploaded_by_name`，避免前端再打一次 users API | 避免前端多一次網路請求；UUID 對前端無顯示意義 |
+| 上傳者顯示（歷史狀態） | 🔄 待後端配合：截至本條目建立時，`GET /api/v1/netlist/programs` 僅回傳上傳時間與檔名，`uploaded_by` 欄位未輸出；現行規格與實作已由條目 21 更新 | 原始討論曾希望後端直接回傳名稱；現行方案直接顯示後端提供的工號 |
 | 失敗紀錄的 `test_program` 顯示 | ✅ **要顯示**，但需等後端配合：目前 `audit_logs.request_body` 無論上傳成功或失敗皆為 `null`，無法得知失敗當下上傳的是哪個 `test_program`。時間戳比對（`audit_logs.timestamp` ≈ `nl_programs.uploaded_at`）在並行上傳或時區誤差時不準確，不採用。**待後端於 upload API 將 `test_program` 寫入 `audit_logs.request_body`（或等效欄位）後，前端才實作此欄位的顯示**；在此之前此部分實作暫緩，其餘上傳頁功能可先進行 | 使用者明確要求需要看到失敗紀錄的 test_program，暫時性的時間比對方案準確度不足，寧可暫緩該欄位也不要顯示錯誤資訊 |
 
 **版面草圖（ASCII wireframe，2026-07-02 確認可作為後續開發依據）**：
@@ -595,7 +596,8 @@ Ant Design `<Tooltip>` 預設使用 antd theme token，在 dark/light 切換時�
 
 **開發用注意事項**：
 - 失敗紀錄的 Test Program 欄位在後端補齊前，前端以「⏳ 待補欄位」佔位顯示（不隱藏整欄），待後端資料到位後移除佔位邏輯
-- 上傳者欄位依賴後端 `uploaded_by_name`，此欄位到位前可先以 UUID 前幾碼暫代或留空
+- 上傳者欄位的原始規劃曾依賴後端 `uploaded_by_name`；現行規格已改為 `uploaded_by` 工號，
+  詳見條目 21
 
 **尚未確認事項（下次討論繼續）**：
 1. 狀態篩選（全部/成功/失敗）、日期區間篩選是否納入本期開發範圍，或先只做「只顯示我的」+「上傳者」篩選
@@ -633,7 +635,7 @@ Ant Design `<Tooltip>` 預設使用 antd theme token，在 dark/light 切換時�
 
 | # | 事項 | 說明 | 狀態 |
 |---|------|------|------|
-| 1 | `uploaded_by_name` | `GET /api/v1/netlist/programs` 需 JOIN `users` 表回傳上傳者名稱，供資料上傳頁「已上傳檔案」清單與歷史紀錄頁「上傳紀錄」主題顯示（沿用條目 17 需求，適用範圍擴大） | 🔄 待後端提供 |
+| 1 | `uploaded_by` | `GET /api/v1/netlist/programs` 與 `GET /api/v1/data/fail-sample-import` 回傳上傳者工號（`user_no`）；前端直接顯示工號，不再使用 `uploaded_by_name` 或查詢 `/users` | ✅ 2026-09-02 後端已提供，前端已串接（詳見條目 21） |
 | 2 | 上傳失敗紀錄的 `test_program` | `audit_logs.request_body` 目前上傳成功/失敗皆為 `null`，無法得知失敗當下的 `test_program`。需後端於 upload API 寫入該欄位（沿用條目 17 需求，顯示位置改為歷史紀錄頁「上傳紀錄」主題） | 🔄 待後端提供 |
 | 3 | **歷史紀錄查詢 API（全新）** | 目前後端完全沒有對應端點。需支援：主題切換（login/upload/usage）、依角色權限過濾可見範圍、查詢對象多選、時間區間（含快速選項）、依主題動態的其他搜尋條件、分頁 | ⬜ 全新需求，待後端評估開發 |
 | 4 | **匯出 API 或前端匯出方案** | 需決定「後端提供下載端點」或「前端直接用查詢結果在瀏覽器端產生 Excel/CSV」，若前端產生則需選定套件（xlsx / exceljs），與 to-do #34 共用決策 | ⬜ 待討論實作方式 |
@@ -718,6 +720,72 @@ Ant Design `<Tooltip>` 預設使用 antd theme token，在 dark/light 切換時�
 | 能否通用於 GitHub Copilot | **原則可以，機制不行**。分工原則寫在 `CLAUDE.md` 與 `.github/copilot-instructions.md`（兩邊都能讀取），對 Copilot 使用者同樣適用；但 `.claude/agents/*.md` 常駐 Agent 定義檔、fork／Task 臨時 subagent 是 Claude Code 專屬工具能力，Copilot 沒有對等機制，改用 Copilot 時「唯讀稽核 Agent」的角色需要人工比照 Agent 定義檔內文手動執行 |
 
 **理由**：本專案 Frontend 目前只有 `api-contract-checker` 一個常駐 Agent，尚未有新增更多 Agent 的急迫需求，先以此決策作為未來評估的依據，避免隨專案成長無章法地增生常駐 Agent。
+
+---
+
+## 21. 資料上傳頁雙主題實作
+
+**Q：如何將已確認的資料上傳頁 v2 設計落實為可用的 Netlist／Fail Sample 雙主題功能？**
+
+**背景**：#11 原先僅規劃 Netlist 上傳，後端於 2026-08-05 已提供 Fail Sample Import
+批次清單與手動上傳端點。實作時需維持既有頁面骨架、依後端實際提供的上傳者欄位顯示
+資料，並讓兩種檔案不可能誤送到錯誤的 API。
+
+**決策**：
+
+| 議題 | 決策 | 理由 |
+|------|------|------|
+| 上傳主題 | ✅ 左欄以下拉選單切換 `Netlist`／`Fail Sample`；切換時清空佇列 | 避免 `.xlsx` 與 `.json` 混在同一批次，並讓提示、清單與 API 始終同步 |
+| Netlist 上傳 | ✅ `Upload.Dragger` 接受 `.xlsx`，以 `FormData(file)` 逐筆呼叫 `POST /api/v1/netlist/upload` | 遵循後端 multipart 合約與既有 Ant Design 元件慣例 |
+| Fail Sample 上傳 | ✅ `Upload.Dragger` 接受 `.json`，先讀檔並 `JSON.parse()`，成功後以 raw JSON body 呼叫 `POST /api/v1/data/fail-sample-import/upload`，`source_file` 帶入原始檔名 | 此端點不是 multipart；解析失敗時不呼叫後端，直接在佇列標記失敗 |
+| 佇列處理 | ✅ 選檔後暫存；按「全部上傳」後逐筆順序送出，狀態為待上傳／上傳中／成功／失敗；失敗不提供重試 | 讓使用者確認檔案並避免重複提交，延續條目 18／19 的不重試決策 |
+| 已上傳清單 | ✅ Netlist 顯示 `test_program`、檔名、`uploaded_at`、上傳者；Fail Sample 顯示 `lot_id`、`test_program`、`execution_mode`、`imported_at`、`source_file`、上傳者；Fail Sample 固定抓最新 50 筆後 client-side 搜尋 | `GET /api/v1/data/fail-sample-import` 沒有 `test_program` query 參數；2026-09-02 起兩支清單均提供 `uploaded_by` 工號欄位 |
+| 上傳者工號 | ✅ 直接顯示後端回傳的 `uploaded_by` 工號；`uploaded_by` 為 `null` 時顯示「—」，不查詢 `/users` 或轉換成姓名 | 工號是後端提供且可追溯的識別資訊，符合使用者對清單欄位的需求並避免額外查詢 |
+| 使用者實測版面微調 | ✅ 桌面左右欄採 27:73；左欄清單以 `flex: 1` 填滿選擇器與說明欄之間的剩餘空間並於區塊內捲動，說明欄固定於左下角；右欄上傳佇列卡片的操作按鈕固定貼齊底部，右欄高度由視窗高度鏈獨立計算 | 使清單、說明欄與操作區位置穩定，避免內容筆數造成不受控空白或左右欄互相影響 |
+| 存取權限 | ✅ `/upload` 由 `PrivateRoute.allowedRoles` 限制 `engineer`／`admin`；`viewer` 導向 `/dashboard`；Navbar 對 viewer 隱藏入口 | 讓路由層與導覽層的權限行為一致，避免 viewer 看到空白或錯誤頁 |
+| 歷史功能範圍 | ✅ 本次只做批次清單與上傳；單批次詳情、CSV 匯出留給 #12 歷史紀錄頁 | 控制 #11 範疇，避免與已定案的獨立歷史紀錄頁重疊 |
+
+**實作位置**：
+- API 與型別：`src/api/data.ts`、`src/api/netlist.ts`、`src/api/users.ts`、`src/types/api.ts`
+- 狀態與上傳流程：`src/stores/uploadStore.ts`
+- UI：`src/features/netlist/NetlistUploadPage.tsx` 與 `components/`
+- 路由與導覽：`src/router/PrivateRoute.tsx`、`src/router/index.tsx`、`src/layouts/MainLayout.tsx`
+- 測試：`tests/unit/uploadStore.test.ts`、`tests/components/NetlistUploadPage.test.tsx`、
+  `tests/components/PrivateRoute.test.tsx`
+
+### 2026-09-02 API 規格同步與快取失效
+
+後端已在 Netlist 與 Fail Sample Import 清單回應補上 `uploaded_by`，其值為上傳者工號
+（`user_no`）而非 UUID，且不再提供 `uploaded_by_name`。前端直接顯示
+`uploaded_by` 工號，不查詢 `/users`；`uploaded_by` 為 `null` 時顯示「—」。
+
+為避免 Fail Sample 上傳後 Dashboard 顯示舊分析結果，`dashboardStore` 新增
+`invalidateFailSampleCache(lotId, hbin?)` action，同時清除 IO／POWER 快取；指定
+`hbin` 時只清除該 Lot 的該 HBIN，未指定時清除該 Lot 全部 HBIN。Fail Sample 上傳
+成功後，`uploadStore` 會從格式 A（裸資料）或格式 B（`data` 包裝）payload 取出
+`lot_id`／`hbin` 並觸發對應失效；JSON 解析或 API 上傳失敗不會觸發失效。
+
+### 2026-09-03 上傳者欄位顯示修正
+
+使用者確認「上傳者」欄位應直接顯示後端回傳的工號（`user_no`），不需要透過
+`/users` 解析成 `display_name`。因此移除資料上傳頁的姓名對照表、`fetchUsers`、
+`getUserDisplayName` 與相關呼叫邏輯；`getUsers()` API wrapper 保留供後續歷史紀錄頁
+（#12）使用，`uploaded_by` 為 `null` 時仍顯示「—」。
+
+### 2026-09-15 Dragger 多檔拖曳 accept 過濾修正
+
+**Q：為何要調整資料上傳頁 `Upload.Dragger` 的 `accept` 設定？**
+
+**背景**：`@rc-component/upload` 在拖曳檔案時會額外依 `accept` 做原生預過濾，
+但點選檔案時不會執行同一層過濾，造成兩種選檔路徑的行為不對稱；被原生過濾掉的
+檔案也不會進入前端 `beforeUpload`，使用者無法看到錯誤提示。
+
+**決策**：✅ 將 `accept` 改為官方 `AcceptConfig` 物件
+`{ format: acceptedExtension, filter: 'native' }`，保留檔案選擇器的副檔名提示，
+並停用拖曳路徑的原生檔案過濾，統一由 `beforeUpload` 判斷副檔名。
+
+**理由**：消除拖曳與點選兩種選檔路徑之間的隱形過濾不對稱，確保多檔拖曳時每個檔案
+都能進入同一套前端驗證流程；新增回歸測試驗證三個 `.xlsx` 檔案會逐一加入佇列。
 
 
 *本文件持續更新，每次有重要技術討論或架構決策時補充新條目。*

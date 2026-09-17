@@ -25,6 +25,8 @@ interface DashboardState {
 interface DashboardActions {
   /** 輸入 Lot ID 並搜尋，對所有 HBIN 並行取得 fail-sample（IO）與 fail-sample-power（POWER）資料後快取 */
   search: (lotId: string) => Promise<void>;
+  /** 清除指定 Lot 的 fail-sample 快取（IO + POWER）；有帶 hbin 只清該 hbin，否則清整個 lot 的所有 hbin */
+  invalidateFailSampleCache: (lotId: string, hbin?: HBinValue) => void;
   /** 從歷史記錄點選一個 Lot，切換當前 Lot（資料從快取讀） */
   selectFromHistory: (lotId: string) => void;
   /** 刪除指定歷史記錄（同時清除 IO / POWER 快取） */
@@ -128,6 +130,45 @@ const useDashboardStore = create<DashboardState & DashboardActions>()(
           addLog({ level: 'error', module: 'dashboardStore', stack: ['search'], msg: `搜尋錯誤: ${message}` });
           set({ isSearching: false, searchError: message });
         }
+      },
+
+      invalidateFailSampleCache: (lotId: string, hbin?: HBinValue) => {
+        set((state) => {
+          const newCache = { ...state.failSampleCache };
+          const newPowerCache = { ...state.failSamplePowerCache };
+
+          if (hbin === undefined) {
+            delete newCache[lotId];
+            delete newPowerCache[lotId];
+          } else {
+            const lotCache = state.failSampleCache[lotId];
+            if (lotCache) {
+              const updatedLotCache = { ...lotCache };
+              delete updatedLotCache[hbin];
+              newCache[lotId] = updatedLotCache;
+            }
+
+            const lotPowerCache = state.failSamplePowerCache[lotId];
+            if (lotPowerCache) {
+              const updatedLotPowerCache = { ...lotPowerCache };
+              delete updatedLotPowerCache[hbin];
+              newPowerCache[lotId] = updatedLotPowerCache;
+            }
+          }
+
+          return {
+            failSampleCache: newCache,
+            failSamplePowerCache: newPowerCache,
+          };
+        });
+        addLog({
+          level: 'info',
+          module: 'dashboardStore',
+          stack: ['invalidateFailSampleCache'],
+          msg: hbin === undefined
+            ? `清除 Lot ${lotId} 的全部 fail-sample 快取（IO + POWER）`
+            : `清除 Lot ${lotId} 的 HBIN=${hbin} fail-sample 快取（IO + POWER）`,
+        });
       },
 
       selectFromHistory: (lotId: string) => {

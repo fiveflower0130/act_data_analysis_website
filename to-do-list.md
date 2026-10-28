@@ -1,6 +1,6 @@
 # ACT Failure Analysis System Frontend — 待辦事項清單
 
-> 最後更新：2026-09-16
+> 最後更新：2026-10-27
 > 分析工具：GitHub Copilot / Claude Code Fable
 > 說明：本文件記錄前端專案的待辦事項，**依模組分類**（依專案實際功能領域劃分），每個模組獨立一個區塊，優先級（P0~P3）改為表格欄位而非區塊標題；模組結構比照 Backend `to-do-list.md`，模組命名盡量對齊，方便兩邊對照。
 
@@ -111,6 +111,7 @@
 | # | 優先級 | 狀態 | 問題描述 | 位置 |
 |---|--------|------|----------|------|
 | 11 | P2 | ✅ | 資料上傳頁 — 完成 Netlist 與 Fail Sample 雙主題、左欄清單與 client-side 搜尋、複選佇列、逐筆上傳狀態、JSON 解析與錯誤處理、主題切換清空佇列、engineer/admin 角色守衛及 Navbar 導覽。同步後端 `uploaded_by` 工號欄位並直接顯示工號；Fail Sample 上傳成功後清除 Dashboard 對應 Lot 的 IO／POWER 快取。Fail Sample 詳情與 CSV 匯出移至歷史紀錄頁 #12 | `src/features/netlist/`、`src/stores/uploadStore.ts`、`src/stores/dashboardStore.ts` |
+| 44 | P2 | ✅ | File Upload v7 重設計與後端整合 — 左欄主題與已上傳清單、右側預覽區、440px Drawer、每主題獨立佇列、檔名／副檔名／2MB 驗證；同步後端 1011／1012 巢狀錯誤訊息、Fail Sample `q` 搜尋與 rows 明細（Site／搜尋／排序／後端分頁／快取）、Netlist 六 Sheet 列數 metadata 與懶加載預覽 | `src/features/netlist/`、`src/stores/uploadStore.ts`、`src/api/`、`src/types/api.ts` |
 | 12 | P2 | 🔄 | 歷史紀錄頁 — 範疇擴大為登入/上傳/使用狀況三主題通用查詢頁（原規劃在 Netlist 內的上傳歷史子功能已併入本項，見 design-decisions-qa.md 條目 19）。版面 v2 已確認：左欄主題下拉＋查詢對象（全部+可複選使用者搜尋／只看自己）＋時間區間（快速選項+自訂）＋其他搜尋條件（依主題動態），右欄上表格+匯出、下統計圖表（構思中）。**待後端全新歷史紀錄查詢 API 開發**，使用狀況主題另待埋點方案討論定案（見 frontend-contract.md 第四節） | `src/features/history/` |
 
 ---
@@ -190,3 +191,6 @@
 | 2026-09-03 | #11 | 依使用者確認將 Netlist／Fail Sample 清單的上傳者欄位改為直接顯示 `uploaded_by` 工號；移除資料上傳頁 `/users` 姓名對照邏輯，保留 `getUsers()` API wrapper 與使用者型別供未來歷史紀錄／使用者管理功能使用 | Dante (GitHub Copilot) |
 | 2026-09-03 | 文件 | 導入 diagram-design 圖表工具（安裝與測試紀錄見 Backend `to-do-list.md` 同日條目）；`CLAUDE.md` 與 `.github/copilot-instructions.md` 新增「圖表繪製（mermaid vs diagram-design）」規範：日常文件（to-do-list／週報／QA 紀錄／instructions）維持 mermaid，`docs/reports/` 對外報告與簡報用圖改用 diagram-design，圖檔置於 `docs/reports/assets/` | Dante (Claude Opus 5) |
 | 2026-09-16 | #11 | 修正 `Upload.Dragger` 的 `accept` 過濾不對稱：改用 `{ format, filter: 'native' }`，讓拖曳與點選都統一由 `beforeUpload` 驗證副檔名；新增多檔拖曳回歸測試 | Dante (GitHub Copilot) |
+| 2026-10-22 | #44 | 🔄 完成 File Upload v7 前端重設計：改用右側 Drawer、每主題獨立佇列、檔名／大小驗證、Netlist 六 Sheet 預覽與 Fail Sample 預覽 shell；新增 API wrapper、純函式 helpers、單元與頁面測試，文件同步更新 | Dante (GitHub Copilot) |
+| 2026-10-22 | #44 | ✅ 完成後端整合：支援 `detail.code/message` 的 1011／1012 錯誤顯示、Fail Sample `q` 搜尋與 rows 明細表（Site／debounce／排序／後端分頁／查詢快取）、Netlist `/sheets` 列數 metadata；更新檔名驗證、`source_file` 必填、測試與 API/決策/週報文件 | Dante (GitHub Copilot) |
+| 2026-10-27 | #44 | ✅ Site 篩選改為 Checkbox Popover：首次載入預設全選、全選省略 `sites`、全部清除不發 API 並顯示空狀態；同步後端必有的 `site_stats` 真實統計，異常缺漏個別 Site 時以「—」容錯，更新測試及文件 | Dante (GitHub Copilot) |

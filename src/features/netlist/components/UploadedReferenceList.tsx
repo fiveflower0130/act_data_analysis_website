@@ -1,21 +1,32 @@
-import { useMemo, useState } from 'react';
-import { Empty, Input, Spin, Typography } from 'antd';
+import { Empty, Input, Pagination, Spin, Tag, Typography } from 'antd';
 import { FileText, Search } from 'lucide-react';
 import type { FailSampleImportBatchSummary, NetlistProgram } from '../../../types/api';
 import type { UploadTheme } from '../../../stores/uploadStore';
 import { useResponsiveTokens } from '../../../hooks/useResponsiveTokens';
 import { useThemeColors } from '../../../hooks/useThemeColors';
 
-const { Text } = Typography;
+const { Text, Title } = Typography;
+
+export type SelectedUpload =
+  | { theme: 'netlist'; item: NetlistProgram }
+  | { theme: 'fail-sample'; item: FailSampleImportBatchSummary };
 
 interface UploadedReferenceListProps {
   theme: UploadTheme;
   netlistPrograms: NetlistProgram[];
   failSampleImports: FailSampleImportBatchSummary[];
+  total: number;
+  page: number;
+  searchTerm: string;
+  selectedId: string | number | null;
   loading: boolean;
+  onSearchChange: (value: string) => void;
+  onPageChange: (page: number) => void;
+  onSelect: (selection: SelectedUpload) => void;
 }
 
-const formatDate = (value: string) => {
+const formatDate = (value: string | null | undefined) => {
+  if (!value) return '—';
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return value;
   return date.toLocaleString('zh-TW', {
@@ -28,65 +39,79 @@ const formatDate = (value: string) => {
   });
 };
 
+const formatUploader = (userNo: string | null | undefined) => userNo || '—';
+
+const cardStyle = (selected: boolean, colors: ReturnType<typeof useThemeColors>) => ({
+  display: 'block',
+  width: '100%',
+  padding: 10,
+  marginBottom: 8,
+  textAlign: 'left' as const,
+  border: `1px solid ${selected ? colors.primary : colors.border}`,
+  borderRadius: 8,
+  background: colors.surface,
+  color: colors.textPrimary,
+  cursor: 'pointer',
+});
+
+const fieldStyle = (color: string) => ({
+  display: 'block',
+  marginTop: 4,
+  color,
+  fontSize: '12px',
+  lineHeight: 1.45,
+  whiteSpace: 'normal' as const,
+  overflowWrap: 'anywhere' as const,
+  wordBreak: 'break-word' as const,
+});
+
 const UploadedReferenceList = ({
   theme,
   netlistPrograms,
   failSampleImports,
+  total,
+  page,
+  searchTerm,
+  selectedId,
   loading,
+  onSearchChange,
+  onPageChange,
+  onSelect,
 }: UploadedReferenceListProps) => {
-  const [searchTerm, setSearchTerm] = useState('');
   const colorMode = useThemeColors();
   const responsive = useResponsiveTokens();
-  const formatUploader = (userNo: string | null | undefined) => {
-    if (!userNo) return '—';
-    return userNo;
-  };
-
-  const filteredNetlistPrograms = useMemo(() => {
-    const keyword = searchTerm.trim().toLowerCase();
-    if (!keyword) return netlistPrograms;
-    return netlistPrograms.filter((program) =>
-      `${program.test_program} ${program.filename}`.toLowerCase().includes(keyword),
-    );
-  }, [netlistPrograms, searchTerm]);
-
-  const filteredFailSampleImports = useMemo(() => {
-    const keyword = searchTerm.trim().toLowerCase();
-    if (!keyword) return failSampleImports;
-    return failSampleImports.filter((batch) =>
-      `${batch.lot_id} ${batch.test_program}`.toLowerCase().includes(keyword),
-    );
-  }, [failSampleImports, searchTerm]);
+  const isNetlist = theme === 'netlist';
 
   return (
-    <div
+    <section
+      aria-label="已上傳檔案"
       style={{
         display: 'flex',
         flexDirection: 'column',
-        flex: '1 1 auto',
+        flex: 1,
         minHeight: 0,
         overflow: 'hidden',
-        padding: '16px',
+        padding: 14,
         border: `1px solid ${colorMode.border}`,
         borderRadius: responsive.spacing.cardRadius,
         background: colorMode.card,
       }}
     >
-      <Text
-        strong
-        style={{
-          color: colorMode.textPrimary,
-          fontSize: responsive.typography.cardTitle,
-        }}
-      >
-        已上傳檔案
-      </Text>
+      <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, alignItems: 'baseline' }}>
+        <Title level={4} style={{ margin: 0, color: colorMode.textPrimary, fontSize: responsive.typography.cardTitle }}>
+          已上傳檔案
+        </Title>
+        <Text style={{ color: colorMode.textMuted, fontSize: responsive.typography.caption }}>
+          共 {total} 批
+        </Text>
+      </div>
+
       <Input
-        aria-label={theme === 'netlist' ? '搜尋檔名或 test_program' : '搜尋 Lot ID 或 test_program'}
+        aria-label={isNetlist ? '搜尋檔名或 test_program' : '搜尋 Lot ID、test_program 或檔名'}
         prefix={<Search size={14} style={{ color: colorMode.textMuted }} />}
-        placeholder={theme === 'netlist' ? '搜尋檔名 / test_program' : '搜尋 Lot ID / test_program'}
+        placeholder={isNetlist ? '搜尋檔名 / test_program' : '搜尋 Lot ID / test_program / 檔名'}
         value={searchTerm}
-        onChange={(event) => setSearchTerm(event.target.value)}
+        onChange={(event) => onSearchChange(event.target.value)}
         allowClear
         style={{
           marginTop: 10,
@@ -98,174 +123,84 @@ const UploadedReferenceList = ({
 
       <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', marginTop: 12 }}>
         <Spin spinning={loading}>
-          {theme === 'netlist' ? (
-            filteredNetlistPrograms.length === 0 ? (
+          {isNetlist ? (
+            netlistPrograms.length === 0 ? (
               <Empty
                 image={Empty.PRESENTED_IMAGE_SIMPLE}
                 description={<span style={{ color: colorMode.textMuted }}>尚無 Netlist 資料</span>}
               />
             ) : (
-              filteredNetlistPrograms.map((program) => (
-                <div
+              netlistPrograms.map((program) => (
+                <button
+                  type="button"
                   key={program.id}
-                  style={{
-                    display: 'block',
-                    padding: '10px',
-                    marginBottom: 8,
-                    border: `1px solid ${colorMode.border}`,
-                    borderRadius: 8,
-                    background: colorMode.surface,
-                  }}
+                  aria-label={`預覽 ${program.test_program}`}
+                  onClick={() => onSelect({ theme: 'netlist', item: program })}
+                  style={cardStyle(selectedId === program.id, colorMode)}
                 >
                   <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
                     <FileText size={14} color={colorMode.primary} style={{ marginTop: 2, flexShrink: 0 }} />
-                    <div style={{ minWidth: 0 }}>
-                      <Text
-                        strong
-                        style={{
-                          display: 'block',
-                          color: colorMode.textPrimary,
-                          fontSize: responsive.typography.body,
-                          whiteSpace: 'normal',
-                          overflowWrap: 'anywhere',
-                          wordBreak: 'break-word',
-                        }}
-                      >
+                    <div style={{ minWidth: 0, flex: 1 }}>
+                      <Text strong style={{ color: colorMode.textPrimary, fontSize: responsive.typography.body }}>
                         {program.test_program}
                       </Text>
-                      <Text
-                        style={{
-                          display: 'block',
-                          color: colorMode.textSecondary,
-                          fontSize: responsive.typography.caption,
-                          marginTop: 3,
-                          whiteSpace: 'normal',
-                          overflowWrap: 'anywhere',
-                          wordBreak: 'break-word',
-                        }}
-                      >
-                        檔名：{program.filename}
-                      </Text>
-                      <Text
-                        style={{
-                          display: 'block',
-                          color: colorMode.textMuted,
-                          fontSize: responsive.typography.caption,
-                          marginTop: 3,
-                        }}
-                      >
-                        時間：{formatDate(program.uploaded_at)}
-                      </Text>
-                      <Text
-                        style={{
-                          display: 'block',
-                          color: colorMode.textMuted,
-                          fontSize: responsive.typography.caption,
-                          marginTop: 3,
-                        }}
-                      >
-                        上傳者：{formatUploader(program.uploaded_by)}
-                      </Text>
+                      <Text style={fieldStyle(colorMode.textSecondary)}>檔名：{program.filename}</Text>
+                      <Text style={fieldStyle(colorMode.textSecondary)}>上傳時間：{formatDate(program.uploaded_at)}</Text>
+                      <Text style={fieldStyle(colorMode.textSecondary)}>上傳者：{formatUploader(program.uploaded_by)}</Text>
                     </div>
+                  </div> 
+                </button>
+              ))
+            )
+          ) : failSampleImports.length === 0 ? (
+            <Empty
+              image={Empty.PRESENTED_IMAGE_SIMPLE}
+              description={<span style={{ color: colorMode.textMuted }}>尚無 Fail Sample 資料</span>}
+            />
+          ) : (
+            failSampleImports.map((batch) => (
+              <button
+                type="button"
+                key={batch.batch_id}
+                aria-label={`預覽 ${batch.lot_id}`}
+                onClick={() => onSelect({ theme: 'fail-sample', item: batch })}
+                style={cardStyle(selectedId === batch.batch_id, colorMode)}
+              >
+                <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
+                  <FileText size={14} color={colorMode.primary} style={{ marginTop: 2, flexShrink: 0 }} />
+                  <div style={{ minWidth: 0, flex: 1 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 6 }}>
+                      <Text strong style={{ color: colorMode.textPrimary, fontSize: responsive.typography.body }}>
+                        {batch.lot_id}
+                      </Text>
+                      <Tag color={colorMode.primary}>
+                        {batch.execution_mode}
+                      </Tag>
+                    </div>
+                    <Text style={fieldStyle(colorMode.textSecondary)}>檔名：{batch.source_file || '—'}</Text>
+                    <Text style={fieldStyle(colorMode.textSecondary)}>上傳時間：{formatDate(batch.imported_at)}</Text>
+                    <Text style={fieldStyle(colorMode.textSecondary)}>上傳者：{formatUploader(batch.uploaded_by)}</Text>
                   </div>
                 </div>
-              ))
-            )
-          ) : (
-            filteredFailSampleImports.length === 0 ? (
-              <Empty
-                image={Empty.PRESENTED_IMAGE_SIMPLE}
-                description={<span style={{ color: colorMode.textMuted }}>尚無 Fail Sample 資料</span>}
-              />
-            ) : (
-              filteredFailSampleImports.map((batch) => (
-                <div
-                  key={batch.batch_id}
-                  style={{
-                    display: 'block',
-                    padding: '10px',
-                    marginBottom: 8,
-                    border: `1px solid ${colorMode.border}`,
-                    borderRadius: 8,
-                    background: colorMode.surface,
-                  }}
-                >
-                  <Text
-                    strong
-                    style={{
-                      display: 'block',
-                      color: colorMode.textPrimary,
-                      fontSize: responsive.typography.body,
-                      whiteSpace: 'normal',
-                      overflowWrap: 'anywhere',
-                      wordBreak: 'break-word',
-                    }}
-                  >
-                    {batch.lot_id}
-                  </Text>
-                  <Text
-                    style={{
-                      display: 'block',
-                      color: colorMode.textSecondary,
-                      fontSize: responsive.typography.caption,
-                      marginTop: 3,
-                      whiteSpace: 'normal',
-                      overflowWrap: 'anywhere',
-                      wordBreak: 'break-word',
-                    }}
-                  >
-                    Test Program：{batch.test_program}
-                  </Text>
-                  <Text
-                    style={{
-                      display: 'block',
-                      color: colorMode.textSecondary,
-                      fontSize: responsive.typography.caption,
-                      marginTop: 3,
-                    }}
-                  >
-                    模式：{batch.execution_mode}
-                  </Text>
-                  <Text
-                    style={{
-                      display: 'block',
-                      color: colorMode.textMuted,
-                      fontSize: responsive.typography.caption,
-                      marginTop: 3,
-                    }}
-                  >
-                    匯入時間：{formatDate(batch.imported_at)}
-                  </Text>
-                  <Text
-                    style={{
-                      display: 'block',
-                      color: colorMode.textMuted,
-                      fontSize: responsive.typography.caption,
-                      marginTop: 3,
-                      whiteSpace: 'normal',
-                      overflowWrap: 'anywhere',
-                      wordBreak: 'break-word',
-                    }}
-                  >
-                    來源檔案：{batch.source_file ?? '—'}
-                  </Text>
-                  <Text
-                    style={{
-                      display: 'block',
-                      color: colorMode.textMuted,
-                      fontSize: responsive.typography.caption,
-                      marginTop: 3,
-                    }}
-                  >
-                    上傳者：{formatUploader(batch.uploaded_by)}
-                  </Text>
-                </div>
-              ))
-            )
+              </button>
+            ))
           )}
         </Spin>
       </div>
-    </div>
+
+      {total > 10 && (
+        <Pagination
+          size="small"
+          current={page}
+          pageSize={10}
+          total={total}
+          showSizeChanger={false}
+          showQuickJumper={false}
+          onChange={onPageChange}
+          style={{ flexShrink: 0, marginTop: 10, textAlign: 'center' }}
+        />
+      )}
+    </section>
   );
 };
 

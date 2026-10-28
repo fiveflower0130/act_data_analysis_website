@@ -11,10 +11,16 @@ const { Text } = Typography;
 interface UploadDropzoneProps {
   theme: UploadTheme;
   onFilesSelected: (files: File[]) => void;
+  onInvalidFiles?: (fileNames: string[]) => void;
   disabled?: boolean;
 }
 
-const UploadDropzone = ({ theme, onFilesSelected, disabled = false }: UploadDropzoneProps) => {
+const UploadDropzone = ({
+  theme,
+  onFilesSelected,
+  onInvalidFiles,
+  disabled = false,
+}: UploadDropzoneProps) => {
   const colorMode = useThemeColors();
   const responsive = useResponsiveTokens();
   const isNetlist = theme === 'netlist';
@@ -22,6 +28,7 @@ const UploadDropzone = ({ theme, onFilesSelected, disabled = false }: UploadDrop
 
   const beforeUpload: UploadProps['beforeUpload'] = (file) => {
     if (!file.name.toLowerCase().endsWith(acceptedExtension)) {
+      onInvalidFiles?.([file.name]);
       return Upload.LIST_IGNORE;
     }
     onFilesSelected([file]);
@@ -36,6 +43,7 @@ const UploadDropzone = ({ theme, onFilesSelected, disabled = false }: UploadDrop
       beforeUpload={beforeUpload}
       disabled={disabled}
       style={{
+        minHeight: responsive.isMobile ? 150 : 200,
         borderColor: colorMode.primaryMuted,
         background: colorMode.surface,
         borderRadius: responsive.spacing.uploadZoneRadius,
@@ -51,7 +59,9 @@ const UploadDropzone = ({ theme, onFilesSelected, disabled = false }: UploadDrop
         拖曳檔案到此處，或點擊選擇（可複選）
       </p>
       <Text style={{ color: colorMode.textMuted, fontSize: responsive.typography.caption }}>
-        {isNetlist ? 'NL-{Test_Program}_{Security}.xlsx' : 'Fail Sample 匯入資料（.json）'}
+        {isNetlist
+          ? 'NL-{Test_Program}_({Security}).xlsx（單檔上限 2MB）'
+          : '{Test_Program}_{Lot_ID}__{AT|RT}_{時間}.json（單檔上限 2MB）'}
       </Text>
     </Dragger>
   );

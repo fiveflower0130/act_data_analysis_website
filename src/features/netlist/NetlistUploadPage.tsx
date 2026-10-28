@@ -1,29 +1,33 @@
-import { useEffect } from 'react';
-import { Alert, Button, Card, Divider, Space, Typography } from 'antd';
-import { CheckCircle2, Trash2, UploadCloud } from 'lucide-react';
-import UploadDropzone from './components/UploadDropzone';
-import UploadQueueTable from './components/UploadQueueTable';
-import UploadThemeSelector from './components/UploadThemeSelector';
-import UploadedReferenceList from './components/UploadedReferenceList';
-import useUploadStore from '../../stores/uploadStore';
+import { Alert, Button } from 'antd';
+import { UploadCloud } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
+import useUploadStore, { type UploadTheme } from '../../stores/uploadStore';
 import { useResponsiveTokens } from '../../hooks/useResponsiveTokens';
 import { useThemeColors } from '../../hooks/useThemeColors';
+import UploadThemeSelector from './components/UploadThemeSelector';
+import UploadedReferenceList, {
+  type SelectedUpload,
+} from './components/UploadedReferenceList';
+import UploadDrawer from './components/UploadDrawer';
+import UploadPreviewPanel from './components/UploadPreviewPanel';
 
-const { Text } = Typography;
+const PAGE_SIZE = 10;
 
-const NETLIST_WARNING =
-  '同一 test_program 上傳將直接覆蓋舊版本，相關快取資料將一併清除。送出後失敗不提供重試，請重新選擇檔案再次上傳。';
-const FAIL_SAMPLE_WARNING =
-  '重複上傳同一批資料將建立獨立新批次，不會自動去重清除舊資料，請避免重複上傳。送出後失敗不提供重試，請重新選擇檔案再次上傳。';
+const formatDateValue = (value: string | null | undefined) => {
+  if (!value) return '';
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? value : date.toISOString();
+};
 
 const NetlistUploadPage = () => {
   const {
     activeTheme,
+    queues,
     netlistPrograms,
     failSampleImports,
-    uploadQueue,
+    failSampleTotal,
     isLoading,
-    isUploading,
+    uploadingByTopic,
     error,
     setActiveTheme,
     addFiles,
@@ -36,30 +40,89 @@ const NetlistUploadPage = () => {
   } = useUploadStore();
   const responsive = useResponsiveTokens();
   const colorMode = useThemeColors();
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [selection, setSelection] = useState<SelectedUpload | null>(null);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [listPage, setListPage] = useState(1);
 
   useEffect(() => {
     void fetchNetlistPrograms();
   }, [fetchNetlistPrograms]);
 
   useEffect(() => {
-    if (activeTheme === 'fail-sample' && failSampleImports.length === 0) {
-      void fetchFailSampleImports();
-    }
-  }, [activeTheme, failSampleImports.length, fetchFailSampleImports]);
+    if (activeTheme !== 'fail-sample') return undefined;
 
-  const hasPendingFiles = uploadQueue.some((item) => item.status === 'pending');
+    const timer = window.setTimeout(() => {
+      void fetchFailSampleImports({
+        q: searchTerm.trim() || undefined,
+        limit: PAGE_SIZE,
+        offset: (listPage - 1) * PAGE_SIZE,
+      });
+    }, 300);
 
-  const handleUploadAll = async () => {
-    if (!hasPendingFiles) return;
-    await uploadAll();
-    if (activeTheme === 'netlist') {
-      await fetchNetlistPrograms();
-    } else {
-      await fetchFailSampleImports();
-    }
+    return () => window.clearTimeout(timer);
+  }, [activeTheme, fetchFailSampleImports, listPage, searchTerm]);
+
+  const visibleNetlistPrograms = useMemo(() => {
+    const keyword = searchTerm.trim().toLocaleLowerCase();
+    const filtered = netlistPrograms.filter((program) => {
+      if (!keyword) return true;
+      return [
+        program.test_program,
+        program.filename,
+        program.security_level,
+        program.uploaded_by,
+      ]
+        .filter(Boolean)
+        .some((value) => String(value).toLocaleLowerCase().includes(keyword));
+    });
+
+    return [...filtered]
+      .sort((left, right) => {
+        const leftDate = new Date(formatDateValue(left.uploaded_at)).getTime();
+        const rightDate = new Date(formatDateValue(right.uploaded_at)).getTime();
+        return rightDate - leftDate;
+      })
+      .slice((listPage - 1) * PAGE_SIZE, listPage * PAGE_SIZE);
+  }, [listPage, netlistPrograms, searchTerm]);
+
+  const currentQueue = queues[activeTheme];
+  const currentUploading = uploadingByTopic[activeTheme];
+  const listTotal = activeTheme === 'netlist' ? netlistPrograms.filter((program) => {
+    const keyword = searchTerm.trim().toLocaleLowerCase();
+    if (!keyword) return true;
+    return [
+      program.test_program,
+      program.filename,
+      program.security_level,
+      program.uploaded_by,
+    ]
+      .filter(Boolean)
+      .some((value) => String(value).toLocaleLowerCase().includes(keyword));
+  }).length : failSampleTotal;
+
+  const selectedId =
+    selection?.theme === activeTheme
+      ? selection.theme === 'netlist'
+        ? selection.item.id
+        : selection.item.batch_id
+      : null;
+
+  const handleThemeChange = (theme: UploadTheme) => {
+    setActiveTheme(theme);
+    setSelection(null);
+    setSearchTerm('');
+    setListPage(1);
   };
 
-  const isNetlist = activeTheme === 'netlist';
+  const handleSearchChange = (value: string) => {
+    setSearchTerm(value);
+    setListPage(1);
+  };
+
+  const handlePageChange = (page: number) => {
+    setListPage(page);
+  };
 
   return (
     <div
@@ -75,7 +138,7 @@ const NetlistUploadPage = () => {
     >
       <aside
         style={{
-          flex: responsive.isMobile ? '0 0 220px' : '0 0 27%',
+          flex: responsive.isMobile ? '0 0 280px' : '0 0 400px',
           height: '100%',
           minWidth: 0,
           minHeight: 0,
@@ -83,54 +146,47 @@ const NetlistUploadPage = () => {
           display: 'flex',
           flexDirection: 'column',
           gap: 12,
-          padding: 16,
+          padding: responsive.isMobile ? 12 : 16,
           boxSizing: 'border-box',
           overflow: 'hidden',
           background: colorMode.surface,
           borderRight: `1px solid ${colorMode.border}`,
         }}
       >
-        <div
-          style={{
-            flexShrink: 0,
-            padding: 14,
-            border: `1px solid ${colorMode.border}`,
-            borderRadius: responsive.spacing.cardRadius,
-            background: colorMode.card,
-          }}
-        >
-          <UploadThemeSelector
-            value={activeTheme}
-            onChange={setActiveTheme}
-            disabled={isUploading}
-          />
-        </div>
 
-        <UploadedReferenceList
-          key={activeTheme}
-          theme={activeTheme}
-          netlistPrograms={netlistPrograms}
-          failSampleImports={failSampleImports}
-          loading={isLoading && !isUploading}
+        <UploadThemeSelector
+          value={activeTheme}
+          onChange={handleThemeChange}
         />
 
-        <Text
-          style={{
-            flexShrink: 0,
-            padding: '10px 8px 0',
-            borderTop: `1px dashed ${colorMode.border}`,
-            color: colorMode.textMuted,
-            fontSize: responsive.typography.caption,
-            lineHeight: 1.7,
-          }}
+        <Button
+          type="primary"
+          icon={<UploadCloud size={16} />}
+          onClick={() => setDrawerOpen(true)}
+          style={{ flexShrink: 0 }}
         >
-          僅 engineer 以上角色可見「資料上傳」與「歷史紀錄」兩項功能；viewer 主選單不會出現這兩項功能入口。
-        </Text>
+          上傳檔案（{currentQueue.length}）
+        </Button>
+
+        <UploadedReferenceList
+          theme={activeTheme}
+          netlistPrograms={activeTheme === 'netlist' ? visibleNetlistPrograms : []}
+          failSampleImports={activeTheme === 'fail-sample' ? failSampleImports : []}
+          total={listTotal}
+          page={listPage}
+          searchTerm={searchTerm}
+          selectedId={selectedId}
+          loading={isLoading && !currentUploading}
+          onSearchChange={handleSearchChange}
+          onPageChange={handlePageChange}
+          onSelect={setSelection}
+        />
+
       </aside>
 
       <main
         style={{
-          flex: responsive.isMobile ? 1 : '0 0 73%',
+          flex: 1,
           height: '100%',
           minWidth: 0,
           minHeight: 0,
@@ -138,12 +194,12 @@ const NetlistUploadPage = () => {
           display: 'flex',
           flexDirection: 'column',
           gap: 12,
-          padding: responsive.isMobile ? 12 : 20,
-          overflowY: 'auto',
+          padding: responsive.isMobile ? 12 : 16,
+          overflow: 'hidden',
           background: colorMode.base,
         }}
       >
-        {error && (
+        {error && !drawerOpen && (
           <Alert
             type="error"
             showIcon
@@ -154,95 +210,25 @@ const NetlistUploadPage = () => {
           />
         )}
 
-        <Card
-          size="small"
-          title={
-            <Space size={8}>
-              <UploadCloud size={16} color={colorMode.primary} />
-              <Text style={{ color: colorMode.textPrimary }}>選擇檔案</Text>
-            </Space>
-          }
-          style={{
-            flexShrink: 0,
-            background: colorMode.surface,
-            borderColor: colorMode.border,
-          }}
-          styles={{ body: { padding: responsive.isMobile ? 12 : 18 } }}
-        >
-          <UploadDropzone theme={activeTheme} onFilesSelected={addFiles} disabled={isUploading} />
-          <Alert
-            type="warning"
-            showIcon
-            title={isNetlist ? NETLIST_WARNING : FAIL_SAMPLE_WARNING}
-            style={{
-              marginTop: 12,
-              color: colorMode.warning,
-              borderColor: colorMode.warning,
-            }}
-          />
-        </Card>
-
-        <Card
-          size="small"
-          title={
-            <Space size={8}>
-              <CheckCircle2 size={16} color={colorMode.primary} />
-              <Text style={{ color: colorMode.textPrimary }}>上傳佇列</Text>
-            </Space>
-          }
-          extra={
-            <Text style={{ color: colorMode.textMuted, fontSize: responsive.typography.caption }}>
-              選好檔案後暫存，按「全部上傳」才會送出
-            </Text>
-          }
-          style={{
-            flex: '1 1 0',
-            minHeight: 260,
-            minWidth: 0,
-            display: 'flex',
-            flexDirection: 'column',
-            overflow: 'hidden',
-            background: colorMode.surface,
-            borderColor: colorMode.border,
-          }}
-          styles={{
-            body: {
-              display: 'flex',
-              flexDirection: 'column',
-              flex: 1,
-              minHeight: 0,
-              padding: responsive.isMobile ? 12 : 18,
-            },
-          }}
-        >
-          <div style={{ flex: 1, minHeight: 0, overflowY: 'auto' }}>
-            <UploadQueueTable
-              items={uploadQueue}
-              onRemove={removeQueueItem}
-              disabled={isUploading}
-            />
-          </div>
-          <Divider style={{ margin: '12px 0', borderColor: colorMode.border }} />
-          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, flexShrink: 0 }}>
-            <Button
-              icon={<Trash2 size={14} />}
-              onClick={clearQueue}
-              disabled={uploadQueue.length === 0 || isUploading}
-            >
-              清空
-            </Button>
-            <Button
-              type="primary"
-              icon={<UploadCloud size={14} />}
-              onClick={() => void handleUploadAll()}
-              loading={isUploading}
-              disabled={!hasPendingFiles || isUploading}
-            >
-              全部上傳
-            </Button>
-          </div>
-        </Card>
+        <div style={{ flex: 1, minHeight: 0 }}>
+          <UploadPreviewPanel selection={selection} />
+        </div>
       </main>
+
+      <UploadDrawer
+        open={drawerOpen}
+        theme={activeTheme}
+        queue={currentQueue}
+        isUploading={currentUploading}
+        error={drawerOpen ? error : null}
+        onClose={() => setDrawerOpen(false)}
+        onFilesSelected={addFiles}
+        onInvalidFiles={() => undefined}
+        onRemove={removeQueueItem}
+        onClear={clearQueue}
+        onUploadAll={() => void uploadAll()}
+        onClearError={clearError}
+      />
     </div>
   );
 };

@@ -142,6 +142,37 @@ describe('api/client.ts — apiClient 攔截器', () => {
   // ─── Response Interceptor ───────────────────────────────────────────────────
 
   describe('response interceptor', () => {
+    it('可讀取巢狀 detail 的業務錯誤碼與訊息', async () => {
+      const { getApiErrorCode, getApiErrorMessage } = await import('../../src/api/client');
+      const tooLarge = {
+        response: {
+          status: 400,
+          data: {
+            detail: {
+              code: 1011,
+              message: '檔案超過 2 MB',
+            },
+          },
+        },
+      };
+      const invalidName = {
+        response: {
+          status: 400,
+          data: {
+            detail: {
+              code: 1012,
+              message: '檔名格式錯誤',
+            },
+          },
+        },
+      };
+
+      expect(getApiErrorCode(tooLarge)).toBe(1011);
+      expect(getApiErrorMessage(tooLarge)).toBe('檔案超過 2 MB');
+      expect(getApiErrorCode(invalidName)).toBe(1012);
+      expect(getApiErrorMessage(invalidName)).toBe('檔名格式錯誤');
+    });
+
     it('成功回應：原樣回傳', async () => {
       const response = { status: 200, config: { url: '/api/v1/data/search' }, data: { ok: true } };
       const result = await responseHandlers[0].fulfilled(response);

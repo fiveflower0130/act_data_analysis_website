@@ -7,6 +7,13 @@ export interface ApiResponse<T = unknown> {
   data: T | null;
 }
 
+/** FastAPI HTTPException 使用的巢狀錯誤資料格式 */
+export interface ApiErrorDetail {
+  code?: number;
+  message?: string;
+  data?: unknown;
+}
+
 /** 錯誤代碼 */
 export const ApiErrorCode = {
   Unknown: 1,
@@ -20,6 +27,12 @@ export const ApiErrorCode = {
   DatabaseError: 1008,
   /** LDAP 服務不可用（連線失敗），HTTP 503 */
   LdapServiceError: 1009,
+  /** 查詢對象存在，但對應的 Netlist 尚未上傳 */
+  NetlistUnavailable: 1010,
+  /** 上傳檔案超過 2 MB，HTTP 400 */
+  FileTooLarge: 1011,
+  /** 上傳檔名格式錯誤，HTTP 400 */
+  FilenameFormatError: 1012,
 } as const;
 
 /** 使用者角色 */
@@ -109,6 +122,24 @@ export interface NetlistProgram {
   updated_at: string;
 }
 
+/** Netlist 預覽 Sheet 筆數資訊 */
+export interface NetlistSheetInfo {
+  name: NetlistSheetName;
+  row_count: number;
+}
+
+/** Netlist 預覽可選的資料表 */
+export const NetlistSheet = {
+  Netlist: 'Netlist',
+  TestSpec: 'Test_Spec',
+  BinPriority: 'Bin_Priority',
+  BinName: 'Bin_Name',
+  StackingDie: 'Stacking_Die',
+  Tray: 'Tray',
+} as const;
+
+export type NetlistSheetName = (typeof NetlistSheet)[keyof typeof NetlistSheet];
+
 /** Netlist 上傳結果 */
 export interface NetlistUploadResult {
   test_program: string;
@@ -124,6 +155,8 @@ export interface FailSampleImportListParams {
   execution_mode?: string;
   date_from?: string;
   date_to?: string;
+  /** 對 lot_id／test_program／source_file 做不分大小寫的模糊 OR 搜尋 */
+  q?: string;
   limit?: number;
   offset?: number;
 }
@@ -153,12 +186,86 @@ export interface FailSampleImportListResponse {
   offset: number;
 }
 
+/** Fail Sample Import 批次完整資料 */
+export interface FailSampleImportDetail extends SearchResult {
+  batch_id: string;
+  imported_at: string;
+  source_file: string | null;
+  uploaded_by: string | null;
+}
+
 /** Fail Sample Import 上傳結果 */
 export interface FailSampleImportUploadResult {
   batch_id: string;
   chunk_count: number;
   site_count: number;
   test_result_value_count: number;
+}
+
+/** Fail Sample 明細列可排序欄位 */
+export const FailSampleImportRowField = {
+  Site: 'site',
+  SerialNo: 'serial_no',
+  RealTime: 'real_time',
+  TestItem: 'test_item',
+  Value: 'value',
+  SpecMin: 'spec_min',
+  SpecMax: 'spec_max',
+  Unit: 'unit',
+  Pin1: 'pin_1',
+  Pin2: 'pin_2',
+  FailReason: 'fail_reason',
+  Ihbin: 'ihbin',
+} as const;
+
+export type FailSampleImportRowField =
+  (typeof FailSampleImportRowField)[keyof typeof FailSampleImportRowField];
+
+export type FailSampleImportRowSortOrder = 'asc' | 'desc';
+
+/** GET /data/fail-sample-import/{batch_id}/rows 查詢參數 */
+export interface FailSampleImportRowsParams {
+  sites?: string[];
+  q?: string;
+  sort_by?: FailSampleImportRowField;
+  sort_order?: FailSampleImportRowSortOrder;
+  page?: number;
+  page_size?: number;
+}
+
+/** GET /data/fail-sample-import/{batch_id}/rows 單筆明細 */
+export interface FailSampleImportRow {
+  site: string;
+  serial_no: string;
+  real_time: string;
+  test_item: string;
+  value: string;
+  spec_min: string;
+  spec_max: string;
+  unit: string;
+  pin_1: string;
+  pin_2: string;
+  fail_reason: string;
+  ihbin: string;
+}
+
+/** GET /data/fail-sample-import/{batch_id}/rows Site 統計 */
+export interface FailSampleImportSiteStat {
+  site: string;
+  dut_count: number;
+  row_count: number;
+}
+
+/** GET /data/fail-sample-import/{batch_id}/rows 回應 */
+export interface FailSampleImportRowsResponse {
+  total: number;
+  filtered_total: number;
+  sites: string[];
+  items: FailSampleImportRow[];
+  page: number;
+  page_size: number;
+  /** 各 Site 的整批統計；後端回傳順序與 sites 一致 */
+  site_stats: FailSampleImportSiteStat[];
 }
 
 /** 使用者清單項目（欄位 id 與 UserInfo.user_id 不同） */
@@ -178,6 +285,49 @@ export interface UserListItem {
 export interface UserListParams {
   skip?: number;
   limit?: number;
+}
+
+/** GET /netlist/programs/{test_program}/netlist */
+export interface NetlistConnection {
+  package_pin: string | null;
+  bond_finger: string | null;
+  die_pin: string | null;
+  die_pin_raw?: string | null;
+  net_name: string | null;
+  unity_no?: string | null;
+}
+
+/** GET /netlist/programs/{test_program}/test-spec */
+export interface TestSpecItem {
+  item_name: string;
+  fail_bin_code_min: number | string | null;
+  fail_bin_code_max: number | string | null;
+  relax: boolean | string | null;
+  relax_min: number | string | null;
+  relax_max: number | string | null;
+}
+
+/** GET /netlist/programs/{test_program}/die-mapping */
+export interface DieMappingItem {
+  die_pin: string;
+  unity_no: string;
+}
+
+/** GET /netlist/programs/{test_program}/bin-name */
+export interface BinNameItem {
+  sw_bin_no: number | string;
+  sw_bin_name: string | null;
+  hw_bin_no: number | string;
+  hw_bin_name: string | null;
+  bin_test_type: string | null;
+}
+
+/** GET /netlist/programs/{test_program}/bin-priority */
+export interface BinPriorityItem {
+  hw_bin_no: number | string;
+  hw_bin_name: string | null;
+  bin_test_type: string | null;
+  priority_no: number | string;
 }
 
 /** Fail Sample 單筆資料 */

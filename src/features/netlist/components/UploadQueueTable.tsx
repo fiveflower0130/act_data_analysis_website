@@ -20,10 +20,10 @@ const statusMeta = (status: UploadQueueStatus, statusCode: number | undefined, c
     return { label: '上傳中', color: colors.primary, background: `${colors.primary}22`, icon: <LoaderCircle size={13} /> };
   }
   if (status === 'success') {
-    return { label: '成功', color: colors.success, background: colors.successBg, icon: <Check size={13} /> };
+    return { label: '匯入成功', color: colors.success, background: colors.successBg, icon: <Check size={13} /> };
   }
   return {
-    label: statusCode ? `失敗 (${statusCode})` : '失敗',
+    label: statusCode ? `失敗（${statusCode}）` : '失敗',
     color: colors.danger,
     background: colors.dangerBg,
     icon: <X size={13} />,
@@ -92,7 +92,7 @@ const UploadQueueTable = ({ items, onRemove, disabled = false }: UploadQueueTabl
                 {meta.icon}
                 {meta.label}
               </span>
-              {item.status === 'pending' && (
+              {(item.status === 'pending' || item.status === 'failed' || item.status === 'success') && (
                 <Button
                   type="text"
                   size="small"
@@ -104,6 +104,27 @@ const UploadQueueTable = ({ items, onRemove, disabled = false }: UploadQueueTabl
                 />
               )}
             </div>
+            {item.status === 'uploading' && (
+              <div
+                aria-label={`${item.fileName} 上傳進度`}
+                style={{
+                  height: 5,
+                  margin: '8px 0 0 22px',
+                  overflow: 'hidden',
+                  borderRadius: 999,
+                  background: colorMode.border,
+                }}
+              >
+                <div
+                  style={{
+                    width: `${item.progress ?? 0}%`,
+                    height: '100%',
+                    background: colorMode.primary,
+                    transition: 'width 0.15s ease',
+                  }}
+                />
+              </div>
+            )}
             {item.errorMessage && (
               <Text
                 style={{

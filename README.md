@@ -5,10 +5,11 @@ ACT 測試資料分析平台前端（React 19 + TypeScript + Vite + Zustand + An
 ## 目前功能
 
 - Dashboard：LOT／HBIN 查詢與 Fail Sample、Fail Die、Fail Die Rate、Fail Ball、Tray 分析
-- 資料上傳（`/upload`）：Netlist `.xlsx` 與 Fail Sample `.json` 雙主題上傳、複選佇列與逐筆狀態
+- 資料上傳（`/upload`）：File Upload v7 以右側 Drawer 支援 Netlist `.xlsx` 與 Fail Sample `.json` 雙主題上傳、每主題獨立佇列、檔案驗證與逐筆狀態
 - 上傳清單直接顯示 `uploaded_by` 工號；Fail Sample 上傳成功後會清除 Dashboard 對應 Lot 快取
+- 已上傳 Netlist 支援六個 Sheet 列數 metadata、懶加載預覽、搜尋、排序與分頁；Fail Sample 提供批次資訊與 rows 明細預覽，以及 engineer/admin CSV 匯出
 - `/upload` 僅開放 `engineer`／`admin`；`viewer` 不顯示入口且存取時導向 Dashboard
-- Fail Sample 批次詳情與 CSV 匯出規劃於歷史紀錄頁（to-do-list #12）
+- Fail Sample 已支援 rows 明細預覽（Site／搜尋／排序／後端分頁）與 engineer/admin CSV 匯出；完整歷史紀錄查詢規劃於 to-do-list #12
 
 ## 測試（Testing）
 

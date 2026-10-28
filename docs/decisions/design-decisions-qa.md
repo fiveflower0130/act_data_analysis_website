@@ -2,7 +2,7 @@
 
 > **說明**：本文件以問答（QA）方式記錄專案建置過程中所有重要的技術討論、選型決策與議題結論，供日後回顧、交接或擴展時參考。
 > **維護規則**：每當有新的技術討論或架構決策時，應在本文件補充新條目。
-> **最後更新**：2026-09-15
+> **最後更新**：2026-10-22
 
 ---
 
@@ -739,7 +739,7 @@ Ant Design `<Tooltip>` 預設使用 antd theme token，在 dark/light 切換時�
 | Netlist 上傳 | ✅ `Upload.Dragger` 接受 `.xlsx`，以 `FormData(file)` 逐筆呼叫 `POST /api/v1/netlist/upload` | 遵循後端 multipart 合約與既有 Ant Design 元件慣例 |
 | Fail Sample 上傳 | ✅ `Upload.Dragger` 接受 `.json`，先讀檔並 `JSON.parse()`，成功後以 raw JSON body 呼叫 `POST /api/v1/data/fail-sample-import/upload`，`source_file` 帶入原始檔名 | 此端點不是 multipart；解析失敗時不呼叫後端，直接在佇列標記失敗 |
 | 佇列處理 | ✅ 選檔後暫存；按「全部上傳」後逐筆順序送出，狀態為待上傳／上傳中／成功／失敗；失敗不提供重試 | 讓使用者確認檔案並避免重複提交，延續條目 18／19 的不重試決策 |
-| 已上傳清單 | ✅ Netlist 顯示 `test_program`、檔名、`uploaded_at`、上傳者；Fail Sample 顯示 `lot_id`、`test_program`、`execution_mode`、`imported_at`、`source_file`、上傳者；Fail Sample 固定抓最新 50 筆後 client-side 搜尋 | `GET /api/v1/data/fail-sample-import` 沒有 `test_program` query 參數；2026-09-02 起兩支清單均提供 `uploaded_by` 工號欄位 |
+| 已上傳清單 | ✅ Netlist 顯示 `test_program`、檔名、`uploaded_at`、上傳者；Fail Sample 顯示 `lot_id`、`test_program`、`execution_mode`、`imported_at`、`source_file`、上傳者；Fail Sample 以 `limit=10`／`offset` 分頁並以 `q` 傳送模糊搜尋 | 依現行 `GET /api/v1/data/fail-sample-import` 合約由後端處理搜尋與 `total`；2026-09-02 起兩支清單均提供 `uploaded_by` 工號欄位 |
 | 上傳者工號 | ✅ 直接顯示後端回傳的 `uploaded_by` 工號；`uploaded_by` 為 `null` 時顯示「—」，不查詢 `/users` 或轉換成姓名 | 工號是後端提供且可追溯的識別資訊，符合使用者對清單欄位的需求並避免額外查詢 |
 | 使用者實測版面微調 | ✅ 桌面左右欄採 27:73；左欄清單以 `flex: 1` 填滿選擇器與說明欄之間的剩餘空間並於區塊內捲動，說明欄固定於左下角；右欄上傳佇列卡片的操作按鈕固定貼齊底部，右欄高度由視窗高度鏈獨立計算 | 使清單、說明欄與操作區位置穩定，避免內容筆數造成不受控空白或左右欄互相影響 |
 | 存取權限 | ✅ `/upload` 由 `PrivateRoute.allowedRoles` 限制 `engineer`／`admin`；`viewer` 導向 `/dashboard`；Navbar 對 viewer 隱藏入口 | 讓路由層與導覽層的權限行為一致，避免 viewer 看到空白或錯誤頁 |
@@ -786,6 +786,71 @@ Ant Design `<Tooltip>` 預設使用 antd theme token，在 dark/light 切換時�
 
 **理由**：消除拖曳與點選兩種選檔路徑之間的隱形過濾不對稱，確保多檔拖曳時每個檔案
 都能進入同一套前端驗證流程；新增回歸測試驗證三個 `.xlsx` 檔案會逐一加入佇列。
+
+---
+
+## 22. File Upload v7 Drawer 重設計
+
+**Q：如何在不新增後端 API 的前提下，將資料上傳頁改為 File Upload v7，並同時支援
+Netlist 預覽與 Fail Sample 的有限預覽？**
+
+**背景**：條目 18 定義了資料上傳頁的初始版面，條目 19 將上傳與歷史紀錄拆成
+兩個獨立頁面，條目 21 完成了 Netlist／Fail Sample 雙主題的第一版實作。實際使用後，
+需要更清楚的已上傳批次瀏覽、可持續的上傳佇列與 Netlist 檔案內容檢視；第一階段先以
+既有端點先完成 Fail Sample 預覽 shell；後端 rows／sheets 合約完成後，由條目 23
+補上明細與 Sheet 列數整合。
+
+**決策**：
+
+| 議題 | 決策 | 理由 |
+|------|------|------|
+| 頁面骨架 | ✅ 標題使用 `File Upload`；左欄約 320px 放主題、目前主題 queue 數量、已上傳清單；右側為預覽區；上傳改由 440px 右側 Drawer 處理 | 清楚分離「批次瀏覽」與「檔案操作」，Drawer 關閉不清除佇列、不中斷背景上傳 |
+| 每主題佇列 | ✅ `netlist` 與 `fail-sample` 各自保存 queue；切換主題保留兩邊項目；「清空」只清目前主題的成功、待上傳與失敗項目，進行中項目不被中斷 | 避免切換主題造成待上傳檔案遺失，並維持既有並行上傳流程 |
+| 檔案驗證 | ✅ 副檔名錯誤不加入 queue；檔名格式錯誤或超過 2MB 仍加入但立即標記失敗並顯示明確原因；失敗項目不重試 | 使用者可一次看完所有選檔問題，且不會將已知不合法檔案送到後端 |
+| 已上傳清單 | ✅ Netlist 由既有完整清單做 client-side 搜尋／10 筆分頁；Fail Sample 使用既有 API 的 `limit=10`／`offset`，搜尋以 300ms debounce 傳 `q`；兩者皆依上傳時間新到舊排序並顯示工號 | 遵循既有端點；後端完成 `q` 後由 `total` 反映搜尋結果 |
+| Netlist 預覽 | ✅ 以既有 `netlist`、`test-spec`、`die-mapping`、`bin-name`、`bin-priority`、`stacking-die`、`tray` 端點懶加載六個 Sheet，依 test program 快取；表格搜尋／排序／100 筆分頁均在前端處理 | 先提供可用的內容檢視，不改變後端資料合約；`die_unity` 由前端依 Die Mapping 補入 |
+| Fail Sample 預覽 | ✅ 先提供批次資訊 shell；後端 rows API 完成後接入 Site 複選、12 欄位搜尋／排序／後端分頁與查詢快取；沿用既有 CSV endpoint，僅 engineer/admin 顯示「輸出 CSV」 | 明細欄位與排序規則以後端合約為準，不在前端攤平原始 JSON |
+| 與既有決策關係 | ✅ 延續條目 18 的頁面分工、條目 19 的獨立路由與權限、條目 21 的雙主題與快取失效；本條目更新條目 21 原「切換清空佇列」與「詳情／CSV 留待 #12」的實作範圍 | 以 v7 實際操作需求取代第一版佇列行為，並將已具備的 CSV 能力提前接入預覽 shell |
+
+**實作位置**：
+- API 與型別：`src/api/data.ts`、`src/api/netlist.ts`、`src/types/api.ts`
+- 驗證與預覽純函式：`src/features/netlist/utils/uploadValidation.ts`、
+  `src/features/netlist/utils/previewHelpers.ts`
+- 狀態與快取：`src/stores/uploadStore.ts`
+- UI：`src/features/netlist/NetlistUploadPage.tsx` 與 `components/`
+- 測試：`tests/unit/uploadValidation.test.ts`、`tests/unit/previewHelpers.test.ts`、
+  `tests/unit/uploadStore.test.ts`、`tests/components/NetlistUploadPage.test.tsx`
+
+## 23. File Upload v7 後端預覽 API 整合
+
+**Q：後端完成上傳錯誤碼、Fail Sample rows 與 Netlist sheets API 後，前端如何補上
+原先待後端的功能，同時維持 v7 的佇列與預覽決策？**
+
+**背景**：條目 22 先以既有 API 完成 v7 版面與預覽 shell；2026-10-22 後端合約新增
+巢狀業務錯誤碼 `1011`／`1012`、Fail Sample 清單 `q` 搜尋、`rows` 明細查詢與
+Netlist `sheets` metadata。這些端點已納入權威 API contract，前端不再保留「待後端」
+佔位或過時 TODO。
+
+**決策**：
+
+| 議題 | 決策 | 理由 |
+|------|------|------|
+| 上傳錯誤 | ✅ `getApiErrorCode()`／`getApiErrorMessage()` 同時解析頂層與 `detail`；1011／1012 將後端 `detail.message` 直接保留在 queue 失敗原因 | FastAPI `HTTPException` 的業務碼位於 `response.data.detail.code`，不能只讀頂層 `code` |
+| Fail Sample 清單搜尋 | ✅ 搜尋文字以 300ms debounce 傳 `q`，清單 `total` 使用後端搜尋後筆數 | 後端已支援 lot_id／test_program／source_file 模糊 OR 搜尋，前端不再保留「可忽略 q」假設 |
+| Fail Sample 明細 | ✅ 由 `/rows` 提供 Site 複選、12 欄位搜尋／排序、每頁 100 列與 `filtered_total`；相同查詢條件以 batch／條件 key 做記憶體快取 | 後端已定義缺值、數值排序與 page contract，避免前端重新攤平大批次資料 |
+| Site 篩選操作 | ✅ 改用 Checkbox Popover；首次取得 Site 後預設全選，全選時省略 `sites`，全部清除時顯示「未選取任何 Site」且不發 API；面板顯示後端必有的 `site_stats` 顆數／列數，異常缺漏個別 Site 時以「—」容錯 | 保留「全部」與「無選取」兩種不同語意，避免以空陣列混淆；統計由後端提供整批固定值，前端不自行計算 |
+| Netlist Sheet 資訊 | ✅ 先呼叫 `/sheets` 顯示固定六個 Sheet 的列數與 Sheet 數；內容仍依既有 Sheet endpoint lazy load | metadata 與內容責任分離，既有表格搜尋／排序／100 列分頁可沿用 |
+| 上傳檔名 | ✅ Fail Sample `source_file` 一律帶 `File.name` 且要求 14 位數字時間；Netlist 本地 validator 接受一般括號與 `(Security C)` 寫法 | 前端預先提示與後端 1012 規則一致，仍保留後端作最後驗證 |
+
+**與既有條目的關係**：
+- 延續條目 18 的「選檔先入佇列、失敗不重試」與上傳權限決策。
+- 延續條目 19 的上傳／歷史紀錄分頁與 `/upload` 角色守衛。
+- 延續條目 21 的雙主題、`uploaded_by` 工號顯示與 Fail Sample 成功後清除 Dashboard 快取。
+- 修正條目 22 原先「Fail Sample 明細待後端」與「q 後端可忽略」的暫時性描述。
+
+**實作位置**：`src/api/client.ts`、`src/api/data.ts`、`src/api/netlist.ts`、
+`src/types/api.ts`、`src/stores/uploadStore.ts`、`FailSamplePreview.tsx`、
+`NetlistPreview.tsx` 及其測試。
 
 
 *本文件持續更新，每次有重要技術討論或架構決策時補充新條目。*

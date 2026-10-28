@@ -1,7 +1,11 @@
+import type { AxiosProgressEvent } from 'axios';
 import type {
   ApiResponse,
+  FailSampleImportDetail,
   FailSampleImportListParams,
   FailSampleImportListResponse,
+  FailSampleImportRowsParams,
+  FailSampleImportRowsResponse,
   FailSampleImportUploadResult,
   SearchResult,
 } from '../types/api';
@@ -19,10 +23,47 @@ export const getFailSampleImportList = (params: FailSampleImportListParams = {})
     params,
   });
 
+/** GET /api/v1/data/fail-sample-import/{batch_id} */
+export const getFailSampleImportDetail = (batchId: string) =>
+  apiClient.get<ApiResponse<FailSampleImportDetail>>(
+    `/api/v1/data/fail-sample-import/${encodeURIComponent(batchId)}`,
+  );
+
+/** GET /api/v1/data/fail-sample-import/{batch_id}/rows */
+export const getFailSampleImportRows = (
+  batchId: string,
+  params: FailSampleImportRowsParams = {},
+) => {
+  const { sites, ...rest } = params;
+  return apiClient.get<ApiResponse<FailSampleImportRowsResponse>>(
+    `/api/v1/data/fail-sample-import/${encodeURIComponent(batchId)}/rows`,
+    {
+      params: {
+        ...rest,
+        ...(sites && sites.length > 0 ? { sites: sites.join(',') } : {}),
+      },
+    },
+  );
+};
+
+/** GET /api/v1/data/fail-sample-import/{batch_id}/csv */
+export const downloadFailSampleImportCsv = (batchId: string) =>
+  apiClient.get<Blob>(
+    `/api/v1/data/fail-sample-import/${encodeURIComponent(batchId)}/csv`,
+    { responseType: 'blob' },
+  );
+
 /** POST /api/v1/data/fail-sample-import/upload */
-export const uploadFailSampleImport = (payload: unknown, sourceFile?: string) =>
+export const uploadFailSampleImport = (
+  payload: unknown,
+  sourceFile: string,
+  onUploadProgress?: (event: AxiosProgressEvent) => void,
+) =>
   apiClient.post<ApiResponse<FailSampleImportUploadResult>>(
     '/api/v1/data/fail-sample-import/upload',
     payload,
-    sourceFile ? { params: { source_file: sourceFile } } : undefined,
+    {
+      params: { source_file: sourceFile },
+      ...(onUploadProgress ? { onUploadProgress } : {}),
+    },
   );

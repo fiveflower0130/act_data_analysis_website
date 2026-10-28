@@ -1,6 +1,6 @@
 # ACT Failure Analysis System Frontend — 待辦事項清單
 
-> 最後更新：2026-08-17
+> 最後更新：2026-10-28
 > 分析工具：GitHub Copilot / Claude Code Fable
 > 說明：本文件記錄前端專案的待辦事項，**依模組分類**（依專案實際功能領域劃分），每個模組獨立一個區塊，優先級（P0~P3）改為表格欄位而非區塊標題；模組結構比照 Backend `to-do-list.md`，模組命名盡量對齊，方便兩邊對照。
 
@@ -184,3 +184,4 @@
 | 2026-08-05 | 版本 | ✅ 版本號升級 1.5.0 → 1.5.1（package.json/package-lock.json），發布本次 API 合約修正 patch 版本 | Dante |
 | 2026-08-17 | 文件 | 導入 graphify 程式碼知識圖譜工具（與 Backend 共用父目錄 `D:\ACT\Failure Analysis System\graphify-out\` 的跨 repo 圖譜）；`CLAUDE.md` 與 `.github/copilot-instructions.md` 新增「程式碼關聯查詢（graphify）」使用規範與全域規則「跨檔案關聯先查圖譜」；repo 內建立 `graphify-out` junction 指向父目錄共用圖譜（已加入 `.gitignore`），查詢指令免帶 `--graph` 即可解析，詳細安裝紀錄見 Backend `to-do-list.md` 2026-08-17 條目 | Dante (Claude Fable 5) |
 | 2026-08-17 | 版控 | `git-workflow.instructions.md` 新增「AI 指示文件備份機制」一節：本 repo 的 `.github/`、`CLAUDE.md`、`.claude/` 已納入獨立備份 repo `..\ai-config-backup\`（僅推私人 GitHub private，嚴禁加入公司 GitLab），大幅修改指示文件後執行該 repo 的 `sync.ps1` 同步 | Dante (Claude Fable 5) |
+| 2026-10-28 | #24, #43 | ✅ 修正 `computeAnalysis()` 的 die/ball 索引配對：只統計 `die_no[k] === die` 的 `ball_name[k]`，避免跨 die DUT 污染 ResultsPanel；補充跨 die、22 顆 U14 ball 與既有平局／空值／`ioFailCount` 測試 | Dante |

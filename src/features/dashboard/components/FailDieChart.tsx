@@ -81,7 +81,7 @@ const DieLayerBlock = ({
   return (
     <Tooltip
       title={
-        `${label}${isFailing ? `：失效 ${failCount} 次` : ''}${ballNamesForDie.length > 0 ? `（集中： ${ballNamesForDie.join('、')}）` : ''}`
+        `${label}${failCount > 0 ? `：失效 ${failCount} 次` : ''}${ballNamesForDie.length > 0 ? `（集中： ${ballNamesForDie.join('、')}）` : ''}`
       }
       color={COLOR_TEXT_DARK}
       placement="right"

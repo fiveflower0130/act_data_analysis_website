@@ -97,6 +97,20 @@ describe('computeAnalysis()', () => {
     expect(result.dieResults).toEqual([{ die: 'U7', balls: ['AY10'] }]);
   });
 
+  it('DUT 跨多個 die 時，只統計相同索引的 ball_name', () => {
+    const items = [
+      mkItem(1, ['U14', 'U1'], ['A47_AP01', 'OTHER_DIE_BALL']),
+      mkItem(2, ['U14'], ['A47_AP02']),
+    ];
+
+    const result = computeAnalysis(items);
+
+    expect(result.ioFailCount).toBe(2);
+    expect(result.dieResults).toEqual([
+      { die: 'U14', balls: ['A47_AP01', 'A47_AP02'] },
+    ]);
+  });
+
   it('die_no 並列：全部列出，以升冪排序', () => {
     // U2 和 U7 各出現 2 次
     const items = [
@@ -144,6 +158,27 @@ describe('computeAnalysis()', () => {
     expect(result.ioFailCount).toBe(3);
     // '' 被過濾，U7 出現 2 次
     expect(result.dieResults).toEqual([{ die: 'U7', balls: ['AY10'] }]);
+  });
+
+  it('12 個 IO fail DUT 的 U14 結果只列出 U14 的 22 顆 ball', () => {
+    const u14Balls = Array.from({ length: 22 }, (_, index) => `A47_AP${String(index + 1).padStart(2, '0')}`);
+    const items = [
+      mkItem(
+        1,
+        [...u14Balls.map(() => 'U14'), 'U1', 'U2'],
+        [...u14Balls, 'OTHER_DIE_BALL_1', 'OTHER_DIE_BALL_2'],
+      ),
+      ...Array.from({ length: 11 }, (_, index) =>
+        mkItem(index + 2, ['U1'], [`U1_BALL_${index + 1}`]),
+      ),
+    ];
+
+    const result = computeAnalysis(items);
+
+    expect(result.ioFailCount).toBe(12);
+    expect(result.dieResults[0].die).toBe('U14');
+    expect(result.dieResults[0].balls).toEqual(u14Balls);
+    expect(result.dieResults[0].balls).toHaveLength(22);
   });
 });
 

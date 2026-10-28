@@ -10,6 +10,7 @@ import { useResponsiveTokens } from '../../hooks/useResponsiveTokens';
 import { ApiErrorCode } from '../../types/api';
 import type { ApiResponse } from '../../types/api';
 import addLog from '../../utils/logging';
+import VersionBadge from '../../components/VersionBadge';
 
 const { Title, Text } = Typography;
 
@@ -99,7 +100,9 @@ const LoginPage = () => {
             <Title level={3} style={{ color: tokens.colors.textPrimary, marginBottom: 4, marginTop: 0 }}>
               ACT Failure Analysis System
             </Title>
-            <Text style={{ color: tokens.colors.textMuted }}>智慧分析系統</Text>
+            <Text style={{ color: tokens.colors.textMuted }}>
+              智慧分析系統 <VersionBadge position="inline" color={tokens.colors.textMuted} />
+            </Text>
           </div>
 
           <div style={{ borderTop: `1px solid ${tokens.colors.border}`, marginBottom: 24 }} />
@@ -181,6 +184,9 @@ const LoginPage = () => {
           >
             © CRD 5940 智慧測試開發部
           </Text>
+          {/* <div style={{ textAlign: 'center', marginTop: 2 }}>
+            <VersionBadge position="inline" color={tokens.colors.textCopyRight} />
+          </div> */}
         </Card>
       </div>
     </div>

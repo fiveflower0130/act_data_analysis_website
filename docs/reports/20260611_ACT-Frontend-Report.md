@@ -3,6 +3,8 @@
 > 報告日期：2026-06-11
 > 撰寫者：Dante
 > 版本：v1.0（第一階段 Release）
+>
+> **補充說明（2026-07-08）**：第三章原僅涵蓋 v1.0 上線時已完成的功能（認證、Dashboard 搜尋快取、Fail Sample List、ResultsPanel、Logging）。第二階段（2026-06-25～06-30）完成的四張圖表——**Top 1 Fail Die**、**Fail Die Rate**、**Fail Ball**、**Fail Sample on Tray**——當時尚未開發，故未收錄。本次依實際程式碼（`src/features/dashboard/components/`、`src/features/dashboard/utils/analysisHelpers.ts`）補上完整資料處理邏輯說明（3.4～3.7 節），並將原 3.4／3.5 節依序調整為 3.8／3.9 節，其餘章節內容不變。第二階段功能的整體進度與規劃內容另見 `docs/reports/20260708_ACT-Frontend-Report.md`。
 
 ---
 
@@ -44,18 +46,21 @@ graph LR
 
 ### 1.3 第一階段功能需求
 
+> **狀態更新（2026-07-08）**：以下「第二階段」功能已於 2026-06-25～06-30 全數完成上線（Netlist 管理僅完成子表查詢 API，上傳頁面仍規劃中），資料處理邏輯詳見第三章 3.4～3.7 節。
+
 | 功能 | 狀態 | 說明 |
 |------|------|------|
 | LDAP 帳密登入 | ✅ 完成 | 工號 + 密碼，區分 LDAP 服務異常 / 帳密錯誤 |
 | LOT 搜尋 | ✅ 完成 | 輸入 Lot ID，選擇 Fail Mode（HBIN）查詢 |
-| Fail Sample List 表格 | ✅ 完成 | 顯示 DUT No / Die No / Ball Name，分頁顯示 |
+| Fail Sample List 表格 | ✅ 完成 | 顯示 DUT No / Die No / Ball Name，分頁顯示，支援 IO/POWER 雙模式 |
 | 結果分析文字 | ✅ 完成 | IO pin fail 統計、最高頻 Die/Ball 自動推算 |
 | 搜尋歷史記錄 | ✅ 完成 | 顯示近期查詢的 Lot ID |
 | 響應式版面 | ✅ 完成 | 支援 Mobile / Tablet / Laptop / Desktop |
-| Fail Sample on Tray | ⬜ 第二階段 | Tray 佈局圖 |
-| Fail Die / Fail Die Rate | ⬜ 第二階段 | 疊 Die 結構圖 |
-| Fail Ball 圖 | ⬜ 第二階段 | BGA Ball 分佈圖 |
-| Netlist 管理 | ⬜ 第二階段 | 上傳 / 瀏覽 Netlist Excel |
+| Fail Sample on Tray | ✅ 完成（第二階段） | Tray 佈局圖，見 3.7 節 |
+| Fail Die / Fail Die Rate | ✅ 完成（第二階段） | 疊 Die 結構圖，見 3.4／3.5 節 |
+| Fail Ball 圖 | ✅ 完成（第二階段） | BGA Ball 分佈圖，見 3.6 節 |
+| 暗／淺色主題切換 | ✅ 完成（第二階段，原規劃外新增） | 見 `docs/reports/20260708_ACT-Frontend-Report.md` 第三章 |
+| Netlist 管理 | 🔄 部分完成 | 子表查詢 API（stacking-die／tray）已完成並供上述圖表使用；上傳／瀏覽頁面仍規劃中，見第六章 |
 
 ### 1.4 UI/UX 設計原則
 
@@ -69,24 +74,25 @@ graph LR
 
 #### 色彩架構——深海藍暗色系（Deep Navy Dark Theme）
 
+> **修正（2026-07-10，依實際 `src/styles/tokens.ts`／`FailSampleList.tsx` 校正）**：以下色碼原為 v1.0 規劃初期的設計稿數值，與最終實作的 token 值有落差，已更新為目前程式碼實際使用的色碼。
+
 ```
-色彩層次（由深到淺）
+色彩層次（由深到淺，darkColors）
 ──────────────────────────────────────
-#0a1929  主背景->  頁面底層
-  └── #0d1e30  側欄背景->  左側導覽欄
-        └── #112240  卡片背景->  圖表框、卡片
-              └── #1e3a5f  邊線/分隔->  卡片描邊
+#0A1929  主背景（base）->  頁面底層
+  └── #0D1E30  側欄背景（surface）->  左側導覽欄 / Navbar
+        └── #112240  卡片背景（card）->  圖表框、卡片
+              └── #1E3A5F  邊線/分隔（border）->  卡片描邊
 ──────────────────────────────────────
 功能色
-  主要藍     #1e88e5  按鈕、Logo、互動重點元素
-  亮藍       #42a5f5  Active 狀態、強調文字
-  柔藍       #90caf9  Secondary 文字、標籤
-  成功綠     rgb(18, 53, 19)  正常 Badge
-  警告紅     #ff5252  Fail Badge
-  Dut No    #054114  DUT No 編號
-  Die No    #2914eb  Die No 編號
-  Bin Name  #f5be0c  Bin Name 名稱
+  主要藍     #1C6BD3  （primary）CTA 按鈕、互動重點元素
+  亮藍       #42A5F5  （primaryLight）Active 狀態、強調文字
+  柔藍       #90CAF9  （primaryMuted）Secondary 文字、標籤
+  成功綠     #4CAF50  （success）正常 Badge
+  警告紅     #FF5252  （danger）Fail Badge
 ```
+
+**Fail Sample List 表格標籤色**：`DutNo`／`DieNo`／`BallName` 三個欄位使用 Ant Design 內建預設色名（非自訂色碼）：`DutNo` → `green`、`DieNo` → `geekblue`、`BallName` → `gold`（見 `FailSampleList.tsx`）。
 
 **設計理由**：工廠工程環境習慣深色 UI（示波器、ERP、MES），暗色背景讓圖表高亮色（紅/黃/綠）更突出。
 
@@ -102,31 +108,34 @@ graph LR
 
 ### 1.6 版面架構設計
 
+> **修正（2026-07-10，依實際 `DashboardPage.tsx`／`DashboardHeader.tsx`／`SearchPanel.tsx` 校正）**：以下版面配置原為 v1.0 規劃階段的設計稿，與最終實作有數項落差（Fail Mode 選單實際位置、欄位比例、POWER 版 Fail Sample List 加入後的版面調整），已更新為目前程式碼實際呈現的版面。
+
 #### 整體佈局
 
 ```
-┌────────────────────────────────────────────────────┐
-│  Navbar（60px）── 品牌標題 + 使用者帳號               │
-├────────────────┬───────────────────────────────────┤
-│  Left Sidebar  │  DashboardHeader（Fail Mode 選擇） │
-│  （280px）      ├────────────────────────────────────┤
-│                │  ResultsPanel（140px，分析文字）    │
-│  ・LOT 搜尋     ├──────────────┬─────────────────────┤
-│  ・Fail Mode   │              │  圖表 2×2 Grid      │
-│  ・搜尋歷史     │  Fail Sample │  ┌──────┬──────┐    │
-│                │  List       │  │Tray  │ Die │   │
-│                │  （25% 寬）  │  ├──────┼──────┤   │
-│                │              │  │DRate │ Ball │   │
-│                │              │  └──────┴──────┘   │
-└────────────────┴──────────────┴─────────────────────┘
+┌────────────────────────────────────────────────────────────┐
+│  Navbar（響應式 52～64px）── 品牌標題 + 主題切換 + 使用者帳號 │
+├────────────────┬─────────────────────────────────────────┤
+│  Left Sidebar  │  DashboardHeader（Fail Mode 下拉選單）    │
+│  （響應式        ├─────────────────────────────────────────┤
+│   180～250px）  │  ResultsPanel（響應式 110～140px，分析文字）│
+│                │──────────────────┬──────────────────────┤
+│  ・LOT 搜尋     │  Fail Sample List │   圖表 2×2 Grid      │
+│  ・搜尋歷史     │  IO + POWER 並排  │  ┌──────┬──────┐    │
+│                │  （固定 40%）      │  │Tray  │ Die  │    │
+│                │                   │  ├──────┼──────┤    │
+│                │                   │  │Ball  │DRate │    │
+│                │                   │  └──────┴──────┘    │
+│                │                   │  （剩餘 ~60%）        │
+└────────────────┴──────────────────┴──────────────────────┘
 ```
 
 #### 設計決策重點
 
-1. **左側欄搜尋 + 歷史**：靈感來自醫療影像軟體的 Patient Browser 概念，讓工程師不離開主畫面即可切換批次
-2. **Fail Mode 頂部浮層**：下拉選單以絕對定位覆蓋在圖表上方，不壓縮圖表空間
-3. **1:4 欄位比例**：Fail Sample List 佔 25%，圖表群佔 75%，資料表格與視覺圖表並排
-4. **響應式斷點**：Mobile < 768px、Tablet < 1024px、Laptop < 1440px、Desktop ≥ 1440px
+1. **左側欄僅含搜尋 + 歷史**：靈感來自醫療影像軟體的 Patient Browser 概念，讓工程師不離開主畫面即可切換批次；**Fail Mode 選單不在左側欄**，而是獨立的 `DashboardHeader` 元件，置於右側內容區最上方
+2. **Fail Mode 為一般下拉選單**：`DashboardHeader` 是版面中的一般區塊（flex 排版由上而下：Header → ResultsPanel → 主內容），**非**浮層覆蓋設計（v1.0 規劃階段曾考慮絕對定位覆蓋在圖表上方，實作時未採用）
+3. **欄位比例為 40% / 60%**：Fail Sample List 區塊固定佔主內容區 **40%**（`flex: '0 0 40%'`，內部再切為 IO／POWER 兩欄各半），圖表 2×2 Grid 佔剩餘 **60%**（`flex: 1`），並非最初規劃的 1:4（25%/75%）——這項調整發生於第二階段新增 POWER Fail Sample List 之後
+4. **響應式斷點**：Mobile < 768px、Tablet < 1024px、Laptop < 1440px、Desktop ≥ 1440px（各斷點的側欄寬度／表格高度等實際數值見 2.6 節）
 
 ---
 
@@ -191,15 +200,24 @@ src/
 ├── api/              # Axios instance + API 呼叫函式
 │   ├── client.ts     # JWT Bearer + Rolling Refresh Token 攔截器
 │   ├── auth.ts       # 認證相關 API
-│   ├── analysis.ts   # 分析相關 API
+│   ├── analysis.ts   # 分析相關 API（fail-sample／fail-sample-power）
+│   ├── netlist.ts    # ⭐ Netlist 相關 API（stacking-die／tray）
 │   └── data.ts       # 資料查詢 API
 ├── features/         # 功能模組（Feature-based 架構）
 │   ├── auth/
 │   │   └── LoginPage.tsx
 │   └── dashboard/
 │       ├── DashboardPage.tsx
-│       ├── components/     # FailSampleList / ResultsPanel / ...
-│       ├── utils/          # 純函式（analysisHelpers）
+│       ├── components/
+│       │   ├── FailSampleList.tsx      # 3.3 節
+│       │   ├── FailDieChart.tsx        # ⭐ 3.4 節（第二階段新增）
+│       │   ├── FailDieRateChart.tsx    # ⭐ 3.5 節（第二階段新增）
+│       │   ├── FailBallChart.tsx       # ⭐ 3.6 節（第二階段新增）
+│       │   ├── FailTrayChart.tsx       # ⭐ 3.7 節（第二階段新增）
+│       │   ├── ResultsPanel.tsx        # 3.8 節
+│       │   └── SearchPanel.tsx／SearchHistory.tsx／DashboardHeader.tsx
+│       ├── utils/
+│       │   └── analysisHelpers.ts      # 純函式（ResultsPanel／FailBall／FailTray 共用）
 │       └── ...
 ├── layouts/
 │   └── MainLayout.tsx      # Navbar + Content Outlet
@@ -208,7 +226,8 @@ src/
 │   └── PrivateRoute.tsx    # 路由守衛
 ├── stores/
 │   ├── authStore.ts        # 登入狀態管理
-│   └── dashboardStore.ts   # 搜尋/快取狀態管理
+│   ├── dashboardStore.ts   # 搜尋/快取狀態管理（IO＋POWER＋Tray 規格，見 3.2 節）
+│   └── themeStore.ts       # ⭐ 主題（dark/light）狀態管理（第二階段新增，persist）
 ├── styles/
 │   ├── tokens.ts           # 設計系統 Token（色彩/字型/響應式）
 │   ├── antdTheme.ts        # Ant Design 暗色主題
@@ -216,12 +235,15 @@ src/
 ├── types/
 │   └── api.ts              # TypeScript 型別定義
 ├── hooks/
-│   └── useResponsiveTokens.ts   # 響應式 Token hook
+│   ├── useResponsiveTokens.ts   # 響應式 Token hook
+│   └── useThemeColors.ts        # ⭐ dark/light 主題色彩 hook（第二階段新增）
 └── utils/
     └── logging/            # 前端 Logger 模組
 ```
 
 ### 2.4 狀態管理設計
+
+> **修正（2026-07-10）**：本圖為 v1.0 時期僅含 IO 查詢的簡化版，`searchHistory` 上限實際為 **30 筆**（`MAX_HISTORY = 30`，非原文的 20 筆），`failSampleCache` 實際型別為巢狀物件 `Record<lotId, Record<hbin, Result>>`（非 `Map`）。完整的 IO＋POWER＋Tray 規格並行查詢流程請見 3.2 節（2026-07-08 已補充更新版流程圖），本圖僅保留作為 Store 欄位總覽。
 
 ```mermaid
 graph LR
@@ -234,18 +256,19 @@ graph LR
     subgraph dashboardStore["dashboardStore"]
         CL["currentLotId"]
         CH["currentHbin"]
-        Cache["failSampleCache\nMap<lotId+hbin, Result>"]
-        Hist["searchHistory\n最近 20 筆"]
+        Cache["failSampleCache / failSamplePowerCache\nRecord&lt;lotId, Record&lt;hbin, Result&gt;&gt;"]
+        TraySpec["traySpecCache\nRecord&lt;testProgram, TraySpec&gt;"]
+        Hist["searchHistory\n最近 30 筆"]
     end
 
-    Login -->|login()| authStore
-    authStore -->|restoreSession()| MeAPI["/auth/me"]
-    Dashboard -->|search()| dashboardStore
-    dashboardStore -->|快取命中?| Cache
-    Cache -->|未命中| FailAPI["/analysis/fail-sample"]
+    Login -->|"login()"| authStore
+    authStore -->|"restoreSession()"| MeAPI["/auth/me"]
+    Dashboard -->|"search()"| dashboardStore
+    dashboardStore -->|"快取命中?"| Cache
+    Cache -->|"未命中"| FailAPI["/analysis/fail-sample (+ -power)"]
 ```
 
-**快取策略：** 相同 `lotId + hbin` 的查詢結果快取於記憶體，頁面刷新前不重複呼叫 API。
+**快取策略：** 相同 `lotId + hbin` 的查詢結果快取於記憶體（並透過 `persist` 存入 `localStorage`），頁面刷新前不重複呼叫 API。
 
 ### 2.5 JWT + Rolling Refresh Token 機制
 
@@ -279,13 +302,15 @@ sequenceDiagram
 
 ### 2.6 響應式設計架構
 
+> **修正（2026-07-10，依 `tokens.ts` 實際 `responsiveSpacing` 校正）**：原數值誤植為規劃階段的整數估算值，以下為目前程式碼實際使用的數值。
+
 ```
 斷點定義（tokens.ts）
 ─────────────────────────────────────────────────
-Mobile   < 768px   : sidebarWidth:220, tableScrollY:260
-Tablet   < 1024px  : sidebarWidth:260, tableScrollY:300
-Laptop   < 1440px  : sidebarWidth:280, tableScrollY:360
-Desktop  ≥ 1440px  : sidebarWidth:300, tableScrollY:520
+Mobile   < 768px   : sidebarWidth:180, tableScrollY:260
+Tablet   < 1024px  : sidebarWidth:200, tableScrollY:320
+Laptop   < 1440px  : sidebarWidth:230, tableScrollY:360
+Desktop  ≥ 1440px  : sidebarWidth:250, tableScrollY:520
 ─────────────────────────────────────────────────
 ```
 
@@ -315,21 +340,28 @@ flowchart TD
 
 **頁面刷新後的 user 恢復：** `persist` 只保存 token，user 資訊不持久化。`MainLayout` 在 mount 時若偵測到 `token 存在但 user 為 null`，自動呼叫 `GET /auth/me` 恢復使用者資訊。
 
+> **補充（2026-07-10，依 `PrivateRoute.tsx` 校正）**：實際上 `PrivateRoute` 只同步檢查 `authStore.token` 是否存在（truthy），**不會**在路由層直接解析 JWT 判斷是否過期——上圖「token 是否有效？」這一步實際是透過後續 API 呼叫（如 `GET /auth/me`）觸發 401 → `client.ts` 攔截器 `forceLogout()` → 清除 token → `PrivateRoute` 反應式重新渲染 → 導向登入頁，是非同步的間接流程，並非路由守衛本身的同步判斷。最終使用者體驗與下圖一致，但實作機制上請以此為準。
+
 ### 3.2 Dashboard 搜尋與快取流程
 
+> **補充（2026-07-08）**：第二階段新增 POWER 分析與 Fail Sample on Tray 後，`dashboardStore` 的搜尋邏輯已擴充為「IO + POWER 雙資料源並行查詢」與「Tray 規格獨立懶加載快取」，下圖為目前實際流程。
+
 ```mermaid
-flowchart LR
-    A["使用者輸入 Lot ID\n並選擇 Fail Mode（HBIN）"] --> B{快取命中?}
-    B -->|是 → 直接顯示| C["從 dashboardStore 取出快取結果"]
-    B -->|否 → 呼叫 API| D["GET /api/v1/analysis/fail-sample\nlot_id + hbin"]
-    D --> E{API 結果}
-    E -->|404 → 尚未上傳 Netlist| F["Fail Sample List 顯示\n'此 Lot 尚未上傳 Netlist'"]
-    E -->|成功| G["存入快取\n更新搜尋歷史"]
-    G --> H["渲染 Fail Sample List"]
-    C --> H
+flowchart TD
+    A["使用者輸入 Lot ID\n並選擇 Fail Mode（HBIN）"] --> B["search(lotId)"]
+    B --> C["Promise.all：\n① IO：4 個 HBIN 並行查詢 fail-sample\n② POWER：4 個 HBIN 並行查詢 fail-sample-power\n（共 8 個請求，皆用 Promise.allSettled 個別容錯）"]
+    C --> D["個別存入 failSampleCache\n與 failSamplePowerCache\nCache[lotId][hbin]"]
+    D --> E["更新搜尋歷史\n(最新在最上、去重、最多 30 筆)"]
+    E --> F["渲染 4 張圖表 + Fail Sample List\n(依 currentHbin 從快取直接取值，無需等待)"]
+
+    F --> G{"需要 Fail Die／\nFail Sample on Tray？"}
+    G -->|是| H["fetchTraySpec(test_program)\n懶加載，已快取則跳過\n(traySpecCache 獨立於 fail-sample 快取)"]
+    H --> F
 ```
 
-**預設行為：** 搜尋時 Fail Mode 預設為 **Short（HBIN=3）**，同時並行查詢 4 個 HBIN（2/3/4/5）的資料並快取，確保使用者切換 Fail Mode 時無等待時間。
+**預設行為：** 搜尋時 Fail Mode 預設為 **Short（HBIN=3）**；切換 Lot ID 時一次性並行取得該 Lot 全部 4 個 HBIN 的 IO 與 POWER 資料並快取，確保使用者切換 Fail Mode 或 IO/POWER 模式時無等待時間。Tray 規格（`col_count`／`row_count`）因固定不隨 HBIN 改變，故獨立以 `test_program` 為 key 快取，避免重複請求。
+
+**404 容錯：** 個別 HBIN 查無資料時該筆快取存為 `null`（非拋錯中斷整體搜尋），Fail Sample List／各圖表依各自邏輯顯示對應的空值提示文字（見 3.3～3.7 節）。
 
 ### 3.3 Fail Sample List 資料處理
 
@@ -343,46 +375,186 @@ ball_name: [F15_H9, AY10]→   DutNo=3 / DieNo=U1 / Ball=AY10
 die_no: [U1, U1]
 ```
 
-**空 Ball 處理：** 若 `ball_name` 為空陣列（表示 Fail DUT 但無 IO pin fail），仍保留一列以「`—`」顯示，讓工程師能看到 DUT 的存在。
+**空 Ball 處理：** 若 `ball_name` 為空陣列（表示 Fail DUT 但無 IO pin fail），仍保留一列以「`—`」顯示，讓工程師能看到 DUT 的存在，而非誤以為該 DUT 沒有被查到。
 
-**固定高度設計：** 透過 CSS override (`ant-table-body { height: Npx !important }`) 強制 Table body 固定高度，避免資料少時版面縮小。
+**rowSpan 分頁重算：** 同一 DUT 展開的多列會合併 `Dut No` 儲存格（rowSpan）。由於分頁（每頁 20 筆）會切斷同一 DUT 的連續列，rowSpan **必須在「目前分頁的 slice 內」重新計算**（`calcRowSpan()`），而非對全部資料一次算好，否則會發生「同一 DUT 被拆到兩頁、儲存格合併錯位」的問題。
 
-### 3.4 ResultsPanel 分析文字邏輯
+```mermaid
+flowchart LR
+    A["後端 fail_sample\n(DUT 維度)"] --> B["展平為 Ball 維度\nallFlatRows"]
+    B --> C["依目前頁碼切出\ncurrent page slice"]
+    C --> D["calcRowSpan(slice)\n只在本頁範圍內合併儲存格"]
+    D --> E["渲染 Table"]
+```
 
-分析文字格式：
+**IO / POWER 雙模式：** 同一元件透過 `variant` prop（`'io' | 'power'`）切換資料來源（`getCurrentFailSample()` 或 `getCurrentFailSamplePower()`），Dashboard 上以兩個獨立 Table 並排呈現，欄位與展開邏輯完全共用。
+
+**空值狀態區分：** 依目前查詢狀態顯示不同提示文字，避免工程師誤判：
+
+| 情境 | 顯示文字 |
+|------|---------|
+| 尚未輸入 Lot ID | 請先搜尋 Lot ID |
+| 未選擇 Fail Mode | 請選擇 Fail Mode |
+| POWER 模式尚未查詢過（新查詢但快取還沒回來） | 請重新搜尋以取得 POWER 資料 |
+| 該 Fail Mode 查無資料 | 此 Fail Mode 無 Fail 資料 |
+| Lot 尚未上傳 Netlist | 此 Lot 尚未上傳 Netlist |
+
+**固定高度設計：** 透過 CSS override (`.ant-table-body { height: Npx !important }`) 強制 Table body 固定高度，避免資料少時版面縮小；捲軸樣式並依 dark/light 主題切換顏色。
+
+---
+
+### 3.4 Top 1 Fail Die（疊層圖）資料處理邏輯
+
+**元件**：`FailDieChart.tsx`　**資料來源**：`GET /netlist/programs/{test_program}/stacking-die`（回傳 `layer_no`／`unity_no`／`is_substrate` 疊層結構）＋ 目前查詢的 `fail_sample` 結果。
+
+```mermaid
+flowchart TD
+    A["fail_sample\n(目前 Lot + HBIN)"] --> B["calcDieFailCounts()\n統計每個 die_no 出現次數"]
+    B --> C["findTopFailDies()\n取出現次數最高者\n(可能並列多個)"]
+    C --> D["dieToBallNames()\n每個 die 對應出現次數最高的 ball_name\n(供 tooltip 顯示，並列時全列出)"]
+
+    E["stacking-die API\n(layer_no / unity_no / is_substrate)"] --> F["依 layer_no 分組\n同層 Die 橫向並排、依 Unity 編號排序"]
+    F --> G["layer_no 越小 = 物理位置越高\n顯示在上方；Substrate 固定最底層"]
+
+    C --> H{"此 Die 屬於\nTop Fail？"}
+    G --> H
+    H -->|是| I["🟠 橘色高亮方塊"]
+    H -->|否| J["🔵 藍色一般方塊"]
+    K["Substrate"] --> L["🟢 綠色，較寬"]
+```
+
+**版面細節**：容器寬度以 `ResizeObserver` 動態量測，同一層有多個 Die 時平均分配寬度；相鄰層級的方塊以左右交錯偏移（奇數層向左、偶數層向右）呈現視覺上的立體堆疊層次感。方塊 hover 時的 Tooltip 顯示「失效次數」與「集中的 Ball Name」。
+
+> **與 ResultsPanel／Fail Sample on Tray 的關係**：本圖表的「Top Fail Die」統計為獨立實作（`calcDieFailCounts`／`findTopFailDies`，皆定義於 `FailDieChart.tsx` 內），與 3.7 節、3.8 節共用的 `computeAnalysis()`（定義於 `analysisHelpers.ts`）為**個別實作但邏輯等價**（皆為「die_no 出現頻率最高者，平局全列」），實務結果一致。
+
+---
+
+### 3.5 Fail Die Rate 資料處理邏輯
+
+**元件**：`FailDieRateChart.tsx`　**資料來源**：與 3.4 節相同的 `stacking-die` API（取得全部 Unity 清單，排除 Substrate 並依編號排序）。
+
+**Fail Rate 計算方式**：
 
 ```
-1. {total_qty}ea {FailMode} sample 中有 {io_fail_count}ea 為 IO pin fail.
-2. {io_fail_count}ea 的 {FailMode} sample 均集中在 {Die(Ball)}.
+分子：每個 DUT 的 die_no 先去重（同一 DUT 內同一 Die 只算一次），
+      再統計該 Die 出現在幾個不同 DUT 中
+分母：total_qty（此 Lot 在該 Fail Mode 下的實際失效 DUT 總數）
+
+Fail Rate（%） = 分子 ÷ total_qty × 100
 ```
+
+```mermaid
+flowchart LR
+    A["stacking-die API\n取得全部 Unity（排除 Substrate）"] --> B["fail_sample\n各 DUT 的 die_no 陣列"]
+    B --> C["每個 DUT 內 die_no 先去重\n(Set)"]
+    C --> D["統計各 Unity\n出現在幾個 DUT 中"]
+    D --> E["÷ total_qty\n= Fail Rate (%)"]
+    E --> F["ECharts 水平柱狀圖\nY 軸固定 0～100%"]
+    F --> G["Rate 最高者\n🟠 橘色標示，其餘 🔵 藍色"]
+```
+
+**設計重點**：Y 軸固定為 0～100% 區間（不隨資料浮動），讓工程師能直接判斷失效率的相對嚴重程度；X 軸資料量較多時自動縮小字級並限制長條最大寬度，避免版面壓縮。
+
+---
+
+### 3.6 Fail Ball 資料處理邏輯
+
+**元件**：`FailBallChart.tsx`　**核心函式**：`calcTopBalls()`（`analysisHelpers.ts`，與 ResultsPanel 共用）。
+
+**計算邏輯**：統計 `ball_name` 在所有 DUT 中出現的**總次數**（同一 DUT 內重複出現的 ball 也累加計入），依次數降冪排序後取**前 10 名**繪製水平柱狀圖。
+
+```mermaid
+flowchart LR
+    A["fail_sample.ball_name[]\n(所有 DUT)"] --> B["逐一累加計數\ncounts[ball]++"]
+    B --> C["依次數降冪排序\n取 Top 10"]
+    C --> D["ECharts 水平柱狀圖"]
+    D --> E["次數最高者\n🟠 橘色，其餘 🔵 藍色"]
+```
+
+**IO / POWER 切換**：右上角 `Segmented` 切換鈕，切換資料來源（`getCurrentFailSample()` ↔ `getCurrentFailSamplePower()`），計算邏輯完全共用，僅輸入資料不同；POWER 模式若尚未查詢過會與 Fail Sample List（3.3 節）顯示相同的提示文字區分邏輯。
+
+**Y 軸上限**：取「該 Lot 的 `total_duts`」與「Top 1 Ball 次數」兩者中的較大值，確保長條圖有穩定的比例基準，不會因為資料量小而使圖表比例失真。
+
+---
+
+### 3.7 Fail Sample on Tray 資料處理邏輯
+
+**元件**：`FailTrayChart.tsx`　**核心函式**：`computeAnalysis()` ＋ `buildTrayPages()`（皆定義於 `analysisHelpers.ts`，與 ResultsPanel 共用同一份 `computeAnalysis()`）。**資料來源**：`GET /netlist/programs/{test_program}/tray`（回傳 `col_count` × `row_count`）＋ 目前的 `fail_sample` 結果。
+
+```mermaid
+flowchart TD
+    A["fail_sample"] --> B["computeAnalysis()\n（與 ResultsPanel 共用）"]
+    B --> C["ioPinFailItems\nball_name 非空的項目"]
+    B --> D["dieResults\n最高頻 Die 及其對應最高頻 Ball"]
+    C --> E["dutMap：依 dut_no 建索引"]
+    D --> F["topBalls：最高頻 Die 對應的\n最高頻 Ball 集合"]
+
+    G["Tray Spec\n(col_count × row_count)"] --> H["容量 = col_count × row_count\nDUT #1 起 left-to-right, top-to-bottom 排列"]
+    H --> I["共畫 total_qty 個 DUT 格\n(= 此 Lot 實際失效 DUT 總數)"]
+
+    I --> J{"此 DUT\n在 dutMap 中？"}
+    J -->|否| K["🔵 藍色\n(POWER-only fail 或無 IO ball 資訊，\n仍是真實失效 DUT)"]
+    J -->|是| L{"ball_name\n命中 topBalls？"}
+    L -->|是| M["🟠 橘色\nTop 1 Fail（與 ResultsPanel 第2句一致）"]
+    L -->|否| K
+    N["超出 total_qty 的補位格\n(dutNo = 0)"] --> O["⚪ 灰色"]
+```
+
+**分頁邏輯**：每頁容量 = `col_count × row_count`，`total_qty` 較大時自動分頁（頁碼導航於卡片底部），最後一頁不足容量以灰色佔位格補滿，維持格子外觀方正。
+
+**IO / POWER 切換**：與 Fail Ball（3.6 節）相同的 `Segmented` 切換設計，兩種模式共用同一套著色與分頁邏輯。
+
+---
+
+### 3.8 ResultsPanel 分析文字邏輯
+
+> **修正（2026-07-10，依實際程式碼 `ResultsPanel.tsx` 校正）**：本節原始內容只反映 v1.0 時期的 IO-only 邏輯，第二階段新增 POWER 分析後，元件已改為「動態組合最多 4 句」的邏輯，且句子格式、空值訊息與強調色都與原文不同，以下為目前實際行為。
+
+**分析文字格式**（依條件動態顯示，最多 4 句，項目編號依實際顯示順序連續重排，不是固定 1~4）：
+
+```
+1. {total_qty} ea {FailMode} sample 中有 {ioFailCount} ea 為 IO pin fail.        ← 一律顯示
+2. {powerTotalQty} ea {FailMode} sample 中有 {powerFailCount} ea 為 Power pin fail. ← 一律顯示
+3. {ioFailCount} ea IO pin 的 {FailMode} sample 均集中在 {Die (Ball1, Ball2)、...}. ← 僅 ioFailCount > 0 時顯示
+4. Power pin fail 的 Top 3 Fail Ball : {Ball1, Ball2, Ball3}.                   ← 僅 powerFailCount > 0 時顯示
+```
+
+數字部分（`ioFailCount`、`powerFailCount` 及各集中位置/Ball 名稱）以強調色 `#e61f8c`（粉紅）顯示。
 
 **資料計算邏輯：**
 
 | 變數 | 計算方式 |
 |------|---------|
-| `total_qty` | API 回傳 `total_qty`（MongoDB 查得的 Fail DUT 總數） |
-| `io_fail_count` | 統計 `fail_sample` 中 `ball_name` 不為空的 item 數量 |
-| 最高頻 Die | 統計所有 `die_no` 出現次數，取最高者（平局全列） |
-| 最高頻 Ball | 在同一 Die 的資料中，統計 `ball_name` 出現次數，取最高者（平局全列） |
+| `total_qty` | IO 查詢結果的 `total_qty`（MongoDB 查得的 Fail DUT 總數） |
+| `ioFailCount` | `computeAnalysis(IO fail_sample).ioFailCount`，統計 `ball_name` 不為空的 item 數量 |
+| `powerTotalQty` | POWER 查詢結果的 `total_qty`；POWER 資料為 `null` 時視為 0 |
+| `powerFailCount` | `computeAnalysis(POWER fail_sample).ioFailCount`；POWER 資料為 `null` 時視為 0 |
+| 項目 3 集中位置 | `computeAnalysis(IO fail_sample).dieResults`，格式為 `Die (Ball1, Ball2)`，多個並列 Die 以「、」串接（與 3.4／3.7 節 `computeAnalysis()` 共用同一份邏輯） |
+| 項目 4 Top 3 Power Ball | `calcTopBalls(POWER fail_sample, 3)`（與 3.6 節 Fail Ball 圖表共用 `calcTopBalls()`），僅取前 3 名 |
 
-**邊界條件：**
-- `total_qty = 0` → 顯示「無對應資料」
-- `io_fail_count = 0` → 只顯示第 1 句，不顯示第 2 句
-- Die 或 Ball 出現次數平局 → 全部列出（例：U2(AU18) / U7(AY10)）
+**邊界條件（與 v1.0 時期不同，請注意）：**
+- **IO 資料判斷優先**：只要 `!failSampleData || total_qty === 0`（即 **IO** 查詢結果為空），整個 ResultsPanel 顯示「無對應 IO 資料」，**即使 POWER 資料有值也不會顯示**——這是目前程式碼的實際行為，並非以 IO/POWER 兩者皆空才判定無資料
+- 項目 1、2（IO / Power pin fail 數量）**一律顯示**，不像 v1.0 時期「只有一句話」的設計
+- 項目 3 僅 `ioFailCount > 0` 時顯示；項目 4 僅 `powerFailCount > 0` 且有 Top Ball 時顯示；兩句皆可能同時不顯示（IO/POWER 皆為 0 但 total_qty > 0 的情況）
+- Die 或 Ball 出現次數平局 → 全部列出
 
 ```mermaid
 flowchart TD
-    A[取得 FailSampleResult] --> B{total_qty = 0?}
-    B -->|是| C["顯示：無對應資料"]
-    B -->|否| D["計算 io_fail_count\nball_name 不為空的 item 數"]
-    D --> E["顯示第 1 句：\nXea Short sample 中有 Yea IO pin fail"]
-    E --> F{io_fail_count > 0?}
-    F -->|否| G["只顯示第 1 句"]
-    F -->|是| H["計算最高頻 Die（可能多個）\n計算各 Die 下最高頻 Ball"]
-    H --> I["顯示第 2 句：\nYea Short sample 均集中在 U7(AY10)"]
+    A["取得 IO / POWER 兩份 FailSampleResult"] --> B{"IO total_qty = 0\n或 IO 資料為 null？"}
+    B -->|是| C["顯示：無對應 IO 資料\n（即使 POWER 有資料也不顯示）"]
+    B -->|否| D["計算 ioFailCount / powerFailCount\n(computeAnalysis 各自套用於 IO / POWER)"]
+    D --> E["項目1：IO pin fail 數量（一律顯示）"]
+    E --> F["項目2：Power pin fail 數量（一律顯示）"]
+    F --> G{"ioFailCount > 0？"}
+    G -->|是| H["項目3：IO 集中位置\n(dieResults → Die (Ball,...) 、串接)"]
+    G -->|否| I{"powerFailCount > 0？"}
+    H --> I
+    I -->|是| J["項目4：Power Top 3 Fail Ball\n(calcTopBalls, 取前3)"]
+    I -->|否| K["結束（僅顯示項目1、2）"]
+    J --> K2["結束"]
 ```
 
-### 3.5 前端 Logging 機制
+### 3.9 前端 Logging 機制
 
 ```
 Logger 架構
@@ -418,6 +590,8 @@ addLog({ level, module, stack, msg })
 
 ### 4.2 測試目錄結構
 
+> **數量更新（2026-07-08 實測校正）**：v1.0 撰寫時記載的各檔案測試數與加總（57）本身即有出入，以下已依 `npx vitest run` 實際執行結果校正。`analysisHelpers.test.ts` 因第二階段新增 `calcTopBalls()`／`buildTrayPages()`（供 Fail Ball／Fail Sample on Tray 使用，見 3.6／3.7 節）測試量成長最多。
+
 ```
 tests/
 ├── setup.ts               # 全域 setup
@@ -425,25 +599,25 @@ tests/
 │                          #  ・matchMedia mock（Ant Design Grid 相容性）
 │                          #  ・localStorage mock
 ├── unit/                  # 純邏輯單元測試（不需 DOM）
-│   ├── logging.test.ts    # Logger 模組（17 tests）
-│   ├── authStore.test.ts  # 認證 Store 邏輯（10 tests）
+│   ├── logging.test.ts    # Logger 模組（10 tests）
+│   ├── authStore.test.ts  # 認證 Store 邏輯（7 tests）
 │   ├── dashboardStore.test.ts  # Dashboard Store + 快取（15 tests）
-│   └── analysisHelpers.test.ts # 分析文字計算邏輯（15 tests）
+│   └── analysisHelpers.test.ts # 分析文字/圖表計算邏輯（24 tests）
 └── components/            # React 元件測試（含 UI 互動）
     └── LoginPage.test.tsx # 登入頁元件（10 tests）
 ```
 
 ### 4.3 測試覆蓋項目
 
-**目前測試數量：57 tests（5 個測試檔案，全部通過 ✅）**
+**目前測試數量：66 tests（5 個測試檔案，全部通過 ✅，2026-07-08 實測）**
 
-#### logging.test.ts（17 tests）
+#### logging.test.ts（10 tests）
 - Ring buffer 上限機制（超過 2000 筆時自動覆蓋最舊的）
 - sessionStorage 持久化
 - `downloadLogs()` 觸發 Blob 下載
 - `clearLogs()` 清除功能
 
-#### authStore.test.ts（10 tests）
+#### authStore.test.ts（7 tests）
 - 初始狀態驗證
 - 登入成功後 token / user / isLoading 狀態更新
 - 登出後清除 token + localStorage
@@ -453,17 +627,14 @@ tests/
 - 搜尋觸發 API 呼叫（`isSearching` 狀態）
 - 同一 lot+hbin 第二次搜尋直接命中快取（不重複呼叫 API）
 - `setHbin()` 切換 Fail Mode
-- 搜尋歷史紀錄（最多 20 筆，重複的 lot 移至最上方）
+- 搜尋歷史紀錄（最多 30 筆，重複的 lot 移至最上方）
 - 搜尋歷史不重複新增
 
-#### analysisHelpers.test.ts（15 tests）
-- `countFrequency()` 頻率統計
-- `getTopKeys()` 取最高頻項目（含平局處理）
-- `computeAnalysis()` 完整分析文字計算：
-  - total_qty = 0 → 無資料
-  - io_fail_count = 0 → 只顯示第 1 句
-  - 平局 Die → 全部列出
-  - 平局 Ball → 全部列出
+#### analysisHelpers.test.ts（24 tests）
+- `countFrequency()` 頻率統計、`getTopKeys()` 取最高頻項目（含平局處理）
+- `computeAnalysis()` 完整分析文字計算（total_qty=0 無資料／io_fail_count=0 只顯示第1句／Die 或 Ball 平局全列出）
+- ⭐ `calcTopBalls()`：Top N Ball 排序計算（Fail Ball 圖表，3.6 節）
+- ⭐ `buildTrayPages()`／`getCellStatus()`：Tray 分頁與橘/藍/灰著色邏輯（Fail Sample on Tray，3.7 節）
 
 #### LoginPage.test.tsx（10 tests）
 - 渲染標題與品牌元素
@@ -472,6 +643,8 @@ tests/
 - 後端無回應 → 顯示「無法連線」
 - LDAP 服務異常（code=1009）→ 顯示「LDAP 服務異常」
 - 帳密錯誤（401）→ 顯示「帳號或密碼錯誤」
+
+> **已知缺口**：`FailDieChart`／`FailDieRateChart` 兩個元件目前尚無專屬單元測試（僅透過手動驗證與 build 檢查確認正確性），建議列入後續補強項目。
 
 ### 4.4 執行測試
 
@@ -516,7 +689,7 @@ tests/
 │     VITE_API_BASE_URL=http://10.16.93.48:8001
 └── .env.dev           # 開發環境覆蓋（npm run dev 時載入）
       VITE_API_BASE_URL=      ← 空字串，使用 Vite proxy
-      DEV_API_TARGET=http://localhost:8001
+      DEV_API_TARGET=http://localhost:8002
 ```
 
 **關鍵機制：** `VITE_API_BASE_URL` 在 `npm run build` 時被「燒進」JS bundle，改變 URL 必須重新 build。
@@ -604,22 +777,26 @@ Copy-Item -Path "D:\ACT\Failure Analysis System\Frontend\dist\*" `
 
 ### 6.1 待開發功能（P2）
 
+> ✅ **狀態更新（2026-07-08）**：本節列出的四張圖表皆已於第二階段（2026-06-25～06-30）完成上線，資料處理邏輯詳見第三章 3.4～3.7 節；下表原始規劃內容保留作為歷史紀錄。僅 **Netlist 管理頁**（上傳／瀏覽）仍待開發，最新規劃（已拆分為「資料上傳」與「歷史紀錄」兩頁，版面 v2 已定案）請見 `docs/reports/20260708_ACT-Frontend-Report.md` 第五章。
+
 | 功能 | 說明 | 對應 API |
 |------|------|---------|
-| **Fail Sample on Tray** | Tray 佈局圖（6×16 格），顯示哪個位置的 DUT 失效 | Netlist tray API |
-| **Fail Die** | 疊 Die 結構圖，顯示哪層 Die 失效（Cytoscape.js） | Netlist stacking-die API |
-| **Fail Die Rate** | 各層 Die 失效率統計折線/柱狀圖 | 計算自 fail-sample |
-| **Fail Ball** | BGA Ball 分佈直方圖，顯示高頻失效 Ball | 計算自 fail-sample |
-| **Netlist 管理頁** | 上傳 NL-xxx.xlsx、瀏覽已上傳清單 | POST /netlist/upload |
+| **Fail Sample on Tray** ✅ | Tray 佈局圖（6×16 格），顯示哪個位置的 DUT 失效 | Netlist tray API |
+| **Fail Die** ✅ | 疊 Die 結構圖，顯示哪層 Die 失效（Cytoscape.js） | Netlist stacking-die API |
+| **Fail Die Rate** ✅ | 各層 Die 失效率統計折線/柱狀圖 | 計算自 fail-sample |
+| **Fail Ball** ✅ | BGA Ball 分佈直方圖，顯示高頻失效 Ball | 計算自 fail-sample |
+| **Netlist 管理頁** 🔄 規劃中 | 上傳 NL-xxx.xlsx、瀏覽已上傳清單（已拆分為資料上傳／歷史紀錄兩頁） | POST /netlist/upload |
 
 ### 6.2 待開發功能（P3）
 
+> ✅ **狀態更新（2026-07-08）**：「深色/淺色主題切換」已完成（見 3.2 節補充說明與 `docs/reports/20260708_ACT-Frontend-Report.md` 第三章）。「歷史紀錄頁」範疇已擴大為登入／上傳／使用狀況三主題通用查詢頁，最新規劃見 `20260708_ACT-Frontend-Report.md` 第五章。
+
 | 功能 | 說明 |
 |------|------|
-| **歷史紀錄頁** | 查詢歷史分析記錄 |
-| **使用者管理頁** | Admin 管理使用者帳號與角色 |
-| **分析報告匯出** | 將圖表與分析文字匯出為 PDF / Excel |
-| **深色/淺色主題切換** | 可選的淺色模式 |
+| **歷史紀錄頁** 🔄 規劃中 | 查詢歷史分析記錄（範疇擴大為登入／上傳／使用狀況三主題，見 20260708 報告） |
+| **使用者管理頁** ⬜ | Admin 管理使用者帳號與角色 |
+| **分析報告匯出** ⬜ | 將圖表與分析文字匯出為 PDF / Excel |
+| **深色/淺色主題切換** ✅ 已完成 | 可選的淺色模式 |
 
 ### 6.3 未來技術優化方向
 

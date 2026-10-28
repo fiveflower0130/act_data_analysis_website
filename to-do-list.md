@@ -1,66 +1,132 @@
 # ACT Failure Analysis System Frontend — 待辦事項清單
 
-> 最後更新：2026-06-09（10:30）
-> 分析工具：GitHub Copilot
-> 說明：本文件記錄前端專案的待辦事項，依優先度分類管理，並於每次變更後同步更新狀態與修改紀錄。
+> 最後更新：2026-10-28
+> 分析工具：GitHub Copilot / Claude Code Fable
+> 說明：本文件記錄前端專案的待辦事項，**依模組分類**（依專案實際功能領域劃分），每個模組獨立一個區塊，優先級（P0~P3）改為表格欄位而非區塊標題；模組結構比照 Backend `to-do-list.md`，模組命名盡量對齊，方便兩邊對照。
 
 ---
 
-## 🔴 P0 — 極高優先
+## 狀態說明
 
-| # | 狀態 | 問題描述 | 位置 |
-|---|------|----------|------|
-| 1 | ✅ | 前端技術選型確認（React 18 + TypeScript + Vite + Zustand + Ant Design + ECharts + Cytoscape.js） | 規劃階段 |
-| 16 | ✅ | Windows Server 2022 Node.js 環境安裝（nvm-windows 1.2.2 + Node v22.13.1 LTS） | Server 環境 |
+| 符號 | 意義 |
+|------|------|
+| ⬜ | 待處理 |
+| 🔄 | 進行中 |
+| ✅ | 已完成 |
+| ❌ | 已取消／不適用 |
 
----
-
-## 🟠 P1 — 高優先
-
-| # | 狀態 | 問題描述 | 位置 |
-|---|------|----------|------|
-| 2 | ✅ | 專案初始化（Vite + React 18 + TypeScript scaffold + 所有依賴安裝） | 根目錄 |
-| 3 | ✅ | 設計系統建立（色彩 Token、Ant Design 暗色主題、全域 CSS） | `src/styles/` |
-| 17 | ✅ | Logger 模組實作（瀏覽器相容，ring buffer + sessionStorage + 下載功能） | `src/utils/logging/` |
-| 18 | ✅ | Axios client（JWT Bearer interceptor + Refresh Token 主動/被動刷新 + 統一錯誤處理 + logger 整合） | `src/api/client.ts` |
-| 19 | ✅ | Zustand auth store（token 管理、user info、login/logout actions） | `src/stores/authStore.ts` |
-| 20 | ✅ | React Router v6 設定 + 路由守衛（未登入 redirect to /login） | `src/router/index.tsx` |
-| 4 | ✅ | 全域版面骨架（Navbar 64px + Left Sidebar 320px + Center content） | `src/layouts/` |
-| 5 | ✅ | 認證模組（Login 頁、JWT 流程、路由守衛整合、UI 修正） | `src/features/auth/` |
-| 21 | ✅ | 建立測試環境（Vitest + Testing Library）並撰寫 auth 模組單元測試 | `tests/` |
-| 22 | ✅ | 撰寫 Logger 模組單元測試 | `tests/unit/logging.test.ts` |
+| 標籤 | 優先度 |
+|------|--------|
+| `P0` | 極高優先 |
+| `P1` | 高優先 |
+| `P2` | 中優先 |
+| `P3` | 低優先 |
 
 ---
 
-## 🟡 P2 — 中優先
+## 版本規劃（Phase II Roadmap）
 
-| # | 狀態 | 問題描述 | 位置 |
-|---|------|----------|------|
-| 6 | 🔄 | 主儀表板頁（LOT 搜尋 + 歷史記錄 + Fail Mode 篩選 + 版面 1:4 佈局 + 4 個圖表佔位元件） | `src/features/dashboard/` |
-| 7 | ✅ | Fail Sample List 表格元件（固定高度響應式 CSS override、統計至標題右側、showSizeChanger=false、Badge 統一綠色） | `src/features/dashboard/components/FailSampleList.tsx` |
-| 24 | ✅ | ResultsPanel 分析文本實作（IO pin fail 統計、最高頻 die/ball 計算、平局全列、total_qty 型別同步） | `src/features/dashboard/components/ResultsPanel.tsx` |
-| 23 | ✅ | 撰寫 Dashboard 模組單元測試（dashboardStore 15 tests + analysisHelpers 15 tests） | `tests/unit/` |
-| 25 | ✅ | 響應式版面設計（tokens 斷點/排版、useResponsiveTokens hook、所有頁面套用） | `src/styles/tokens.ts`、`src/hooks/`、各功能頁 |
-| 26 | ✅ | 環境變數設定（`.env/` 資料夾、`.env`/`.env.dev`，vite.config.ts `envDir`，區分正式/開發環境） | `.env/`、`vite.config.ts`、`package.json` |
-| 27 | ✅ | IIS 佈署指南與 `public/web.config` SPA 路由設定 | `docs/deployment/iis-deployment.md`、`public/web.config` |
-| 9 | ⬜ | Fail Die / Fail Die Rate 圖表元件 | `src/features/analysis/` |
-| 10 | ⬜ | Fail Ball 圖表元件 | `src/features/analysis/` |
-| 11 | ⬜ | Netlist 管理頁（上傳、列表） | `src/features/netlist/` |
+> Phase I（認證與版面基礎／Dashboard 核心功能／測試與部署）已於 v1.5.0 全數完成。以下為 Phase II 各版本規劃，對應項目與細節見各模組表格；版本號與範圍可能依開發狀況微調。
+
+| 版本 | 內容 | 對應項目 | 狀態 |
+|------|------|----------|------|
+| v1.6.0 | 資料上傳頁（純上傳功能） | #11 | 🔄 待後端 `uploaded_by_name` 欄位到位後開始 |
+| v1.7.0 | 歷史紀錄頁（登入/上傳/使用狀況三主題查詢） | #12 | 🔄 待後端全新歷史紀錄查詢 API |
+| v2.0.0 | ACT Dashboard 移植（Histogram + HW Bin List） | #29~#42 | ⬜ 待後端 `/api/v1/filters\|histogram\|hw-bin-list` 端點；範圍可能伴隨主頁改版整合，待後續確認 |
 
 ---
 
-## 🔵 P3 — 低優先
+## 模組：認證與版面基礎 ✅ 已完成
 
-| # | 狀態 | 問題描述 | 位置 |
-|---|------|----------|------|
-| 12 | ⬜ | 歷史紀錄頁 | `src/features/history/` |
-| 13 | ⬜ | 使用者管理頁（admin） | `src/features/users/` |
-| 14 | ⬜ | 分析報告匯出功能 | `src/features/export/` |
-| 15 | ⬜ | 深色 / 淺色主題切換 | `src/styles/` |
+| # | 優先級 | 狀態 | 問題描述 | 位置 |
+|---|--------|------|----------|------|
+| 1 | P0 | ✅ | 前端技術選型確認（React 18 + TypeScript + Vite + Zustand + Ant Design + ECharts + Cytoscape.js） | 規劃階段 |
+| 2 | P1 | ✅ | 專案初始化（Vite + React 18 + TypeScript scaffold + 所有依賴安裝） | 根目錄 |
+| 3 | P1 | ✅ | 設計系統建立（色彩 Token、Ant Design 暗色主題、全域 CSS） | `src/styles/` |
+| 4 | P1 | ✅ | 全域版面骨架（Navbar 64px + Left Sidebar 320px + Center content） | `src/layouts/` |
+| 5 | P1 | ✅ | 認證模組（Login 頁、JWT 流程、路由守衛整合、UI 修正） | `src/features/auth/` |
+| 16 | P0 | ✅ | Windows Server 2022 Node.js 環境安裝（nvm-windows 1.2.2 + Node v22.13.1 LTS） | Server 環境 |
+| 17 | P1 | ✅ | Logger 模組實作（瀏覽器相容，ring buffer + sessionStorage + 下載功能） | `src/utils/logging/` |
+| 18 | P1 | ✅ | Axios client（JWT Bearer interceptor + Refresh Token 主動/被動刷新 + 統一錯誤處理 + logger 整合） | `src/api/client.ts` |
+| 19 | P1 | ✅ | Zustand auth store（token 管理、user info、login/logout actions） | `src/stores/authStore.ts` |
+| 20 | P1 | ✅ | React Router v6 設定 + 路由守衛（未登入 redirect to /login） | `src/router/index.tsx` |
+
+---
+
+## 模組：Dashboard 核心功能（搜尋、快取、4 圖表、Fail Sample List）✅ 已完成
+
+| # | 優先級 | 狀態 | 問題描述 | 位置 |
+|---|--------|------|----------|------|
+| 6 | P2 | ✅ | 主儀表板頁（LOT 搜尋 + 歷史記錄 + Fail Mode 篩選 + 版面 1:4 佈局 + 4 個圖表元件） | `src/features/dashboard/` |
+| 7 | P2 | ✅ | Fail Sample List 表格元件（固定高度響應式 CSS override、統計至標題右側、showSizeChanger=false、Badge 統一綠色） | `src/features/dashboard/components/FailSampleList.tsx` |
+| 9 | P2 | ✅ | Top 1 Fail Die 疊層圖（Cytoscape.js + 節點著色）與 Fail Die Rate 直方圖（ECharts） | `src/features/dashboard/components/FailDieChart.tsx`、`FailDieRateChart.tsx` |
+| 10 | P2 | ✅ | Fail Ball 圖表（ECharts 長條圖，Top 10 Ball，IO/POWER 切換） | `src/features/dashboard/components/FailBallChart.tsx` |
+| 15 | P3 | ✅ | 深色 / 淺色主題切換（Navbar toggle，dark/light token 完整支援） | `src/styles/tokens.ts`、`src/stores/themeStore.ts` |
+| 24 | P2 | ✅ | ResultsPanel 分析文本實作（IO pin fail 統計、最高頻 die/ball 計算、平局全列、total_qty 型別同步） | `src/features/dashboard/components/ResultsPanel.tsx` |
+| 25 | P2 | ✅ | 響應式版面設計（tokens 斷點/排版、useResponsiveTokens hook、所有頁面套用） | `src/styles/tokens.ts`、`src/hooks/`、各功能頁 |
+| 28 | P2 | ✅ | Fail Sample on Tray 圖表（CSS Grid 位置圖，orange/blue 著色，多頁導航，dark/light tooltip） | `src/features/dashboard/components/FailTrayChart.tsx` |
+
+---
+
+## 模組：測試與部署 ✅ 已完成
+
+| # | 優先級 | 狀態 | 問題描述 | 位置 |
+|---|--------|------|----------|------|
+| 21 | P1 | ✅ | 建立測試環境（Vitest + Testing Library）並撰寫 auth 模組單元測試 | `tests/` |
+| 22 | P1 | ✅ | 撰寫 Logger 模組單元測試 | `tests/unit/logging.test.ts` |
+| 23 | P2 | ✅ | 撰寫 Dashboard 模組單元測試（dashboardStore + analysisHelpers，68 tests 通過） | `tests/unit/` |
+| 26 | P2 | ✅ | 環境變數設定（`.env/` 資料夾、`.env`/`.env.dev`，vite.config.ts `envDir`，區分正式/開發環境） | `.env/`、`vite.config.ts`、`package.json` |
+| 27 | P2 | ✅ | IIS 佈署指南與 `public/web.config` SPA 路由設定 | `docs/deployment/iis-deployment.md`、`public/web.config` |
+| 43 | P1 | ✅ | v1.5.0 release 前單元測試盤點與補強：新增 `client.test.ts`（JWT 攔截器 12 tests）、`themeStore.test.ts`（4 tests）、`PrivateRoute.test.tsx`（2 tests），補齊 `calcTopBalls()`（analysisHelpers）與 `dashboardStore`（getCurrentFailSamplePower/removeFromHistory/fetchTraySpec/getTraySpec/hasAnyFail/POWER 快取）測試場景（66→108 tests）；新增覆蓋率門檻（僅 `src/api/client.ts`、`src/stores/**`、`src/features/dashboard/utils/**`、`PrivateRoute.tsx`）與 `xunit-viewer` 測試報告工具（`npm run test:coverage`、`npm run test:report`，輸出統一收整於 `test-report/`） | `tests/unit/client.test.ts`、`tests/unit/themeStore.test.ts`、`tests/components/PrivateRoute.test.tsx`、`vite.config.ts` |
+
+---
+
+## 模組：ACT Dashboard 移植
+
+> 來源：`D:\ACT\ACT_dashboard_web\refactor-frontend-tasks.md`（舊系統 ASP.NET MVC 的 ACT Dashboard 篩選器 + 直方圖 + HW Bin List 移植至本系統）。全部依賴後端新增端點（Backend 尚需開發，見 Backend 專案 to-do-list.md），後端端點就緒前僅能先行開發型別與元件骨架。
+>
+> **API 命名說明（2026-07-08 修正）**：後端不採用 `/api/v1/act/*` 前綴（理由見 Backend `docs/decisions/ADR-014-act-dashboard-api-naming.md`），改依功能分為三個 domain：`/api/v1/filters/*`（7 層篩選器）、`/api/v1/histogram/*`、`/api/v1/hw-bin-list/*`。以下項目已同步更新端點描述。
+
+| # | 優先級 | 狀態 | 問題描述 | 位置 |
+|---|--------|------|----------|------|
+| 29 | P1 | ⬜ | ACT Dashboard 型別定義：`FilterParams`、`FilterResponse`、`HistogramParams`、`HistogramRecalcParams`、`HistogramData`、`HwBinListItem`（依賴後端 `/api/v1/filters/*`、`/api/v1/histogram/*`、`/api/v1/hw-bin-list/*` 端點） | `src/types/api.ts` |
+| 30 | P1 | ⬜ | ACT Dashboard API 封裝：7 個篩選器端點（`/api/v1/filters/*`）+ 2 個 Histogram 端點（`/api/v1/histogram`、`/api/v1/histogram/recalculate`）+ 1 個 HW Bin List 端點（`/api/v1/hw-bin-list`） | `src/api/act.ts` |
+| 31 | P1 | ⬜ | ACT Dashboard Zustand Store：7 層篩選條件共用狀態（pageName/日期/bd/tester/lotId/waferId/testMode/testItem/site）+ 下游清空邏輯（依賴後端 `/api/v1/filters/*` 端點） | `src/stores/actStore.ts` |
+| 32 | P1 | ⬜ | 7 層篩選器元件（串聯式 Select，依序 bd→tester→lotId→waferId→testMode→testItem→site，改變上層需清空下游並重新 fetch）（依賴後端 `/api/v1/filters/*` 端點） | `src/features/act/components/ActFilterPanel.tsx` |
+| 33 | P1 | ⬜ | Histogram 頁面：統計資訊區（固定 Spec / New Spec 計算結果）+ ECharts 直方圖（4 條 spec 標記線）+ 重新計算模式（X Min/X Max/Bin Width）（依賴後端 `/api/v1/histogram/*` 端點） | `src/features/act/pages/HistogramPage.tsx` |
+| 34 | P1 | ⬜ | HW Bin List 頁面：Ant Design Table（20 個欄位，含 Top1/2/3 Fail）+ Excel 匯出功能（需先確認選用 xlsx 或 exceljs 套件，目前專案尚未安裝任一套件；套件選型與 #12 歷史紀錄匯出共用同一份決策）（依賴後端 `/api/v1/hw-bin-list` 端點） | `src/features/act/pages/HwBinListPage.tsx` |
+| 35 | P1 | ⬜ | 路由設定：新增 `/act/histogram`、`/act/hw-bin-list` 兩條路由，Sidebar 新增 ACT 分組選單項目 | `src/router/`、`src/layouts/` |
+| 36 | P3 | ⬜ | 篩選條件同步至 URL Query String（`useSearchParams`），支援重整/分享連結保留查詢條件（來源：`refactor-frontend-tasks.md` 優化建議 O-F1，不影響第一版功能對等移植） | `src/features/act/` |
+| 37 | P3 | ⬜ | 日期範圍快速選項（`RangePicker presets`：最近7天/30天/本月，O-F2） | `src/features/act/components/ActFilterPanel.tsx` |
+| 38 | P3 | ⬜ | 篩選結果筆數預覽 Badge（需後端提供輕量 count 端點，O-F3） | `src/features/act/` |
+| 39 | P3 | ⬜ | HW Bin List 虛擬滾動或後端分頁（資料量大時的效能優化，O-F4） | `src/features/act/pages/HwBinListPage.tsx` |
+| 40 | P3 | ⬜ | Histogram 多圖並列比較功能（O-F5） | `src/features/act/pages/HistogramPage.tsx` |
+| 41 | P3 | ⬜ | X 軸 Label 精度與旋轉優化（`toPrecision(4)` + `axisLabel.rotate: 45`，O-F6） | `src/features/act/pages/HistogramPage.tsx` |
+| 42 | P3 | ⬜ | Top3 欄位改為結構化資料 `top_fails: [{item, fail_rate}]`（需配合後端調整，見 Backend O-B3，O-F7） | `src/features/act/pages/HwBinListPage.tsx` |
+
+---
+
+## 模組：資料上傳與歷史紀錄
+
+| # | 優先級 | 狀態 | 問題描述 | 位置 |
+|---|--------|------|----------|------|
+| 11 | P2 | 🔄 | 資料上傳頁 — 範疇收斂為單純上傳功能（原規劃的歷史紀錄子功能已拆分至 #12）。版面 v2 已確認（見 design-decisions-qa.md 條目 19）：左欄上傳主題下拉＋已上傳檔案清單（依檔名搜尋＋上傳者資訊），右欄上傳區＋覆蓋警示＋佇列（全部上傳批次送出，失敗不重試）。待後端 `uploaded_by_name` 欄位到位後開始實作 | `src/features/netlist/` |
+| 12 | P2 | 🔄 | 歷史紀錄頁 — 範疇擴大為登入/上傳/使用狀況三主題通用查詢頁（原規劃在 Netlist 內的上傳歷史子功能已併入本項，見 design-decisions-qa.md 條目 19）。版面 v2 已確認：左欄主題下拉＋查詢對象（全部+可複選使用者搜尋／只看自己）＋時間區間（快速選項+自訂）＋其他搜尋條件（依主題動態），右欄上表格+匯出、下統計圖表（構思中）。**待後端全新歷史紀錄查詢 API 開發**，使用狀況主題另待埋點方案討論定案（見 frontend-contract.md 第四節） | `src/features/history/` |
+
+---
+
+## 模組：未來規劃
+
+| # | 優先級 | 狀態 | 問題描述 | 位置 |
+|---|--------|------|----------|------|
+| 13 | P3 | ⬜ | 使用者管理頁（admin） | `src/features/users/` |
+| 14 | P3 | ⬜ | 分析報告匯出功能 | `src/features/export/` |
 
 ---
 
 ## 修改紀錄
+
+> **歸檔說明**：2026-05-29 ～ 2026-06-30 期間的完整修改歷史已收錄於對應週報（`docs/records/20260529_W22.md`、`20260601_W23.md`、`20260609_W24.md`、`20260630_W27.md`），此處不再重複列出逐筆細節，僅保留週報尚未涵蓋的最新異動。
 
 | 日期 | 項目 | 變更內容 | 負責人 |
 |------|------|----------|--------|
@@ -90,3 +156,32 @@
 | 2026-06-09 | #27 | ✅ 完成：建立 `public/web.config`（SPA 路由 + Option B 反向代理 comment）；建立 `docs/deployment/iis-deployment.md`（完整 IIS 佈署指南） | Dante |
 | 2026-06-09 | 修正 | ✅ 修正 LoginPage 標題由 "ACT Data Analytics AI" → "ACT Failure Analysis System" | Dante |
 | 2026-06-09 | 文件 | 更新 `.github/instructions/` 內 docs/reports → docs/records 參照；補充 project-overview 新增 docs/deployment 說明 | Dante |
+| 2026-06-25 | #9 | ✅ 完成：Top 1 Fail Die（Cytoscape.js 疊層節點圖）+ Fail Die Rate（ECharts 水平柱狀圖），以 stacking-die API 取得層次結構 | Dante |
+| 2026-06-25 | #10 | ✅ 完成：FailBallChart（ECharts 水平柱狀圖，Top 10 Ball Name，IO/POWER 切換，暗色 tooltip） | Dante |
+| 2026-06-25 | #6 | ✅ 完成：Dashboard 4 個圖表佔位元件全部替換為正式元件（Fail Die / Fail Die Rate / Fail Ball / Fail Tray） | Dante |
+| 2026-06-25 | #15 | ✅ 完成：dark/light 主題切換（themeStore + Navbar toggle，所有元件套用 colorMode token） | Dante |
+| 2026-06-25 | 修正 | ✅ 修正：Fail Sample List POWER variant（getFailSamplePower API，dashboardStore POWER cache） | Dante |
+| 2026-06-25 | 修正 | ✅ 修正：SearchHistory 新增刪除紀錄與展開收合功能 | Dante |
+| 2026-06-30 | #28 | ✅ 完成：FailTrayChart（Fail Sample on Tray，CSS Grid，orange/blue/gray 著色，多頁導航，Tray 規格 API） | Dante |
+| 2026-06-30 | #28 | ✅ 修正：FailTrayChart Tooltip dark/light 主題色（color + overlayInnerStyle）；格子加邊框（border: colorMode.border）；灰色格 light mode 淡藍灰 | Dante |
+| 2026-06-30 | 修正 | ✅ 統一 4 個 Dashboard 圖表卡片標題格式：Lot ID → HBinLabel（例：Short / Open） | Dante |
+| 2026-06-30 | 文件 | 同步更新 to-do-list.md、W27 工作紀錄、design-decisions-qa.md、frontend-contract.md | Dante |
+| 2026-07-02 | #11 | 🔄 Netlist 上傳子功能需求討論完成並確認版面線框圖，新增 design-decisions-qa.md 條目 17；發現 2 項待後端配合欄位（`uploaded_by_name`、失敗紀錄 `test_program`），已補充至 frontend-contract.md 第四節，前端待欄位到位後開始實作 | Dante |
+| 2026-07-07 | 文件 | 稽核並修正文件矛盾與過期內容：修正部署方案決策矛盾（design-decisions-qa.md 條目3 補充 IIS 修正說明）、整份改寫 ui-ux-design.instructions.md 反映現況、更新 project-architecture/tech-stack 文件日期與內容、修正 frontend-contract.md 章節編號錯亂（2.7/2.8）、重寫 README.md、刪除過期錯誤日誌檔案 errpr_info.txt、CLAUDE.md 補充 docs/reports 參考列、歸檔本文件舊修改紀錄 | Dante |
+| 2026-07-07 | #29~#35 | 新增：依 `D:\ACT\ACT_dashboard_web\refactor-frontend-tasks.md` 合併 ACT Dashboard 模組移植任務（型別、API、Store、篩選器、Histogram 頁、HW Bin List 頁、路由），列為 P1，依賴 Backend 新增 `/api/v1/act/*` 端點 | Dante |
+| 2026-07-07 | #36~#42 | 新增：ACT Dashboard 模組移植完成後的優化建議項目（URL同步、日期快捷、筆數預覽、虛擬滾動、多圖比較、X軸精度、Top3結構化），列為 P3 | Dante |
+| 2026-07-08 | #11, #12 | 🔄 與產線人員討論後，原規劃在 Netlist 頁內的「上傳＋歷史紀錄」拆為兩個獨立頁面：#11 資料上傳（範疇收斂為純上傳）、#12 歷史紀錄（範疇擴大為登入/上傳/使用狀況三主題，由 P3 移至 P2，與 #11 併排開發）。版面 v2 已確認，新增 design-decisions-qa.md 條目 18；frontend-contract.md 第四節新增 3 項待後端事項（全新歷史紀錄查詢 API、匯出方案待決、使用狀況埋點方案待設計） | Dante |
+| 2026-07-08 | #29~#35 | ACT Dashboard 模組移植端點命名修正：後端不採用 `/api/v1/act/*`（見 Backend ADR-014），改為 `/api/v1/filters/*`、`/api/v1/histogram/*`、`/api/v1/hw-bin-list/*`，同步更新 #29~#34 端點描述；對應 Backend to-do-list.md 新增「資料上傳與歷史紀錄後端需求」區塊（#71~#78） | Dante (Claude Code) |
+| 2026-07-10 | 文件 | 新增 design-decisions-qa.md 條目 19（Agent 開發分工原則，Frontend 側摘要，權威來源見 Backend ADR-015）；CLAUDE.md 情境參考文件表補上對應列 | Dante (Claude Code) |
+| 2026-07-10 | 結構重構 | **to-do-list.md 全面改版**：從「依優先級分區塊（另外獨立出「ACT Dashboard 模組移植」P1 區塊，P3 區塊內又嵌一層子表格）」改為「依模組分類，優先級改為表格欄位」，比照 Backend 同類重構。整理出 6 個模組（認證與版面基礎／Dashboard 核心功能／測試與部署／ACT Dashboard 移植／資料上傳與歷史紀錄／未來規劃）。**所有項目編號維持不變**（原本即無 #8，非本次遺漏），純粹重新分組，未新增或刪除任何項目。同步刪除從未使用的空資料夾 `src/features/analysis/` 並清理文件引用、新增 `.claude/agents/docs-consistency-checker.md`、修正 `api-contract-structure.instructions.md` 版本標記過期問題（詳見各文件自身修改紀錄） | Dante (Claude Code) |
+| 2026-07-21 | #10, #28 | 🔍 文件修正（不涉及程式碼變更）：依目前原始碼重新核對 `docs/records/20260630_W27.md`、`docs/reports/20260708_ACT-Frontend-Report.md` 兩份文件中 Fail Sample on Tray（#28）與 Fail Ball（#10）的說明。① Fail Tray：補齊 IO/POWER 切換說明與快取機制、修正 Tooltip 主題描述（實際為固定深色，非跟隨主題）、修正格子邊框描述（實際 0px，視覺分隔來自 grid gap）。② Fail Ball：新增完整 IO/POWER 快取流程圖（原僅表格四字帶過），修正誤植的 X/Y 軸對應與圖表方向描述（實際為類別軸在 X、數值軸在 Y 的長條圖，非水平柱狀圖），本表 #10 描述同步修正用詞。兩份文件的流程圖已互相同步 | Dante (Claude Code) |
+| 2026-07-29 | #43 | ✅ 完成：release v1.5.0 前單元測試盤點與補強——新增 `client.test.ts`（JWT 攔截器 12 tests）、`themeStore.test.ts`（4 tests）、`PrivateRoute.test.tsx`（2 tests），並補齊 `calcTopBalls()`（analysisHelpers）與 `dashboardStore`（getCurrentFailSamplePower/removeFromHistory/fetchTraySpec/getTraySpec/hasAnyFail/POWER 快取）測試場景，總測試數 66→108 全數通過 | Dante |
+| 2026-07-29 | #43 | ✅ 完成：安裝 `@vitest/coverage-v8`，於 `vite.config.ts` 設定覆蓋率門檻（僅 `src/api/client.ts`、`src/stores/**`、`src/features/dashboard/utils/**`、`PrivateRoute.tsx`：statements/lines 85%、functions 75%、branches 65%），新增 `npm run test:coverage` | Dante |
+| 2026-07-29 | #43 | ✅ 完成：安裝 `xunit-viewer`，Vitest 改用 `junit` reporter 輸出 XML 後轉換為單一靜態 HTML 測試結果報告，新增 `npm run test:report`；報告輸出統一收整於 `test-report/result/`（測試結果）與 `test-report/coverage/`（覆蓋率），已加入 `.gitignore` | Dante |
+| 2026-07-29 | 文件 | 同步更新 to-do-list.md、design-decisions-qa.md（條目 17）、README.md | Dante |
+| 2026-07-31 | 文件 | 新增「版本規劃（Phase II Roadmap）」區塊：v1.6.0 資料上傳（#11）、v1.7.0 歷史紀錄（#12）、v2.0.0 ACT Dashboard 移植（#29~#42，範圍可能伴隨主頁改版整合，待後續確認） | Dante |
+| 2026-08-05 | 修正 | ✅ 同步後端 API 規格更新：`GET /data/search` 回應格式 Breaking Change（`customer`／`test_program`／`tester` 提升至最外層，`sites[].lot_info` 僅留 `site_id`／`site_qty`，新增 `qty`／`wafer_id`），修正 `src/types/api.ts` 的 `SearchResult`／`SiteSearchResult`，新增 `SiteSummaryInfo`；同步 `frontend-contract.md` 2.4、2.8～2.11 節記載新增模組六 Fail Sample Import 查詢/匯出端點（尚未接入 UI）；`fail-sample`／`fail-sample-power` 呼叫方式確認不變（無需修改）；108 tests 全數通過 | Dante |
+| 2026-08-05 | 版本 | ✅ 版本號升級 1.5.0 → 1.5.1（package.json/package-lock.json），發布本次 API 合約修正 patch 版本 | Dante |
+| 2026-08-17 | 文件 | 導入 graphify 程式碼知識圖譜工具（與 Backend 共用父目錄 `D:\ACT\Failure Analysis System\graphify-out\` 的跨 repo 圖譜）；`CLAUDE.md` 與 `.github/copilot-instructions.md` 新增「程式碼關聯查詢（graphify）」使用規範與全域規則「跨檔案關聯先查圖譜」；repo 內建立 `graphify-out` junction 指向父目錄共用圖譜（已加入 `.gitignore`），查詢指令免帶 `--graph` 即可解析，詳細安裝紀錄見 Backend `to-do-list.md` 2026-08-17 條目 | Dante (Claude Fable 5) |
+| 2026-08-17 | 版控 | `git-workflow.instructions.md` 新增「AI 指示文件備份機制」一節：本 repo 的 `.github/`、`CLAUDE.md`、`.claude/` 已納入獨立備份 repo `..\ai-config-backup\`（僅推私人 GitHub private，嚴禁加入公司 GitLab），大幅修改指示文件後執行該 repo 的 `sync.ps1` 同步 | Dante (Claude Fable 5) |
+| 2026-10-28 | #24, #43 | ✅ 修正 `computeAnalysis()` 的 die/ball 索引配對：只統計 `die_no[k] === die` 的 `ball_name[k]`，避免跨 die DUT 污染 ResultsPanel；補充跨 die、22 顆 U14 ball 與既有平局／空值／`ioFailCount` 測試 | Dante |

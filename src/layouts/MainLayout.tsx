@@ -6,6 +6,7 @@ import useAuthStore from '../stores/authStore';
 import useThemeStore from '../stores/themeStore';
 import { useResponsiveTokens } from '../hooks/useResponsiveTokens';
 import { useThemeColors } from '../hooks/useThemeColors';
+import VersionBadge from '../components/VersionBadge';
 
 const { Header, Content } = Layout;
 const { Text } = Typography;
@@ -38,6 +39,12 @@ const MainLayout = () => {
       label: '登出',
       onClick: handleLogout,
     },
+    {
+      key: 'version',
+      icon: null,
+      label: <VersionBadge position="inline" color={colorMode.textMuted} />,
+      disabled: true,
+    }
   ];
 
   return (
@@ -59,11 +66,11 @@ const MainLayout = () => {
         }}
       >
         <Space align="center" size={8}>
-          <Activity size={responsive.isMobile ? 16 : 20} color={colorMode.primary} strokeWidth={1.5} />
+          <Activity size={responsive.isMobile ? 16 : 20} color={colorMode.primary} strokeWidth={2} />
           <Text strong style={{ 
               color: colorMode.textPrimary, 
               fontSize: responsive.typography.sectionTitle,
-              letterSpacing: 1 
+              letterSpacing: 0 
             }}>
             ACT Failure Analysis AI
           </Text>

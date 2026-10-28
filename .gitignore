@@ -28,6 +28,10 @@ dist-ssr
 # GitHub Copilot 設定（指示文件、Agent 設定）
 .github/
 
+# Claude Code 設定（CLAUDE.md、權限與本機設定）
+CLAUDE.md
+.claude/
+
 # 環境變數
 .env
 .env.dev
@@ -38,10 +42,14 @@ dist-ssr
 # macOS
 .DS_Store
 
-# 測試覆蓋率
+# 測試覆蓋率與測試結果報告（npm run test:report 產出，含 test-report/coverage、test-report/result）
 coverage/
+test-report/
 
 # Python
 __pycache__/
 *.pyc
 .venv/
+
+# graphify 知識圖譜（junction 指向父目錄共用圖譜，不進版控）
+graphify-out/

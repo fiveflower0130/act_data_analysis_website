@@ -158,17 +158,32 @@ export type TestResultValueItem = {
   real_time: string;
 } & Record<string, string | number | TestItemResult>;
 
+/** /data/search 回應中單一 Site 專屬的基本資訊（批次共用欄位已提升至 SearchResult 最外層） */
+export interface SiteSummaryInfo {
+  site_id: string;
+  site_qty: number;
+}
+
 /** /data/search 回應中單一 Site 的資料 */
 export interface SiteSearchResult {
-  lot_info: LotSiteInfo;
+  lot_info: SiteSummaryInfo;
   test_result_value: TestResultValueItem[];
 }
 
-/** GET /api/v1/data/search 回應 */
+/**
+ * GET /api/v1/data/search 回應（2026-08-05 起：批次共用欄位提升至最外層，
+ * 與 Fail Sample Import 的 `GET /data/fail-sample-import/{batch_id}` 格式一致）
+ */
 export interface SearchResult {
+  customer: string;
+  test_program: string;
   lot_id: string;
+  wafer_id: string | null;
   hbin: number;
   execution_mode: string;
+  tester: string;
+  date: string;
+  qty: number;
   sites: SiteSearchResult[];
 }
 

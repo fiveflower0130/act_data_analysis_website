@@ -3,9 +3,10 @@ import SearchPanel from './components/SearchPanel';
 import SearchHistory from './components/SearchHistory';
 import DashboardHeader from './components/DashboardHeader';
 import FailSampleList from './components/FailSampleList';
-import PlaceholderChart from './components/PlaceholderChart';
+import FailTrayChart from './components/FailTrayChart';
 import FailDieChart from './components/FailDieChart';
 import FailDieRateChart from './components/FailDieRateChart';
+import FailBallChart from './components/FailBallChart';
 import ResultsPanel from './components/ResultsPanel';
 import { useResponsiveTokens } from '../../hooks/useResponsiveTokens';
 import { useThemeColors } from '../../hooks/useThemeColors';
@@ -70,25 +71,40 @@ const DashboardPage = () => {
             gap: 12, 
           }}
         >
-          {/* 左欄：Fail Sample List（固定寬度佔 22%，全高）*/}
-          <div style={{ width: '21%', flexShrink: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
-            <FailSampleList />
+          {/* 左欄：IO / POWER 兩個 Fail Sample List（各佔一半，共 40%）*/}
+          <div
+            style={{
+              flex: '0 0 40%',        // 固定佔主內容區 40%
+              minWidth: 360,          // 防止太窄壞版，可依需求調整
+              minHeight: 0,
+              display: 'grid',
+              gridTemplateColumns: '1fr 1fr', // 左右各一半
+              gap: 6,
+              overflow: 'hidden',
+            }}
+          >
+            <div style={{ minHeight: 0, overflow: 'hidden' }}>
+              <FailSampleList variant="io" />
+            </div>
+            <div style={{ minHeight: 0, overflow: 'hidden' }}>
+              <FailSampleList variant="power" />
+            </div>
           </div>
 
           {/* 右欄：2×2 圖表格 */}
           <div
             style={{
-              flex: 1,
-              display: 'grid',
-              gridTemplateColumns: '1fr 1fr',
-              gridTemplateRows: '1fr 1fr',
-              gap: 12,
-              overflow: 'hidden',
+              flex: 1,           // 佔滿剩餘寬度
+              display: 'grid',   // 使用 CSS Grid 排列 2×2
+              gridTemplateColumns: '1fr 1fr', // 兩欄等分
+              gridTemplateRows: '1fr 1fr',    // 兩列等分
+              gap: 6,                        // 6px 間距
+              overflow: 'hidden',             // 避免圖表溢出
             }}
           >
-            <PlaceholderChart title="Fail Sample on Tray" subtitle="Tray 排列圖，功能開發中" />
+            <FailTrayChart />
             <FailDieChart />
-            <PlaceholderChart title="Fail Ball" subtitle="BGA Ball 分佈直方圖，功能開發中" />
+            <FailBallChart />
             <FailDieRateChart />
           </div>
         </div>

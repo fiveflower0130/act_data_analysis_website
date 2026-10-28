@@ -3,8 +3,9 @@
 > **文件說明**：本文件為前端視角的 API 使用合約，記錄前端目前實際呼叫的 API 端點、TypeScript 介面定義、
 > 發現的問題，以及待後端提供的新 API 需求。供前後端 agent 協作時快速對齊。
 >
-> **最後更新**：2026-06-06（ResultsPanel 分析文本實作完成，total_qty 欄位已同步）
-> **對應後端文件**：`api-contract.md`（後端主要規格來源）
+> **最後更新**：2026-08-05（後端 `GET /data/search` 回應格式 Breaking Change 同步、新增模組六 Fail Sample Import 查詢/匯出端點記載，詳見第五節）
+> **對應後端規格文件**：`.github/instructions/api-contract-structure.instructions.md`（後端 Agent 維護，唯一的 API 規格來源）
+> **本文件性質**：前端視角的「實作對照報告」——記錄前端目前實際使用哪些端點、與上述規格文件的落差、以及前端專屬型別；**本身不是規格來源**，若內容有疑義請一律以 `api-contract-structure.instructions.md` 為準
 > **前端 API 層位置**：`src/api/`、`src/types/api.ts`
 
 ---
@@ -13,7 +14,7 @@
 
 | 項目 | 值 |
 |------|-----|
-| Base URL | `http://localhost:8001`（可由 `VITE_API_BASE_URL` 環境變數覆蓋） |
+| Base URL | 正式環境`http://localhost:8001`、測試開發環境`http://localhost:8002`（可由 `VITE_API_BASE_URL` 環境變數覆蓋） |
 | Content-Type | `application/json` |
 | Timeout | 30,000 ms |
 | Auth 方式 | JWT Bearer Token，從 `localStorage['access_token']` 取得，由 axios request interceptor 自動附加 |
@@ -134,6 +135,11 @@ interface RefreshResponse {
 
 ### 2.4 `GET /api/v1/analysis/fail-sample`
 
+> **後端內部資料來源說明（2026-08-05）**：`hbin=3` 時後端會優先查詢 Fail Sample Import
+> 匯入的批次資料，查無對應批次才 fallback 至原始 MongoDB `site` 資料。此判斷完全在
+> 後端內部處理，**本端點的 request/response 格式與前端呼叫方式完全不變**，僅記錄於此
+> 供未來排查資料來源疑問時參考。
+
 **用途**：依 LOT ID + HBIN 取得 Fail Sample List 分析結果。
 
 **Headers**：`Authorization: Bearer <access_token>`
@@ -174,7 +180,82 @@ interface FailSampleItem {
 
 ---
 
-### 2.5 `GET /api/v1/data/search`（已定義，尚未使用）
+### 2.5 `GET /api/v1/analysis/fail-sample-power`
+
+**用途**：POWER Fail Sample List 分析，只處理 VDD（電源）相關測項，`die_no` 統一回傳 `"All"`（電源腳位無法對應特定 Die）。
+
+**Headers**：`Authorization: Bearer <access_token>`
+
+**Query Parameters**：
+```
+lot_id: string   // 批次 ID
+hbin: number     // 故障類型：Open=2 / Short=3 / Leak=4
+```
+
+**Response `data`**：與 2.4 節的 `FailSampleResult` / `FailSampleItem` 共用同一組型別，差異僅在 `die_no[i]` 固定為 `"All"`。
+
+**前端處理**：
+- `src/api/analysis.ts` 的 `getFailSamplePower()`
+- 與 `getFailSample()` 一起在 `dashboardStore` 中以 `Promise.allSettled` 並行查詢，作為 Fail Sample List 的 POWER variant
+
+**驗證狀態**：✅ 後端已提供、✅ 前端已實作（2026-06-25 稽核確認，本次補上合約記載）
+
+---
+
+### 2.6 `GET /api/v1/netlist/programs/{test_program}/stacking-die`
+
+**用途**：查詢疊層 Die 結構（`layer_no`、`unity_no`、`is_substrate`），用於繪製 Fail Die 疊層圖與 Fail Die Rate 統計。
+
+**Headers**：`Authorization: Bearer <access_token>`
+
+**Path Parameter**：`test_program`（可能含 `@` 符號，需 URL encode）
+
+**Response `data`**：
+```typescript
+interface StackingDieLayer {
+  layer_no: number;
+  unity_no: string;
+  is_substrate: boolean;
+}
+// data: StackingDieLayer[]
+```
+
+**前端處理**：
+- `src/api/netlist.ts` 的 `getStackingDie()`
+- 使用元件：`FailDieChart.tsx`、`FailDieRateChart.tsx`
+
+**驗證狀態**：✅ 後端已提供、✅ 前端已實作（2026-06-25 稽核確認，本次補上合約記載）
+
+---
+
+### 2.7 `GET /api/v1/netlist/programs/{test_program}/tray`
+
+**用途**：查詢指定 Test Program 的 Tray 規格（欄數 × 列數），用於繪製 Fail Sample on Tray 位置格子圖。
+
+**Headers**：`Authorization: Bearer <access_token>`
+
+**Path Parameter**：`test_program`（可能含 `@` 符號，需 URL encode）
+
+**Response `data`**：
+```typescript
+interface TraySpec {
+  col_count: number;   // Tray 欄數
+  row_count: number;   // Tray 列數
+}
+// 每頁格子容量 = col_count × row_count
+```
+
+**前端處理**：
+- `src/api/netlist.ts` 的 `getTray(testProgram)`
+- 使用元件：`FailTrayChart.tsx`
+- 懶加載：由 `dashboardStore.fetchTraySpec(testProgram)` 呼叫，結果快取於 `traySpecCache[testProgram]`；已快取則跳過 API 呼叫
+- `test_program` 來自 `getCurrentFailSample().test_program`
+
+**驗證狀態**：✅ 後端已提供、✅ 前端已實作（2026-06-30）
+
+---
+
+### 2.8 `GET /api/v1/data/search`（已定義，尚未使用）
 
 **用途**：依 LOT ID + HBIN 取得完整測試結果原始資料。
 
@@ -184,31 +265,31 @@ lot_id: string
 hbin: number
 ```
 
-**Response `data`**：
+**Response `data`**（2026-08-05 起：批次共用欄位提升至最外層，`sites[].lot_info`
+僅保留各自不同的欄位；此格式與 Fail Sample Import 的
+`GET /data/fail-sample-import/{batch_id}` 完全一致，見 2.9 節）：
 ```typescript
 interface SearchResult {
+  customer: string;
+  test_program: string;
   lot_id: string;
+  wafer_id: string | null;
   hbin: number;
   execution_mode: string;
-  qty: number;          // ⭐ 新增（2026-06-06）：所有 site 的 fail DUT 總數
+  tester: string;
+  date: string;
+  qty: number;
   sites: SiteSearchResult[];
 }
 
 interface SiteSearchResult {
-  lot_info: LotSiteInfo;
+  lot_info: SiteSummaryInfo;
   test_result_value: TestResultValueItem[];
 }
 
-interface LotSiteInfo {
-  file_id: number;
-  lot_id: string;
+interface SiteSummaryInfo {
   site_id: string;
-  execution_mode: string;
-  date: string;
-  tester: string;
-  customer: string;
-  test_program: string;
-  site_qty: number | null;  // ⭐ 新增（2026-06-06）：此 site 的 fail DUT 數量
+  site_qty: number;
 }
 
 // 動態結構：固定欄位 + 每個 test item 為一個 key
@@ -229,7 +310,89 @@ interface TestItemResult {
 }
 ```
 
+> **⚠️ Breaking Change（2026-08-05）**：`customer`／`test_program`／`tester` 原本重複
+> 記錄在每個 `sites[].lot_info` 內，現已改為只在最外層出現一次；`sites[].lot_info`
+> 只保留 `site_id`／`site_qty`。同時新增最外層 `qty`（總 Fail DUT 數）與 `wafer_id`
+> （`site` 資料源固定為 `null`）欄位。前端型別 `src/types/api.ts` 的 `SearchResult`／
+> `SiteSearchResult` 已同步更新，新增 `SiteSummaryInfo` 型別取代原本共用的
+> `LotSiteInfo`（`LotSiteInfo` 保留供 `GET /data/lots/{lot_id}` 使用，該端點前端尚未實作）。
+
 **狀態**：前端已定義介面，**尚未接入任何 UI 元件**。
+
+---
+
+### 2.9 `GET /api/v1/data/fail-sample-import`（新增，2026-08-05，已定義，尚未使用）
+
+**用途**：查詢已匯入的 Fail Sample 批次清單（僅 metadata，不含 `sites` 明細），供未來
+「已匯入批次」查詢/管理頁面使用。
+
+**Query Parameters（皆選填）**：
+```
+lot_id: string
+hbin: number            // >= 1
+execution_mode: string  // "RT" | "AT"
+date_from: string
+date_to: string
+limit: number            // 預設 50，範圍 1~200
+offset: number            // 預設 0
+```
+
+**Response `data`**：
+```typescript
+interface FailSampleImportListResult {
+  items: FailSampleImportListItem[];
+  total: number;
+  limit: number;
+  offset: number;
+}
+
+interface FailSampleImportListItem {
+  batch_id: string;
+  customer: string;
+  test_program: string;
+  lot_id: string;
+  wafer_id: string | null;
+  hbin: number;
+  execution_mode: string;
+  tester: string;
+  date: string;
+  qty: number;
+  imported_at: string;
+  source_file: string | null;
+}
+```
+
+**狀態**：後端已提供，前端尚未定義型別或串接，屬未來 Phase II 待評估功能（非本次資料
+上傳頁 #11 範疇，是否/何時開發待與使用者確認）。
+
+---
+
+### 2.10 `GET /api/v1/data/fail-sample-import/{batch_id}`（新增，2026-08-05，已定義，尚未使用）
+
+**用途**：查詢單一匯入批次的完整內容，格式與 2.8 節 `SearchResult` 完全一致，額外附上
+`batch_id`／`imported_at`／`source_file` 三個欄位。
+
+**Response `data`**：
+```typescript
+interface FailSampleImportDetail extends SearchResult {
+  batch_id: string;
+  imported_at: string;
+  source_file: string | null;
+}
+```
+
+**常見錯誤**：`batch_id` 不存在時回傳 `404`（`data: null`）。
+
+**狀態**：後端已提供，前端尚未使用。
+
+---
+
+### 2.11 `GET /api/v1/data/fail-sample-import/{batch_id}/csv`（新增，2026-08-05，已定義，尚未使用）
+
+**用途**：將指定批次原始資料匯出為 CSV 檔案下載（`Content-Type: text/csv`，非統一 JSON
+格式）。需 `engineer` 或 `admin` 角色（權限比一般查詢更嚴格）。
+
+**狀態**：後端已提供，前端尚未使用。
 
 ---
 
@@ -256,10 +419,15 @@ const ApiErrorCode = {
 | 優先度 | 需求 | 說明 | 狀態 |
 |--------|------|------|------|
 | 🟠 P1 | **Token Refresh API** | 後端已完成（`POST /api/v1/auth/refresh`，Rolling Refresh Token）。前端已實作 refresh 邏輯（詳見 2.3 節）。 | ✅ 後端完成，✅ **前端已實作** |
-| 🟡 P2 | **Fail Sample on Tray API** | 前端需要依 LOT ID 取得 Tray 規格（row × col）與每個 DUT 的 Tray 位置，用於繪製 Tray 網格圖 | ⬜ 待討論 |
-| 🟡 P2 | **Fail Die API** | 前端需要依 LOT ID 取得 Stacking Die 層次結構與每層的失效 Unity 資訊，用於繪製疊 Die 圖 | ⬜ 待討論 |
-| 🟡 P2 | **Fail Die Rate API** | 各層 Die 的失效率統計 | ⬜ 待討論 |
+| 🟡 P2 | **Fail Die API** | 依 LOT ID / Test Program 取得 Stacking Die 層次結構，用於繪製疊 Die 圖。後端提供 `GET /netlist/programs/{test_program}/stacking-die`（詳見 2.6 節）。 | ✅ 後端完成，✅ **前端已實作**（2026-06-25 稽核確認） |
+| 🟡 P2 | **Fail Sample on Tray API** | 前端以 `GET /netlist/programs/{test_program}/tray` 取得 Tray 規格，DUT 位置由 `fail_sample.dut_no` 對應（詳見 2.7 節） | ✅ 後端完成，✅ **前端已實作**（2026-06-30） |
+| 🟡 P2 | **Fail Die Rate API** | 各層 Die 的失效率統計，前端目前依 2.6 節 `stacking-die` 資料自行計算比率，暫無獨立後端 API 需求 | ❌ 不適用（前端自行計算） |
 | 🟡 P2 | **Fail Ball API** | 失效 BGA Ball 的分佈資料，用於繪製分布圖 | ⬜ 待討論 |
+| 🟡 P2 | **Netlist 上傳者名稱** | `GET /api/v1/netlist/programs` 目前只回傳上傳時間與檔名，`uploaded_by`（UUID）未輸出。建議後端 JOIN `users` 表，回應新增 `uploaded_by_name` 欄位，供**資料上傳頁**左欄「已上傳檔案」清單、**歷史紀錄頁**「上傳紀錄」主題顯示（詳見設計決策 QA 條目 18） | ⬜ 待後端提供 |
+| 🟠 P1 | **上傳失敗紀錄的 test_program** | `audit_logs.request_body` 目前無論上傳成功或失敗皆為 `null`，無法得知失敗當下的 `test_program`。需後端於 upload API 將 `test_program` 寫入 `audit_logs.request_body`（或等效欄位），前端才能在**歷史紀錄頁「上傳紀錄」主題**的失敗紀錄顯示對應的 test_program（詳見設計決策 QA 條目 18，原記載於條目 17，顯示位置隨頁面拆分調整） | ⬜ 待後端提供，前端此欄位實作暫緩 |
+| 🟠 P1 | **歷史紀錄查詢 API（全新）** | `src/features/history/` 需要查詢端點，支援：① 主題切換 ② 依角色權限過濾可見範圍（`viewer` 完全無法存取；`engineer` 可見 `viewer`+`engineer` 範圍，並可指定「只看自己」或用使用者清單多選縮小範圍）③ 時間區間（含「最近7天／最近1個月」快速選項 + 自訂範圍）④ 依主題動態的其他搜尋條件（例：上傳紀錄→test_program、登入紀錄→IP/裝置、使用狀況→功能名稱）⑤ 分頁。**端點命名已確認**（見 Backend to-do-list.md #72~#75）：`GET /api/v1/history/login`、`GET /api/v1/history/uploads`、`GET /api/v1/history/usage`（詳見設計決策 QA 條目 18） | 🔄 後端已規劃端點路徑，尚未實作（`usage` 主題另待埋點方案定案） |
+| 🟡 P2 | **匯出 API（Excel/CSV）** | 歷史紀錄表格需支援匯出，尚未決定是「後端提供下載端點」或「前端直接用查詢結果在瀏覽器端產生檔案」。若前端產生，套件選型（`xlsx` / `exceljs`）建議與 to-do #34（ACT Dashboard HW Bin List 匯出）共用同一份決策，避免專案內安裝兩套不同的 Excel 產生套件 | ⬜ 待討論實作方式（前端 or 後端） |
+| 🟡 P2 | **使用狀況埋點方案（全新，範疇最大）** | 歷史紀錄頁「使用狀況」主題（滑鼠操作、點選頁面、停留時間、最常用功能）需要前端新增操作事件收集機制，以及後端對應的儲存與查詢 API。目前**完全沒有設計**，非單純畫面開發，需先有獨立一輪討論定案技術方案（前端收集哪些事件、如何節流/批次上送、後端如何儲存與查詢）後才能定義出具體 API 規格（詳見設計決策 QA 條目 18） | ⬜ 未設計，待專門討論 |
 
 ---
 
@@ -270,6 +438,9 @@ const ApiErrorCode = {
 | 2026-06-01 | `POST /auth/login`：前端原以 `employee_id` 傳送工號，後端要求 `user_no`，導致 422 錯誤 | ✅ 已修正（前端改為 `user_no`） |
 | 2026-06-01 | `apiClient.post<LoginResponse>` 導致 `data.access_token` 取到 `undefined`；應使用 `ApiResponse<LoginResponse>` 包裝 | ✅ 已修正 |
 | 2026-06-03 | 後端 `POST /auth/login` Response 新增 `refresh_token` 欄位；錯誤代碼新增 `1009`（LDAP 服務不可用）；前端需同步更新 | ✅ P1-1 + P1-2 前端已實作（2026-06-03） |
+| 2026-06-25 | 本文件先前記載 `GET /data/search` 回應含 `qty`、`LotSiteInfo.site_qty` 欄位，但對照後端權威規格 `.github/instructions/api-contract-structure.instructions.md` 與 `src/types/api.ts` 實際定義，該端點並無此二欄位，屬本文件記載錯誤 | ✅ 已修正（移除錯誤欄位記載，2.7 節） |
+| 2026-06-25 | `fail-sample-power`、`stacking-die` 兩端點後端已提供且前端已實作（`src/api/analysis.ts`、`src/api/netlist.ts`），但本文件「二、已使用的 API 端點」遲未記載，且第四節仍將 Fail Die API 誤標為「待討論」 | ✅ 已修正（補上 2.5 / 2.6 節，更新第四節狀態） |
+| 2026-08-05 | 後端 API 規格更新：`GET /data/search` 回應格式調整為 Breaking Change（`customer`／`test_program`／`tester` 提升至最外層，`sites[].lot_info` 僅留 `site_id`／`site_qty`，新增最外層 `qty`／`wafer_id`）；新增模組六 Fail Sample Import 三個查詢/匯出端點；`fail-sample`／`fail-sample-power` 呼叫方式確認不變。前端 `src/types/api.ts` 的 `SearchResult`／`SiteSearchResult` 已同步更新，新增 `SiteSummaryInfo` 型別 | ✅ 已修正（2.4、2.8～2.11 節） |
 
 ---
 
@@ -290,6 +461,18 @@ interface SearchHistoryEntry {
   lotId: string;
   searchedAt: string;   // ISO string
   hasAnyFail: boolean;  // 是否有任一 HBIN 有 fail 資料（用於 badge 顯示）
+}
+
+// FailTrayChart 格子狀態（前端計算，不對應後端欄位）
+type CellStatus = 'orange' | 'blue' | 'gray';
+// orange = IO ball 在 dieResults（Top Die Fail）
+// blue   = 真實 DUT 位置（含無 IO ball 資訊的 DUT）
+// gray   = 補位格（超出 total_qty 範圍，dutNo=0）
+
+interface TrayCell {
+  dutNo: number;      // dut_no（補位格為 0）
+  ballName: string;   // 第一個非空 ball_name（補位或無 IO ball 時為 ''）
+  status: CellStatus;
 }
 ```
 

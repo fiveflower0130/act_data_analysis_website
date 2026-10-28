@@ -4,6 +4,7 @@ import useDashboardStore from '../../../stores/dashboardStore';
 import { HBinLabel } from '../../../types/api';
 import { useThemeColors } from '../../../hooks/useThemeColors';
 import { getStackingDie } from '../../../api/netlist';
+import { useResponsiveTokens } from '../../../hooks/useResponsiveTokens';
 import type { StackingDieLayer } from '../../../types/api';
 
 const { Text } = Typography;
@@ -80,7 +81,7 @@ const DieLayerBlock = ({
   return (
     <Tooltip
       title={
-        `${label}${isFailing ? `：失效 ${failCount} 次` : ''}${ballNamesForDie.length > 0 ? `（Focus： ${ballNamesForDie.join('、')}）` : ''}`
+        `${label}${failCount > 0 ? `：失效 ${failCount} 次` : ''}${ballNamesForDie.length > 0 ? `（集中： ${ballNamesForDie.join('、')}）` : ''}`
       }
       color={COLOR_TEXT_DARK}
       placement="right"
@@ -127,6 +128,7 @@ const FailDieChart = () => {
   const colorMode = useThemeColors();
   const { getCurrentFailSample, isSearching, currentLotId, currentHbin } = useDashboardStore();
   const failSampleData = getCurrentFailSample();
+  const responsive = useResponsiveTokens();
 
   // 容器寬度（方塊寬度計算用）
   const [containerWidth, setContainerWidth] = useState(200);
@@ -137,6 +139,7 @@ const FailDieChart = () => {
   const [layerError, setLayerError] = useState<string | null>(null);
   const lastFetchedProgram = useRef<string | null>(null);
 
+  const title = `Top 1 Fail Die${currentHbin ? ` — ${HBinLabel[currentHbin]}` : ''}`;
   // 量測容器寬度
   useEffect(() => {
     const el = containerRef.current;
@@ -348,8 +351,8 @@ const FailDieChart = () => {
       /*卡片標題*/
       size="small"
       title={
-        <span style={{ color: colorMode.textPrimary, fontSize: 13, fontWeight: 600 }}>
-          {`Top 1 Fail Die${currentHbin ? ` — ${HBinLabel[currentHbin]}` : ''}`}
+        <span style={{ color: colorMode.textPrimary, fontSize: responsive.typography.contentTitle, fontWeight: 600 }}>
+          {title}
         </span>
       }
       /*卡片外框*/

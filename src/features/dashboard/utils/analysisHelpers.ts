@@ -50,7 +50,9 @@ export function computeAnalysis(failSample: FailSampleItem[]): {
   const dieResults: DieResult[] = topDies.map((die) => {
     const dieItems = ioPinFailItems.filter((item) => item.die_no.includes(die));
     const ballFreq = countFrequency(
-      dieItems.flatMap((item) => item.ball_name.filter((b) => b !== '')),
+      dieItems.flatMap((item) =>
+        item.ball_name.filter((ball, index) => item.die_no[index] === die && ball !== ''),
+      ),
     );
     return { die, balls: getTopKeys(ballFreq) };
   });

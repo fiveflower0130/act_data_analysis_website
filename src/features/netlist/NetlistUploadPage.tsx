@@ -2,6 +2,7 @@ import { Alert, Button } from 'antd';
 import { UploadCloud } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import useUploadStore, { type UploadTheme } from '../../stores/uploadStore';
+import type { FailSampleImportBatchSummary } from '../../types/api';
 import { useResponsiveTokens } from '../../hooks/useResponsiveTokens';
 import { useThemeColors } from '../../hooks/useThemeColors';
 import UploadThemeSelector from './components/UploadThemeSelector';
@@ -28,6 +29,7 @@ const NetlistUploadPage = () => {
     failSampleTotal,
     isLoading,
     uploadingByTopic,
+    deletingBatchIds,
     error,
     setActiveTheme,
     addFiles,
@@ -36,6 +38,7 @@ const NetlistUploadPage = () => {
     uploadAll,
     fetchNetlistPrograms,
     fetchFailSampleImports,
+    deleteFailSampleImport,
     clearError,
   } = useUploadStore();
   const responsive = useResponsiveTokens();
@@ -124,6 +127,13 @@ const NetlistUploadPage = () => {
     setListPage(page);
   };
 
+  const handleDeleteBatch = async (batch: FailSampleImportBatchSummary) => {
+    const success = await deleteFailSampleImport(batch.batch_id);
+    if (success && selection?.theme === 'fail-sample' && selection.item.batch_id === batch.batch_id) {
+      setSelection(null);
+    }
+  };
+
   return (
     <div
       style={{
@@ -177,9 +187,11 @@ const NetlistUploadPage = () => {
           searchTerm={searchTerm}
           selectedId={selectedId}
           loading={isLoading && !currentUploading}
+          deletingBatchIds={deletingBatchIds}
           onSearchChange={handleSearchChange}
           onPageChange={handlePageChange}
           onSelect={setSelection}
+          onDeleteBatch={handleDeleteBatch}
         />
 
       </aside>

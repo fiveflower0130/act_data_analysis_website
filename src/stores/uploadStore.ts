@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import {
+  deleteFailSampleImport as deleteFailSampleImportApi,
   getFailSampleImportList,
   getFailSampleImportRows,
   uploadFailSampleImport,
@@ -72,6 +73,8 @@ export interface UploadState {
   failSampleImports: FailSampleImportBatchSummary[];
   failSampleTotal: number;
   failSampleQuery: FailSampleImportListParams;
+  /** 正在刪除中的 Fail Sample Import 批次 batch_id 清單，供清單項目顯示刪除中狀態 */
+  deletingBatchIds: string[];
   netlistSheetCache: Record<string, Partial<Record<NetlistSheetName, NetlistSheetPayload>>>;
   netlistSheetMetaCache: Record<string, NetlistSheetInfo[]>;
   failSampleRowsCache: Record<string, FailSampleImportRowsResponse>;
@@ -93,6 +96,8 @@ export interface UploadActions {
   uploadAll: () => Promise<void>;
   fetchNetlistPrograms: () => Promise<void>;
   fetchFailSampleImports: (params?: FailSampleImportListParams) => Promise<void>;
+  /** 刪除指定 Fail Sample Import 批次；成功會刷新清單並清除 Dashboard 對應 Lot/HBIN 快取 */
+  deleteFailSampleImport: (batchId: string) => Promise<boolean>;
   fetchFailSampleRows: (
     batchId: string,
     params?: FailSampleImportRowsParams,
@@ -198,6 +203,7 @@ const useUploadStore = create<UploadState & UploadActions>()((set, get) => ({
   failSampleImports: [],
   failSampleTotal: 0,
   failSampleQuery: { limit: 10, offset: 0 },
+  deletingBatchIds: [],
   netlistSheetCache: {},
   netlistSheetMetaCache: {},
   failSampleRowsCache: {},
@@ -460,6 +466,50 @@ const useUploadStore = create<UploadState & UploadActions>()((set, get) => ({
         stack: ['fetchFailSampleImports'],
         msg: message,
       });
+    }
+  },
+
+  deleteFailSampleImport: async (batchId) => {
+    const target = get().failSampleImports.find((item) => item.batch_id === batchId);
+
+    set((state) => ({
+      deletingBatchIds: [...state.deletingBatchIds, batchId],
+      error: null,
+    }));
+
+    try {
+      await deleteFailSampleImportApi(batchId);
+
+      if (target) {
+        useDashboardStore.getState().invalidateFailSampleCache(
+          target.lot_id,
+          target.hbin as HBinValue,
+        );
+      }
+
+      addLog({
+        level: 'info',
+        module: 'uploadStore',
+        stack: ['deleteFailSampleImport'],
+        msg: `已刪除 Fail Sample Import 批次 ${batchId}`,
+      });
+
+      await get().fetchFailSampleImports(get().failSampleQuery);
+      return true;
+    } catch (error) {
+      const message = getApiErrorMessage(error, '刪除 Fail Sample 批次失敗');
+      set({ error: message });
+      addLog({
+        level: 'error',
+        module: 'uploadStore',
+        stack: ['deleteFailSampleImport'],
+        msg: message,
+      });
+      return false;
+    } finally {
+      set((state) => ({
+        deletingBatchIds: state.deletingBatchIds.filter((id) => id !== batchId),
+      }));
     }
   },
 

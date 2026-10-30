@@ -1,6 +1,7 @@
 import type { AxiosProgressEvent } from 'axios';
 import type {
   ApiResponse,
+  FailSampleImportDeleteResult,
   FailSampleImportDetail,
   FailSampleImportListParams,
   FailSampleImportListResponse,
@@ -51,6 +52,12 @@ export const downloadFailSampleImportCsv = (batchId: string) =>
   apiClient.get<Blob>(
     `/api/v1/data/fail-sample-import/${encodeURIComponent(batchId)}/csv`,
     { responseType: 'blob' },
+  );
+
+/** DELETE /api/v1/data/fail-sample-import/{batch_id} */
+export const deleteFailSampleImport = (batchId: string) =>
+  apiClient.delete<ApiResponse<FailSampleImportDeleteResult>>(
+    `/api/v1/data/fail-sample-import/${encodeURIComponent(batchId)}`,
   );
 
 /** POST /api/v1/data/fail-sample-import/upload */

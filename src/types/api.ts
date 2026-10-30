@@ -202,6 +202,12 @@ export interface FailSampleImportUploadResult {
   test_result_value_count: number;
 }
 
+/** Fail Sample Import 刪除批次結果 */
+export interface FailSampleImportDeleteResult {
+  batch_id: string;
+  deleted: boolean;
+}
+
 /** Fail Sample 明細列可排序欄位 */
 export const FailSampleImportRowField = {
   Site: 'site',

@@ -1,9 +1,10 @@
-import { ConfigProvider } from 'antd';
-import { render, screen, waitFor } from '@testing-library/react';
+import { ConfigProvider, Modal } from 'antd';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('../../src/api/data', () => ({
+  deleteFailSampleImport: vi.fn(),
   getFailSampleImportList: vi.fn(),
   getFailSampleImportRows: vi.fn(),
   uploadFailSampleImport: vi.fn(),
@@ -25,7 +26,7 @@ vi.mock('../../src/utils/logging', () => ({
   default: vi.fn(),
 }));
 
-import { getFailSampleImportList, uploadFailSampleImport } from '../../src/api/data';
+import { deleteFailSampleImport, getFailSampleImportList, uploadFailSampleImport } from '../../src/api/data';
 import { getNetlistPrograms, getNetlistSheets, uploadNetlist } from '../../src/api/netlist';
 import NetlistUploadPage from '../../src/features/netlist/NetlistUploadPage';
 import useUploadStore from '../../src/stores/uploadStore';
@@ -51,6 +52,7 @@ const resetStore = () => {
     isLoading: false,
     isUploading: false,
     uploadingByTopic: { netlist: false, 'fail-sample': false },
+    deletingBatchIds: [],
     error: null,
   });
 };
@@ -92,6 +94,13 @@ describe('NetlistUploadPage v7', () => {
         },
       },
     } as never);
+  });
+
+  afterEach(() => {
+    Modal.destroyAll();
+    // jsdom 不會觸發 CSS transitionend，Modal.confirm 的 afterClose（實際卸載節點）永遠不會被呼叫，
+    // 因此需直接移除殘留的 dialog 節點，避免下一個測試誤抓到前一個測試關閉中的 Modal
+    document.body.querySelectorAll('[role="dialog"]').forEach((node) => node.remove());
   });
 
   it('預設顯示 Fail Sample，切換主題後顯示各自的上傳設定', async () => {
@@ -210,5 +219,97 @@ describe('NetlistUploadPage v7', () => {
         offset: 0,
       });
     }, { timeout: 1000 });
+  });
+
+  it('點擊刪除並確認後會呼叫刪除 API 並重新整理清單', async () => {
+    vi.mocked(getFailSampleImportList).mockResolvedValue({
+      data: {
+        code: 0,
+        message: 'OK',
+        data: {
+          items: [
+            {
+              batch_id: 'batch-001',
+              customer: 'MICRON',
+              test_program: 'TP-001',
+              lot_id: 'LOT-001',
+              wafer_id: null,
+              hbin: 3,
+              execution_mode: 'RT',
+              tester: 'ASE07-5070-001',
+              date: '2026-10-22 10:00:00',
+              qty: 1,
+              imported_at: '2026-10-22T10:00:01+08:00',
+              source_file: 'TP-001_LOT-001__RT_20261022100000.json',
+              uploaded_by: '12345',
+            },
+          ],
+          total: 1,
+          limit: 10,
+          offset: 0,
+        },
+      },
+    } as never);
+    vi.mocked(deleteFailSampleImport).mockResolvedValue({
+      data: { code: 0, message: '刪除成功', data: { batch_id: 'batch-001', deleted: true } },
+    } as never);
+
+    const user = userEvent.setup();
+    renderPage();
+
+    const deleteButton = await screen.findByRole('button', { name: '刪除 LOT-001 批次' });
+    await user.click(deleteButton);
+
+    const dialog = await screen.findByRole('dialog');
+    expect(await screen.findAllByText('確定要刪除此 Fail Sample 批次？')).not.toHaveLength(0);
+    await user.click(await within(dialog).findByRole('button', { name: /刪\s?除/ }));
+
+    await waitFor(() => {
+      expect(deleteFailSampleImport).toHaveBeenCalledWith('batch-001');
+    });
+    expect(getFailSampleImportList).toHaveBeenCalledTimes(2);
+  });
+
+  it('取消刪除確認對話框不會呼叫刪除 API', async () => {
+    vi.mocked(getFailSampleImportList).mockResolvedValue({
+      data: {
+        code: 0,
+        message: 'OK',
+        data: {
+          items: [
+            {
+              batch_id: 'batch-001',
+              customer: 'MICRON',
+              test_program: 'TP-001',
+              lot_id: 'LOT-001',
+              wafer_id: null,
+              hbin: 3,
+              execution_mode: 'RT',
+              tester: 'ASE07-5070-001',
+              date: '2026-10-22 10:00:00',
+              qty: 1,
+              imported_at: '2026-10-22T10:00:01+08:00',
+              source_file: 'TP-001_LOT-001__RT_20261022100000.json',
+              uploaded_by: '12345',
+            },
+          ],
+          total: 1,
+          limit: 10,
+          offset: 0,
+        },
+      },
+    } as never);
+
+    const user = userEvent.setup();
+    renderPage();
+
+    const deleteButton = await screen.findByRole('button', { name: '刪除 LOT-001 批次' });
+    await user.click(deleteButton);
+
+    const dialog = await screen.findByRole('dialog');
+    expect(await screen.findAllByText('確定要刪除此 Fail Sample 批次？')).not.toHaveLength(0);
+    await user.click(await within(dialog).findByRole('button', { name: /取\s?消/ }));
+
+    expect(deleteFailSampleImport).not.toHaveBeenCalled();
   });
 });

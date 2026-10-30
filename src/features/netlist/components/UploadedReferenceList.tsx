@@ -1,5 +1,6 @@
-import { Empty, Input, Pagination, Spin, Tag, Typography } from 'antd';
-import { FileText, Search } from 'lucide-react';
+import { Empty, Input, Modal, Pagination, Spin, Tag, Typography } from 'antd';
+import { FileText, Search, Trash2 } from 'lucide-react';
+import type { MouseEvent } from 'react';
 import type { FailSampleImportBatchSummary, NetlistProgram } from '../../../types/api';
 import type { UploadTheme } from '../../../stores/uploadStore';
 import { useResponsiveTokens } from '../../../hooks/useResponsiveTokens';
@@ -20,9 +21,11 @@ interface UploadedReferenceListProps {
   searchTerm: string;
   selectedId: string | number | null;
   loading: boolean;
+  deletingBatchIds?: string[];
   onSearchChange: (value: string) => void;
   onPageChange: (page: number) => void;
   onSelect: (selection: SelectedUpload) => void;
+  onDeleteBatch?: (batch: FailSampleImportBatchSummary) => void;
 }
 
 const formatDate = (value: string | null | undefined) => {
@@ -74,13 +77,33 @@ const UploadedReferenceList = ({
   searchTerm,
   selectedId,
   loading,
+  deletingBatchIds = [],
   onSearchChange,
   onPageChange,
   onSelect,
+  onDeleteBatch,
 }: UploadedReferenceListProps) => {
   const colorMode = useThemeColors();
   const responsive = useResponsiveTokens();
   const isNetlist = theme === 'netlist';
+
+  const handleDeleteClick = (
+    event: MouseEvent<HTMLButtonElement>,
+    batch: FailSampleImportBatchSummary,
+  ) => {
+    event.stopPropagation();
+    Modal.confirm({
+      title: '確定要刪除此 Fail Sample 批次？',
+      content: `Lot ID：${batch.lot_id}，檔名：${batch.source_file || '—'}\n刪除後無法復原，請確認此批次為誤傳資料。`,
+      okText: '刪除',
+      okButtonProps: { danger: true },
+      cancelText: '取消',
+      onOk: () => {
+        // 不回傳 Promise：讓 Modal 立即關閉，刪除中狀態改由 deletingBatchIds 的 loading 樣式呈現
+        onDeleteBatch?.(batch);
+      },
+    });
+  };
 
   return (
     <section
@@ -158,32 +181,60 @@ const UploadedReferenceList = ({
               description={<span style={{ color: colorMode.textMuted }}>尚無 Fail Sample 資料</span>}
             />
           ) : (
-            failSampleImports.map((batch) => (
-              <button
-                type="button"
-                key={batch.batch_id}
-                aria-label={`預覽 ${batch.lot_id}`}
-                onClick={() => onSelect({ theme: 'fail-sample', item: batch })}
-                style={cardStyle(selectedId === batch.batch_id, colorMode)}
-              >
-                <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
-                  <FileText size={14} color={colorMode.primary} style={{ marginTop: 2, flexShrink: 0 }} />
-                  <div style={{ minWidth: 0, flex: 1 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 6 }}>
-                      <Text strong style={{ color: colorMode.textPrimary, fontSize: responsive.typography.body }}>
-                        {batch.lot_id}
-                      </Text>
-                      <Tag color={colorMode.primary}>
-                        {batch.execution_mode}
-                      </Tag>
+            failSampleImports.map((batch) => {
+              const isDeleting = deletingBatchIds.includes(batch.batch_id);
+              return (
+                <div
+                  key={batch.batch_id}
+                  role="button"
+                  tabIndex={0}
+                  aria-label={`預覽 ${batch.lot_id}`}
+                  onClick={() => onSelect({ theme: 'fail-sample', item: batch })}
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter' || event.key === ' ') {
+                      event.preventDefault();
+                      onSelect({ theme: 'fail-sample', item: batch });
+                    }
+                  }}
+                  style={cardStyle(selectedId === batch.batch_id, colorMode)}
+                >
+                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
+                    <FileText size={14} color={colorMode.primary} style={{ marginTop: 2, flexShrink: 0 }} />
+                    <div style={{ minWidth: 0, flex: 1 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 6 }}>
+                        <Text strong style={{ color: colorMode.textPrimary, fontSize: responsive.typography.body }}>
+                          {batch.lot_id}
+                        </Text>
+                        <Tag color={colorMode.primary}>
+                          {batch.execution_mode}
+                        </Tag>
+                      </div>
+                      <Text style={fieldStyle(colorMode.textSecondary)}>檔名：{batch.source_file || '—'}</Text>
+                      <Text style={fieldStyle(colorMode.textSecondary)}>上傳時間：{formatDate(batch.imported_at)}</Text>
+                      <Text style={fieldStyle(colorMode.textSecondary)}>上傳者：{formatUploader(batch.uploaded_by)}</Text>
                     </div>
-                    <Text style={fieldStyle(colorMode.textSecondary)}>檔名：{batch.source_file || '—'}</Text>
-                    <Text style={fieldStyle(colorMode.textSecondary)}>上傳時間：{formatDate(batch.imported_at)}</Text>
-                    <Text style={fieldStyle(colorMode.textSecondary)}>上傳者：{formatUploader(batch.uploaded_by)}</Text>
+                    {onDeleteBatch && (
+                      <button
+                        type="button"
+                        aria-label={`刪除 ${batch.lot_id} 批次`}
+                        disabled={isDeleting}
+                        onClick={(event) => handleDeleteClick(event, batch)}
+                        style={{
+                          flexShrink: 0,
+                          border: 'none',
+                          background: 'transparent',
+                          padding: 4,
+                          cursor: isDeleting ? 'not-allowed' : 'pointer',
+                          opacity: isDeleting ? 0.5 : 1,
+                        }}
+                      >
+                        <Trash2 size={14} color={colorMode.danger} />
+                      </button>
+                    )}
                   </div>
                 </div>
-              </button>
-            ))
+              );
+            })
           )}
         </Spin>
       </div>

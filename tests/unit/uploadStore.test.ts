@@ -2,6 +2,7 @@ import { act } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('../../src/api/data', () => ({
+  deleteFailSampleImport: vi.fn(),
   getFailSampleImportList: vi.fn(),
   getFailSampleImportRows: vi.fn(),
   uploadFailSampleImport: vi.fn(),
@@ -27,6 +28,7 @@ vi.mock('../../src/utils/logging', () => ({
 }));
 
 import {
+  deleteFailSampleImport,
   getFailSampleImportList,
   getFailSampleImportRows,
   uploadFailSampleImport,
@@ -73,6 +75,7 @@ const resetStore = () => {
     isLoading: false,
     isUploading: false,
     uploadingByTopic: { netlist: false, 'fail-sample': false },
+    deletingBatchIds: [],
     error: null,
   });
 };
@@ -342,5 +345,80 @@ describe('uploadStore', () => {
 
     expect(invalidateCacheSpy).toHaveBeenCalledWith('LOT-002', 3);
     invalidateCacheSpy.mockRestore();
+  });
+
+  it('刪除 Fail Sample 批次成功後清除 Dashboard 快取並重新整理清單', async () => {
+    const batch = {
+      batch_id: 'batch-001',
+      customer: 'MICRON',
+      test_program: 'TP-001',
+      lot_id: 'LOT-001',
+      wafer_id: null,
+      hbin: 3,
+      execution_mode: 'RT',
+      tester: 'ASE07-5070-001',
+      date: '2026-10-22 10:00:00',
+      qty: 1,
+      imported_at: '2026-10-22T10:00:01+08:00',
+      source_file: 'TP-001_LOT-001__RT_20261022100000.json',
+      uploaded_by: '12345',
+    };
+    useUploadStore.setState({ failSampleImports: [batch] });
+
+    const invalidateCacheSpy = vi.spyOn(
+      useDashboardStore.getState(),
+      'invalidateFailSampleCache',
+    );
+    vi.mocked(deleteFailSampleImport).mockResolvedValue({
+      data: { code: 0, message: '刪除成功', data: { batch_id: 'batch-001', deleted: true } },
+    } as never);
+
+    let result: boolean | undefined;
+    await act(async () => {
+      result = await useUploadStore.getState().deleteFailSampleImport('batch-001');
+    });
+
+    expect(result).toBe(true);
+    expect(deleteFailSampleImport).toHaveBeenCalledWith('batch-001');
+    expect(invalidateCacheSpy).toHaveBeenCalledWith('LOT-001', 3);
+    expect(getFailSampleImportList).toHaveBeenCalled();
+    expect(useUploadStore.getState().deletingBatchIds).toEqual([]);
+    expect(useUploadStore.getState().error).toBeNull();
+    invalidateCacheSpy.mockRestore();
+  });
+
+  it('刪除 Fail Sample 批次失敗時設定錯誤訊息，並移除 deletingBatchIds 標記', async () => {
+    useUploadStore.setState({
+      failSampleImports: [
+        {
+          batch_id: 'batch-002',
+          customer: 'MICRON',
+          test_program: 'TP-001',
+          lot_id: 'LOT-002',
+          wafer_id: null,
+          hbin: 4,
+          execution_mode: 'RT',
+          tester: 'ASE07-5070-001',
+          date: '2026-10-22 10:00:00',
+          qty: 1,
+          imported_at: '2026-10-22T10:00:01+08:00',
+          source_file: 'TP-001_LOT-002__RT_20261022100000.json',
+          uploaded_by: '12345',
+        },
+      ],
+    });
+
+    vi.mocked(deleteFailSampleImport).mockRejectedValue({
+      response: { status: 404, data: 'batch not found' },
+    });
+
+    let result: boolean | undefined;
+    await act(async () => {
+      result = await useUploadStore.getState().deleteFailSampleImport('batch-002');
+    });
+
+    expect(result).toBe(false);
+    expect(useUploadStore.getState().error).toBe('batch not found');
+    expect(useUploadStore.getState().deletingBatchIds).toEqual([]);
   });
 });

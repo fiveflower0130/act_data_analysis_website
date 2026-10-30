@@ -1,6 +1,6 @@
 # ACT Failure Analysis System Frontend — 待辦事項清單
 
-> 最後更新：2026-10-27
+> 最後更新：2026-10-30
 > 分析工具：GitHub Copilot / Claude Code Fable
 > 說明：本文件記錄前端專案的待辦事項，**依模組分類**（依專案實際功能領域劃分），每個模組獨立一個區塊，優先級（P0~P3）改為表格欄位而非區塊標題；模組結構比照 Backend `to-do-list.md`，模組命名盡量對齊，方便兩邊對照。
 
@@ -194,3 +194,5 @@
 | 2026-10-22 | #44 | 🔄 完成 File Upload v7 前端重設計：改用右側 Drawer、每主題獨立佇列、檔名／大小驗證、Netlist 六 Sheet 預覽與 Fail Sample 預覽 shell；新增 API wrapper、純函式 helpers、單元與頁面測試，文件同步更新 | Dante (GitHub Copilot) |
 | 2026-10-22 | #44 | ✅ 完成後端整合：支援 `detail.code/message` 的 1011／1012 錯誤顯示、Fail Sample `q` 搜尋與 rows 明細表（Site／debounce／排序／後端分頁／查詢快取）、Netlist `/sheets` 列數 metadata；更新檔名驗證、`source_file` 必填、測試與 API/決策/週報文件 | Dante (GitHub Copilot) |
 | 2026-10-27 | #44 | ✅ Site 篩選改為 Checkbox Popover：首次載入預設全選、全選省略 `sites`、全部清除不發 API 並顯示空狀態；同步後端必有的 `site_stats` 真實統計，異常缺漏個別 Site 時以「—」容錯，更新測試及文件 | Dante (GitHub Copilot) |
+| 2026-10-29 | #44 | 🔧 依後端契約修正通知同步：上傳大小上限 2 MiB→5 MiB（`MAX_UPLOAD_FILE_SIZE`、驗證訊息、Dropzone 提示、`ApiErrorCode.FileTooLarge` 註解、相關單元測試同步調整）；rows API `sites` 空字串視為不篩選／`site`+`serial_no` 改數值排序／缺 `source_file` 回 422（皆為後端行為修正，前端呼叫方式不變，無需程式變更）；同步更新 `frontend-contract.md`、`api-contract-structure.instructions.md` | Dante (Copilot CLI) |
+| 2026-10-30 | #44 | 🔧 經使用者（產線）確認，Fail Sample Import 檔名實際含 `Wafer_ID` 欄位（`{Test_Program}_{Lot_ID}_{Wafer_ID}_{AT|RT}_{14位數字}.json`），過去因 `Wafer_ID` 幾乎皆為空值才誤判為固定雙底線分隔符；放寬 `matchesUploadFilename` 正則同時接受空值與有值 `Wafer_ID`，更新 `getFilenameRule()`、Dropzone 提示文字與單元測試；同步更新 `frontend-contract.md`，並標記後端權威規格文件尚待同步此欄位 | Dante (Copilot CLI) |

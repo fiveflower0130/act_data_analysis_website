@@ -1,6 +1,6 @@
 import type { UploadTheme } from '../../../stores/uploadStore';
 
-export const MAX_UPLOAD_FILE_SIZE = 2 * 1024 * 1024;
+export const MAX_UPLOAD_FILE_SIZE = 5 * 1024 * 1024;
 
 export const getAcceptedExtension = (theme: UploadTheme) =>
   theme === 'netlist' ? '.xlsx' : '.json';
@@ -8,7 +8,7 @@ export const getAcceptedExtension = (theme: UploadTheme) =>
 export const getFilenameRule = (theme: UploadTheme) =>
   theme === 'netlist'
     ? 'NL-{Test_Program}_({Security}).xlsx'
-    : '{Test_Program}_{Lot_ID}__{AT|RT}_{14位數字}.json';
+    : '{Test_Program}_{Lot_ID}_{Wafer_ID}_{AT|RT}_{14位數字}.json（Wafer_ID 目前多為空值，故常見雙底線）';
 
 export type UploadFileValidation =
   | { valid: true }
@@ -24,6 +24,10 @@ const getFileExtension = (fileName: string) => {
 /**
  * 檔名規則採寬鬆比對：Test Program 與 Lot ID 可能含有底線或其他
  * 後端允許字元，因此以分隔符、模式與 14 位數時間戳為必要條件。
+ *
+ * Fail Sample 檔名實際格式為 `{Test_Program}_{Lot_ID}_{Wafer_ID}_{AT|RT}_{14位數字}.json`，
+ * `Wafer_ID` 目前產線幾乎皆為空值，因此常見的 `__`（雙底線）其實是「空的 Wafer_ID」，
+ * 並非固定的雙底線分隔符；此處以 `.*` 容許 Wafer_ID 為空或任意內容。
  */
 export const matchesUploadFilename = (theme: UploadTheme, fileName: string) => {
   if (theme === 'netlist') {
@@ -32,7 +36,7 @@ export const matchesUploadFilename = (theme: UploadTheme, fileName: string) => {
     );
   }
 
-  return /^.+_.+__(?:AT|RT)_\d{14}\.json$/i.test(fileName);
+  return /^.+_.+_.*_(?:AT|RT)_\d{14}\.json$/i.test(fileName);
 };
 
 export const validateUploadFile = (
@@ -52,7 +56,7 @@ export const validateUploadFile = (
     return {
       valid: false,
       reason: 'size',
-      message: '檔案超過 2MB',
+      message: '檔案超過 5MB',
     };
   }
 

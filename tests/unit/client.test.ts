@@ -150,7 +150,7 @@ describe('api/client.ts — apiClient 攔截器', () => {
           data: {
             detail: {
               code: 1011,
-              message: '檔案超過 2 MB',
+              message: '檔案超過 5 MB',
             },
           },
         },
@@ -168,7 +168,7 @@ describe('api/client.ts — apiClient 攔截器', () => {
       };
 
       expect(getApiErrorCode(tooLarge)).toBe(1011);
-      expect(getApiErrorMessage(tooLarge)).toBe('檔案超過 2 MB');
+      expect(getApiErrorMessage(tooLarge)).toBe('檔案超過 5 MB');
       expect(getApiErrorCode(invalidName)).toBe(1012);
       expect(getApiErrorMessage(invalidName)).toBe('檔名格式錯誤');
     });

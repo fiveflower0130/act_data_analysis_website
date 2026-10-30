@@ -29,7 +29,7 @@ export const ApiErrorCode = {
   LdapServiceError: 1009,
   /** 查詢對象存在，但對應的 Netlist 尚未上傳 */
   NetlistUnavailable: 1010,
-  /** 上傳檔案超過 2 MB，HTTP 400 */
+  /** 上傳檔案超過 5 MiB，HTTP 400 */
   FileTooLarge: 1011,
   /** 上傳檔名格式錯誤，HTTP 400 */
   FilenameFormatError: 1012,

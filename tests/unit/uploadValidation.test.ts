@@ -15,6 +15,18 @@ describe('uploadValidation', () => {
     expect(matchesUploadFilename('netlist', 'NL-TP_A_(Security C).xlsx')).toBe(true);
   });
 
+  it('Fail Sample 檔名的 Wafer_ID 可為空值（雙底線）或實際有值', () => {
+    expect(matchesUploadFilename('fail-sample', 'TP_LOT__AT_20261022123456.json')).toBe(true);
+    expect(matchesUploadFilename('fail-sample', 'TP_LOT_W01_AT_20261022123456.json')).toBe(true);
+    // 後端 api-contract-structure.instructions.md 提供的官方範例（2026-10-30 確認）
+    expect(
+      matchesUploadFilename('fail-sample', 'AAH@A321320006-0_28NFFQB006__AT_20260724011913.json')
+    ).toBe(true);
+    expect(
+      matchesUploadFilename('fail-sample', 'AAH@A342810004-0_23NFF3B001_W01_RT_20260611182800.json')
+    ).toBe(true);
+  });
+
   it('拒絕錯誤副檔名並回傳 extension reason', () => {
     expect(validateUploadFile('fail-sample', file('sample.xlsx'))).toMatchObject({
       valid: false,
@@ -30,7 +42,7 @@ describe('uploadValidation', () => {
     });
   });
 
-  it('拒絕超過 2MB 的檔案', () => {
+  it('拒絕超過 5MB 的檔案', () => {
     expect(
       validateUploadFile(
         'fail-sample',
@@ -39,7 +51,7 @@ describe('uploadValidation', () => {
     ).toMatchObject({
       valid: false,
       reason: 'size',
-      message: '檔案超過 2MB',
+      message: '檔案超過 5MB',
     });
   });
 

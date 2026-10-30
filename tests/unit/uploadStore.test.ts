@@ -124,7 +124,7 @@ describe('uploadStore', () => {
 
   it('錯誤副檔名不入佇列，檔名錯誤與超大檔案則保留為失敗項目', () => {
     const tooLarge = new File(['x'], 'NL-TP-001_(C).xlsx');
-    Object.defineProperty(tooLarge, 'size', { value: 2 * 1024 * 1024 + 1 });
+    Object.defineProperty(tooLarge, 'size', { value: 5 * 1024 * 1024 + 1 });
 
     act(() => {
       useUploadStore.getState().addFiles([
@@ -138,7 +138,7 @@ describe('uploadStore', () => {
     expect(queue).toHaveLength(2);
     expect(queue.every((item) => item.status === 'failed')).toBe(true);
     expect(queue[0].errorMessage).toContain('檔名格式不符');
-    expect(queue[1].errorMessage).toContain('檔案超過 2MB');
+    expect(queue[1].errorMessage).toContain('檔案超過 5MB');
   });
 
   it('清空佇列會移除成功與失敗項目', () => {
@@ -177,7 +177,7 @@ describe('uploadStore', () => {
           data: {
             detail: {
               code: 1011,
-              message: '檔案超過 2 MB',
+              message: '檔案超過 5 MB',
             },
           },
         },
@@ -201,7 +201,7 @@ describe('uploadStore', () => {
       status: 'failed',
       statusCode: 400,
       apiCode: 1011,
-      errorMessage: '失敗：檔案超過 2 MB',
+      errorMessage: '失敗：檔案超過 5 MB',
     });
     expect(useUploadStore.getState().isUploading).toBe(false);
     expect(uploadNetlist).toHaveBeenCalledTimes(2);

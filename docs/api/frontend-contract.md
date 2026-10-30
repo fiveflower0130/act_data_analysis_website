@@ -3,7 +3,7 @@
 > **文件說明**：本文件為前端視角的 API 使用合約，記錄前端目前實際呼叫的 API 端點、TypeScript 介面定義、
 > 發現的問題，以及待後端提供的新 API 需求。供前後端 agent 協作時快速對齊。
 >
-> **最後更新**：2026-10-27（Fail Sample Site 篩選與統計欄位預留）
+> **最後更新**：2026-10-30（同步 Fail Sample Import 檔名實際含 `Wafer_ID` 欄位，放寬檔名驗證）
 > **對應後端規格文件**：`.github/instructions/api-contract-structure.instructions.md`（後端 Agent 維護，唯一的 API 規格來源）
 > **本文件性質**：前端視角的「實作對照報告」——記錄前端目前實際使用哪些端點、與上述規格文件的落差、以及前端專屬型別；**本身不是規格來源**，若內容有疑義請一律以 `api-contract-structure.instructions.md` 為準
 > **前端 API 層位置**：`src/api/`、`src/types/api.ts`
@@ -433,8 +433,10 @@ interface FailSampleImportRowsParams {
 }
 ```
 
-`value`／`spec_min`／`spec_max` 由後端採數值排序，其餘欄位採字串排序；
-缺值回傳空字串。`sites` 可複選，`q` 對所有 12 欄位做不分大小寫比對。
+`site`／`serial_no`／`value`／`spec_min`／`spec_max` 由後端採數值感知排序（純數字
+字串按數值比較，如 1、2、10；非數字字串按字串排序），其餘欄位採字串排序；
+缺值回傳空字串。`sites` 可複選，傳空字串或清理後無有效 ID 時等同未傳、不套用篩選；
+`q` 對所有 12 欄位做不分大小寫比對。
 
 **Response `data`**：
 ```typescript
@@ -533,7 +535,7 @@ interface NetlistUploadRequest {
 
 後端接受 `NL-{Test_Program}_C.xlsx`、`NL-{Test_Program}_(C).xlsx`，
 以及 `NL-{Test_Program}_(Security C).xlsx` 等等價括號寫法。非 `.xlsx` 回 `1007`，
-檔名不符回 `1012`，超過 2 MB 回 `1011`；錯誤業務碼與訊息位於
+檔名不符回 `1012`，超過 5 MiB 回 `1011`；錯誤業務碼與訊息位於
 `response.data.detail.code`／`response.data.detail.message`。
 
 **Response `data`**：
@@ -560,12 +562,20 @@ interface NetlistUploadResult {
 **用途**：手動匯入產線 Fail Sample JSON 批次。
 
 **Request**：`application/json`，直接傳送 JSON 檔案解析後的物件；必填 query parameter
-`source_file` 帶入使用者選擇的原始檔名。檔名需符合
-`{Test_Program}_{Lot_ID}__{AT|RT}_{YYYYMMDDHHMMSS}.json`，前端使用 `File.name`，
-由 axios 進行 URL encode。
+`source_file` 帶入使用者選擇的原始檔名。檔名格式為
+`{Test_Program}_{Lot_ID}_{Wafer_ID}_{AT|RT}_{YYYYMMDDHHMMSS}.json`，`Wafer_ID`
+目前產線幾乎皆為空值（呈現為連續兩個底線 `__`），例如
+`AAH@A321320006-0_28NFFQB006__AT_20260724011913.json`；有 wafer 值時例如
+`AAH@A342810004-0_23NFF3B001_W01_RT_20260611182800.json`（2026-10-30 經使用者／
+產線確認，`api-contract-structure.instructions.md` 已同步補上此欄位說明與兩組
+官方範例，前端 `matchesUploadFilename` 已同步放寬以同時接受空值與有值的
+`Wafer_ID`，詳見下方「已發現的問題」）。前端使用 `File.name`，由 axios 進行 URL
+encode。
 
-後端驗證：request body 超過 2 MB 回 `400`／`1011`；`source_file` 缺少或格式錯誤回
-`400`／`1012`。前端將後端 `detail.message` 直接作為佇列失敗原因。
+後端驗證：request body 超過 5 MiB 回 `400`／`1011`；`source_file` 缺少時回 `422`
+（FastAPI 預設格式，無 `code` 欄位），格式不符回 `400`／`1012`。前端固定以
+`File.name` 帶入 `source_file`，故缺少情境不會實際發生；前端將後端
+`detail.message`（1012）或 FastAPI 驗證陣列訊息（422）作為佇列失敗原因。
 
 **Response `data`**：
 ```typescript
@@ -687,7 +697,7 @@ const ApiErrorCode = {
   DatabaseError: 1008,
   LdapServiceError: 1009,   // ⬅ 新增（P1-1）：LDAP 服務不可用（HTTP 503），顯示「請稍後再試」，不跳轉登入頁
   NetlistUnavailable: 1010,  // 查詢對象存在，但 Netlist 尚未上傳
-  FileTooLarge: 1011,        // HTTP 400；讀取 response.data.detail.code
+  FileTooLarge: 1011,        // HTTP 400；讀取 response.data.detail.code（上限 5 MiB）
   FilenameFormatError: 1012, // HTTP 400；讀取 response.data.detail.code
 } as const;
 ```
@@ -729,6 +739,8 @@ const ApiErrorCode = {
 | 2026-09-02 | 後端 API 規格同步：Netlist／Fail Sample 清單新增 `uploaded_by` 工號欄位；Fail Sample 上傳成功後依 payload 格式 A/B 清除 Dashboard 對應 Lot 的 IO／POWER 快取 | ✅ 已修正（2.9、2.10、2.12、2.14、2.15 節） |
 | 2026-09-03 | 使用者確認上傳者欄位直接顯示 `uploaded_by` 工號；移除資料上傳頁的 `/users` 姓名對照 API 呼叫，但保留 `getUsers()` wrapper 與使用者 DTO 型別供後續歷史紀錄頁使用 | ✅ 已修正（2.9、2.12、2.15 節） |
 | 2026-10-22 | File Upload v7：Fail Sample 清單改為 `limit=10`／`offset` 分頁並以 `q` 傳送搜尋；接入 rows 明細 API 的 Site／搜尋／排序／後端分頁與快取；新增 Netlist sheets wrapper 顯示六個 Sheet 列數；同步 1011／1012 巢狀錯誤碼、`source_file` 必填與兩種 Netlist 括號檔名規則 | ✅ 已完成（2.9～2.17 節） |
+| 2026-10-29 | 後端通知契約修正 4 項：①上傳大小上限由 2 MiB 調整為 5 MiB（`1011`）②rows API `sites` 傳空字串視為不篩選（前端原本就只在非全選時才帶此參數，無需改動）③rows API `site`／`serial_no` 改為數值感知排序（後端處理，前端直接顯示 API 回傳順序，無需改動）④rows API 缺少 `source_file` 回 `422`（非原訂 `400`/`1012`；前端固定帶 `File.name`，此情境不會實際觸發）。前端已同步調整：`MAX_UPLOAD_FILE_SIZE`、上傳驗證錯誤訊息、Dropzone 提示文字、`ApiErrorCode.FileTooLarge` 註解、相關單元測試 | ✅ 已修正（size 限制同步至 5 MB；排序/篩選/source_file 為後端行為修正，前端無需程式變更） |
+| 2026-10-30 | 依使用者（產線）確認：Fail Sample Import 檔名實際格式為 `{Test_Program}_{Lot_ID}_{Wafer_ID}_{AT|RT}_{YYYYMMDDHHMMSS}.json`，`api-contract-structure.instructions.md` 當時記載的 `{Test_Program}_{Lot_ID}__{AT|RT}_{...}.json` 省略了 `Wafer_ID` 欄位；因產線目前 `Wafer_ID` 幾乎皆為空值才恰好呈現為雙底線 `__`，故過去未被發現。前端 `matchesUploadFilename` 原本將雙底線視為固定分隔符（僅接受空 `Wafer_ID`），已放寬為 `.*`，可同時接受空值與有值的 `Wafer_ID`；同步更新 Dropzone 提示文字與 `getFilenameRule()` | ✅ 前端已修正（`uploadValidation.ts`、`UploadDropzone.tsx`）；✅ 後端 `api-contract-structure.instructions.md`（第 770 行）已同步補上 `Wafer_ID` 欄位與空值／有值兩組官方範例，兩側規格已一致，已補測試鎖定行為（2026-10-30 確認）|
 | 2026-10-27 | Fail Sample Site 篩選改為 Checkbox Popover；預設全選、全選省略 `sites`、全部清除不發請求；同步後端必有的 `site_stats` 統計，異常缺漏 Site 時以「—」容錯 | ✅ 前後端已完成 |
 
 ---

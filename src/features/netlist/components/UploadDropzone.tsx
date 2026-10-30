@@ -60,8 +60,8 @@ const UploadDropzone = ({
       </p>
       <Text style={{ color: colorMode.textMuted, fontSize: responsive.typography.caption }}>
         {isNetlist
-          ? 'NL-{Test_Program}_({Security}).xlsx（單檔上限 2MB）'
-          : '{Test_Program}_{Lot_ID}__{AT|RT}_{時間}.json（單檔上限 2MB）'}
+          ? 'NL-{Test_Program}_({Security}).xlsx（單檔上限 5MB）'
+          : '{Test_Program}_{Lot_ID}_{Wafer_ID}_{AT|RT}_{時間}.json（單檔上限 5MB）'}
       </Text>
     </Dragger>
   );

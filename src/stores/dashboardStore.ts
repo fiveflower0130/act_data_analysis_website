@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
+import { createJSONStorage, persist, type StateStorage } from 'zustand/middleware';
 import { getFailSample, getFailSamplePower } from '../api/analysis';
 import { getTray } from '../api/netlist';
 import type { FailSampleResult, HBinValue, SearchHistoryEntry, TraySpec } from '../types/api';
@@ -7,6 +7,42 @@ import addLog from '../utils/logging';
 
 const HBIN_VALUES: HBinValue[] = [2, 3, 4, 5];
 const MAX_HISTORY = 30; // 最多保留 30 筆搜尋記錄
+
+/** 判斷 rejected 請求是否為「後端明確回報無資料」（HTTP 404）；其餘（5xx / timeout / 網路錯誤）為暫時性錯誤 */
+const isNoDataError = (reason: unknown): boolean =>
+  typeof reason === 'object' && reason !== null &&
+  (reason as { response?: { status?: number } }).response?.status === 404;
+
+/** 取得錯誤訊息文字 */
+const reasonMessage = (reason: unknown): string =>
+  reason instanceof Error ? reason.message : String(reason);
+
+/** 只保留仍在 searchHistory 中的 Lot 快取，避免 localStorage 無限成長 */
+const pruneCache = (cache: FailSampleCache, history: SearchHistoryEntry[]): FailSampleCache => {
+  const keep = new Set(history.map((h) => h.lotId));
+  return Object.fromEntries(Object.entries(cache ?? {}).filter(([lotId]) => keep.has(lotId)));
+};
+
+/** localStorage 包裝：寫入失敗（例如 quota exceeded）不拋出，只記錄一次 log */
+let storageErrorLogged = false;
+const safeStorage: StateStorage = {
+  getItem: (name) => {
+    try { return localStorage.getItem(name); } catch { return null; }
+  },
+  setItem: (name, value) => {
+    try {
+      localStorage.setItem(name, value);
+    } catch (err) {
+      if (!storageErrorLogged) {
+        storageErrorLogged = true;
+        addLog({ level: 'error', module: 'dashboardStore', stack: ['persist'], msg: `localStorage 寫入失敗，略過持久化: ${reasonMessage(err)}` });
+      }
+    }
+  },
+  removeItem: (name) => {
+    try { localStorage.removeItem(name); } catch { /* 忽略 */ }
+  },
+};
 
 /** cache[lotId][hbin] = FailSampleResult | null（null 表示後端 404 無資料） */
 type FailSampleCache = Record<string, Partial<Record<HBinValue, FailSampleResult | null>>>;
@@ -72,6 +108,8 @@ const useDashboardStore = create<DashboardState & DashboardActions>()(
 
           const hbinCache: Partial<Record<HBinValue, FailSampleResult | null>> = {};
           let hasAnyFail = false;
+          // 暫時性錯誤（非 404）：不寫入快取，整體視為搜尋失敗，下次搜尋會重試
+          const transientErrors: string[] = [];
 
           ioResults.forEach((result, idx) => {
             const hbin = HBIN_VALUES[idx];
@@ -82,9 +120,12 @@ const useDashboardStore = create<DashboardState & DashboardActions>()(
                 hasAnyFail = true;
               }
               addLog({ level: 'info', module: 'dashboardStore', stack: ['search'], msg: `IO HBIN=${hbin} 取得 ${data?.total_duts ?? 0} 筆` });
-            } else {
+            } else if (isNoDataError(result.reason)) {
               hbinCache[hbin] = null;
-              addLog({ level: 'warn', module: 'dashboardStore', stack: ['search'], msg: `IO HBIN=${hbin} 無資料: ${result.reason?.message}` });
+              addLog({ level: 'warn', module: 'dashboardStore', stack: ['search'], msg: `IO HBIN=${hbin} 無資料: ${reasonMessage(result.reason)}` });
+            } else {
+              transientErrors.push(`IO HBIN=${hbin}: ${reasonMessage(result.reason)}`);
+              addLog({ level: 'error', module: 'dashboardStore', stack: ['search'], msg: `IO HBIN=${hbin} 請求失敗（不快取）: ${reasonMessage(result.reason)}` });
             }
           });
 
@@ -96,11 +137,19 @@ const useDashboardStore = create<DashboardState & DashboardActions>()(
               const data = result.value.data.data;
               powerCache[hbin] = data;
               addLog({ level: 'info', module: 'dashboardStore', stack: ['search'], msg: `POWER HBIN=${hbin} 取得 ${data?.total_duts ?? 0} 筆` });
-            } else {
+            } else if (isNoDataError(result.reason)) {
               powerCache[hbin] = null;
-              addLog({ level: 'warn', module: 'dashboardStore', stack: ['search'], msg: `POWER HBIN=${hbin} 無資料: ${result.reason?.message}` });
+              addLog({ level: 'warn', module: 'dashboardStore', stack: ['search'], msg: `POWER HBIN=${hbin} 無資料: ${reasonMessage(result.reason)}` });
+            } else {
+              transientErrors.push(`POWER HBIN=${hbin}: ${reasonMessage(result.reason)}`);
+              addLog({ level: 'error', module: 'dashboardStore', stack: ['search'], msg: `POWER HBIN=${hbin} 請求失敗（不快取）: ${reasonMessage(result.reason)}` });
             }
           });
+
+          if (transientErrors.length > 0) {
+            set({ isSearching: false, searchError: `搜尋 ${trimmedId} 時發生暫時性錯誤，請稍後重試（${transientErrors[0]}）` });
+            return;
+          }
 
           const newEntry: SearchHistoryEntry = {
             lotId: trimmedId,
@@ -108,23 +157,21 @@ const useDashboardStore = create<DashboardState & DashboardActions>()(
             hasAnyFail,
           };
 
-          set((state) => ({
-            isSearching: false,
-            currentLotId: trimmedId,
-            failSampleCache: {
-              ...state.failSampleCache,
-              [trimmedId]: hbinCache,
-            },
-            failSamplePowerCache: {
-              ...state.failSamplePowerCache,
-              [trimmedId]: powerCache,
-            },
+          set((state) => {
             // 最新在最上方，去重後保留最新一筆，最多 MAX_HISTORY 筆
-            searchHistory: [
+            const searchHistory = [
               newEntry,
               ...state.searchHistory.filter((h) => h.lotId !== trimmedId),
-            ].slice(0, MAX_HISTORY),
-          }));
+            ].slice(0, MAX_HISTORY);
+            return {
+              isSearching: false,
+              currentLotId: trimmedId,
+              searchHistory,
+              // 同步清掉已被擠出歷史的 Lot 快取
+              failSampleCache: pruneCache({ ...state.failSampleCache, [trimmedId]: hbinCache }, searchHistory),
+              failSamplePowerCache: pruneCache({ ...state.failSamplePowerCache, [trimmedId]: powerCache }, searchHistory),
+            };
+          });
         } catch (err: unknown) {
           const message = err instanceof Error ? err.message : '搜尋失敗';
           addLog({ level: 'error', module: 'dashboardStore', stack: ['search'], msg: `搜尋錯誤: ${message}` });
@@ -235,6 +282,32 @@ const useDashboardStore = create<DashboardState & DashboardActions>()(
     }),
     {
       name: 'dashboard-store',
+      storage: createJSONStorage(() => safeStorage),
+      // v1：舊版快取可能含有暫時性錯誤誤寫入的 null，且無上限；遷移時丟棄快取、保留歷史
+      version: 1,
+      migrate: (persisted) => {
+        const old = (persisted ?? {}) as Partial<DashboardState>;
+        return {
+          searchHistory: old.searchHistory ?? [],
+          failSampleCache: {},
+          failSamplePowerCache: {},
+          traySpecCache: {},
+          currentLotId: old.currentLotId ?? null,
+          currentHbin: old.currentHbin ?? 3,
+        } as unknown as DashboardState & DashboardActions;
+      },
+      // rehydrate 時再修剪一次，確保快取與歷史一致
+      merge: (persisted, current) => {
+        const p = (persisted ?? {}) as Partial<DashboardState>;
+        const history = p.searchHistory ?? current.searchHistory;
+        return {
+          ...current,
+          ...p,
+          searchHistory: history,
+          failSampleCache: pruneCache(p.failSampleCache ?? {}, history),
+          failSamplePowerCache: pruneCache(p.failSamplePowerCache ?? {}, history),
+        };
+      },
       // 只持久化歷史記錄和快取，loading/error 不需要持久化
       partialize: (state) => ({
         searchHistory: state.searchHistory,

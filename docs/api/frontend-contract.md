@@ -3,7 +3,7 @@
 > **文件說明**：本文件為前端視角的 API 使用合約，記錄前端目前實際呼叫的 API 端點、TypeScript 介面定義、
 > 發現的問題，以及待後端提供的新 API 需求。供前後端 agent 協作時快速對齊。
 >
-> **最後更新**：2026-10-30（同步 Fail Sample Import 檔名實際含 `Wafer_ID` 欄位，放寬檔名驗證）
+> **最後更新**：2026-10-30（提出刪除 Fail Sample Import 批次 API 需求草案）
 > **對應後端規格文件**：`.github/instructions/api-contract-structure.instructions.md`（後端 Agent 維護，唯一的 API 規格來源）
 > **本文件性質**：前端視角的「實作對照報告」——記錄前端目前實際使用哪些端點、與上述規格文件的落差、以及前端專屬型別；**本身不是規格來源**，若內容有疑義請一律以 `api-contract-structure.instructions.md` 為準
 > **前端 API 層位置**：`src/api/`、`src/types/api.ts`
@@ -722,6 +722,24 @@ const ApiErrorCode = {
 | 🟠 P1 | **歷史紀錄查詢 API（全新）** | `src/features/history/` 需要查詢端點，支援：① 主題切換 ② 依角色權限過濾可見範圍（`viewer` 完全無法存取；`engineer` 可見 `viewer`+`engineer` 範圍，並可指定「只看自己」或用使用者清單多選縮小範圍）③ 時間區間（含「最近7天／最近1個月」快速選項 + 自訂範圍）④ 依主題動態的其他搜尋條件（例：上傳紀錄→test_program、登入紀錄→IP/裝置、使用狀況→功能名稱）⑤ 分頁。**端點命名已確認**（見 Backend to-do-list.md #72~#75）：`GET /api/v1/history/login`、`GET /api/v1/history/uploads`、`GET /api/v1/history/usage`（詳見設計決策 QA 條目 18） | 🔄 後端已規劃端點路徑，尚未實作（`usage` 主題另待埋點方案定案） |
 | 🟡 P2 | **匯出 API（Excel/CSV）** | 歷史紀錄表格需支援匯出，尚未決定是「後端提供下載端點」或「前端直接用查詢結果在瀏覽器端產生檔案」。若前端產生，套件選型（`xlsx` / `exceljs`）建議與 to-do #34（ACT Dashboard HW Bin List 匯出）共用同一份決策，避免專案內安裝兩套不同的 Excel 產生套件 | ⬜ 待討論實作方式（前端 or 後端） |
 | 🟡 P2 | **使用狀況埋點方案（全新，範疇最大）** | 歷史紀錄頁「使用狀況」主題（滑鼠操作、點選頁面、停留時間、最常用功能）需要前端新增操作事件收集機制，以及後端對應的儲存與查詢 API。目前**完全沒有設計**，非單純畫面開發，需先有獨立一輪討論定案技術方案（前端收集哪些事件、如何節流/批次上送、後端如何儲存與查詢）後才能定義出具體 API 規格（詳見設計決策 QA 條目 18） | ⬜ 未設計，待專門討論 |
+| 🟠 P1 | **刪除 Fail Sample Import 批次 API（全新）** | 產線上傳邏輯為「不覆蓋既有資料，上傳錯誤另存一筆」，故需要讓 `engineer`／`admin` 可自行刪除誤傳的批次（`UploadedReferenceList.tsx` Fail Sample 清單每筆項目）。**本文件核對 2026-10-30 當下的 `api-contract-structure.instructions.md`，尚未提供對應端點**，規格草案見下方「刪除 Fail Sample Import 批次 API — 規格草案」 | ⬜ 待後端提供，前端刪除按鈕待 API 到位後接入 |
+
+### 刪除 Fail Sample Import 批次 API — 規格草案（2026-10-30 提出）
+
+> 以下為前端提出、供後端評估的規格草案，非既成合約；實際簽名與行為仍以後端實作並回寫
+> `api-contract-structure.instructions.md` 為準。
+
+| 項目 | 建議內容 |
+|------|---------|
+| Method / Path | `DELETE /api/v1/data/fail-sample-import/{batch_id}` |
+| 權限 | `engineer`／`admin`（比照 `POST .../upload` 與 `GET .../csv`，較一般查詢嚴格） |
+| Path Param | `batch_id`（同既有 detail／rows／csv 端點） |
+| 成功 Response | 統一回應格式，`data` 建議為 `{ "batch_id": "...", "deleted": true }` 或 `null` 皆可，前端僅需 `code === 0` 即可判斷成功 |
+| 錯誤碼 | `401`／`1001` 未登入；`403`／`1002` 權限不足；`404`／`1003` `batch_id` 不存在（含已被刪除過的情況，需確保刪除具冪等的錯誤行為而非 500）；`500`／`1008` 刪除失敗 |
+| 資料範圍 | 刪除對應批次的 `fail_sample_info` 與所有 `fail_sample_test_result` chunk；是否採軟刪除（保留稽核）或硬刪除由後端決定，但刪除後 `GET /fail-sample-import`（清單）／`.../{batch_id}`（detail）／`.../{batch_id}/rows`／`.../{batch_id}/csv` 皆須查無此批次（`404`） |
+| 快取一致性（重要） | 若該批次 `hbin=3`，比照上傳時的行為，刪除後需主動清除該 `lot_id` 對應的 `/analysis/fail-sample` 分析結果快取；`rows` 端點既有的 Redis 攤平快取（TTL 1 小時）亦須一併清除，避免刪除後仍讀到快取的舊列表 |
+| 稽核 | 建議寫入 Audit Log（操作者工號、`batch_id`、`lot_id`、刪除時間），比照既有上傳稽核的保存欄位原則 |
+| 前端配套（API 到位後實作） | ① `UploadedReferenceList.tsx` 每筆 Fail Sample 項目新增刪除按鈕，點擊以 `Modal.confirm` 二次確認 ② 刪除成功後重新呼叫 `getFailSampleImportList()` 刷新當頁、若刪除項目正在預覽中則清空右側預覽面板 ③ 呼叫既有 `useDashboardStore.getState().invalidateFailSampleCache(lot_id, hbin)`（`src/stores/uploadStore.ts` 上傳成功流程已使用同一支方法）維持前端快取與後端同步，不需等後端清快取才顯示正確結果 |
 
 ---
 
@@ -742,6 +760,7 @@ const ApiErrorCode = {
 | 2026-10-29 | 後端通知契約修正 4 項：①上傳大小上限由 2 MiB 調整為 5 MiB（`1011`）②rows API `sites` 傳空字串視為不篩選（前端原本就只在非全選時才帶此參數，無需改動）③rows API `site`／`serial_no` 改為數值感知排序（後端處理，前端直接顯示 API 回傳順序，無需改動）④rows API 缺少 `source_file` 回 `422`（非原訂 `400`/`1012`；前端固定帶 `File.name`，此情境不會實際觸發）。前端已同步調整：`MAX_UPLOAD_FILE_SIZE`、上傳驗證錯誤訊息、Dropzone 提示文字、`ApiErrorCode.FileTooLarge` 註解、相關單元測試 | ✅ 已修正（size 限制同步至 5 MB；排序/篩選/source_file 為後端行為修正，前端無需程式變更） |
 | 2026-10-30 | 依使用者（產線）確認：Fail Sample Import 檔名實際格式為 `{Test_Program}_{Lot_ID}_{Wafer_ID}_{AT|RT}_{YYYYMMDDHHMMSS}.json`，`api-contract-structure.instructions.md` 當時記載的 `{Test_Program}_{Lot_ID}__{AT|RT}_{...}.json` 省略了 `Wafer_ID` 欄位；因產線目前 `Wafer_ID` 幾乎皆為空值才恰好呈現為雙底線 `__`，故過去未被發現。前端 `matchesUploadFilename` 原本將雙底線視為固定分隔符（僅接受空 `Wafer_ID`），已放寬為 `.*`，可同時接受空值與有值的 `Wafer_ID`；同步更新 Dropzone 提示文字與 `getFilenameRule()` | ✅ 前端已修正（`uploadValidation.ts`、`UploadDropzone.tsx`）；✅ 後端 `api-contract-structure.instructions.md`（第 770 行）已同步補上 `Wafer_ID` 欄位與空值／有值兩組官方範例，兩側規格已一致，已補測試鎖定行為（2026-10-30 確認）|
 | 2026-10-27 | Fail Sample Site 篩選改為 Checkbox Popover；預設全選、全選省略 `sites`、全部清除不發請求；同步後端必有的 `site_stats` 統計，異常缺漏 Site 時以「—」容錯 | ✅ 前後端已完成 |
+| 2026-10-30 | 使用者反映產線誤傳 Fail Sample 批次時需要能自行刪除（上傳邏輯為不覆蓋、另存一筆，無法透過重新上傳覆蓋修正）。核對 `api-contract-structure.instructions.md` 當下並無刪除批次端點，前端已提出規格草案（見第四節）請後端評估 | ⬜ 待後端提供 API，前端刪除 UI 待 API 到位後實作 |
 
 ---
 

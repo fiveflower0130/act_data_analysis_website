@@ -113,6 +113,7 @@
 | 11 | P2 | ✅ | 資料上傳頁 — 完成 Netlist 與 Fail Sample 雙主題、左欄清單與 client-side 搜尋、複選佇列、逐筆上傳狀態、JSON 解析與錯誤處理、主題切換清空佇列、engineer/admin 角色守衛及 Navbar 導覽。同步後端 `uploaded_by` 工號欄位並直接顯示工號；Fail Sample 上傳成功後清除 Dashboard 對應 Lot 的 IO／POWER 快取。Fail Sample 詳情與 CSV 匯出移至歷史紀錄頁 #12 | `src/features/netlist/`、`src/stores/uploadStore.ts`、`src/stores/dashboardStore.ts` |
 | 44 | P2 | ✅ | File Upload v7 重設計與後端整合 — 左欄主題與已上傳清單、右側預覽區、440px Drawer、每主題獨立佇列、檔名／副檔名／2MB 驗證；同步後端 1011／1012 巢狀錯誤訊息、Fail Sample `q` 搜尋與 rows 明細（Site／搜尋／排序／後端分頁／快取）、Netlist 六 Sheet 列數 metadata 與懶加載預覽 | `src/features/netlist/`、`src/stores/uploadStore.ts`、`src/api/`、`src/types/api.ts` |
 | 12 | P2 | 🔄 | 歷史紀錄頁 — 範疇擴大為登入/上傳/使用狀況三主題通用查詢頁（原規劃在 Netlist 內的上傳歷史子功能已併入本項，見 design-decisions-qa.md 條目 19）。版面 v2 已確認：左欄主題下拉＋查詢對象（全部+可複選使用者搜尋／只看自己）＋時間區間（快速選項+自訂）＋其他搜尋條件（依主題動態），右欄上表格+匯出、下統計圖表（構思中）。**待後端全新歷史紀錄查詢 API 開發**，使用狀況主題另待埋點方案討論定案（見 frontend-contract.md 第四節） | `src/features/history/` |
+| 45 | P2 | ⬜ | 資料上傳頁 — Fail Sample Import 批次刪除功能：`UploadedReferenceList.tsx` 每筆 Fail Sample 項目新增刪除按鈕，供 `engineer`／`admin` 自行刪除誤傳批次（上傳邏輯為不覆蓋、另存一筆，無法用重新上傳覆蓋修正）。**待後端提供 `DELETE /api/v1/data/fail-sample-import/{batch_id}`**，規格草案已提出（見 frontend-contract.md 第四節），需同步清除後端 `/analysis/fail-sample` 快取與 `rows` Redis 快取，前端需同步呼叫既有 `invalidateFailSampleCache()` | `src/features/netlist/components/UploadedReferenceList.tsx`、`src/api/data.ts`、`src/stores/uploadStore.ts` |
 
 ---
 
@@ -196,3 +197,4 @@
 | 2026-10-27 | #44 | ✅ Site 篩選改為 Checkbox Popover：首次載入預設全選、全選省略 `sites`、全部清除不發 API 並顯示空狀態；同步後端必有的 `site_stats` 真實統計，異常缺漏個別 Site 時以「—」容錯，更新測試及文件 | Dante (GitHub Copilot) |
 | 2026-10-29 | #44 | 🔧 依後端契約修正通知同步：上傳大小上限 2 MiB→5 MiB（`MAX_UPLOAD_FILE_SIZE`、驗證訊息、Dropzone 提示、`ApiErrorCode.FileTooLarge` 註解、相關單元測試同步調整）；rows API `sites` 空字串視為不篩選／`site`+`serial_no` 改數值排序／缺 `source_file` 回 422（皆為後端行為修正，前端呼叫方式不變，無需程式變更）；同步更新 `frontend-contract.md`、`api-contract-structure.instructions.md` | Dante (Copilot CLI) |
 | 2026-10-30 | #44 | 🔧 經使用者（產線）確認，Fail Sample Import 檔名實際含 `Wafer_ID` 欄位（`{Test_Program}_{Lot_ID}_{Wafer_ID}_{AT|RT}_{14位數字}.json`），過去因 `Wafer_ID` 幾乎皆為空值才誤判為固定雙底線分隔符；放寬 `matchesUploadFilename` 正則同時接受空值與有值 `Wafer_ID`，更新 `getFilenameRule()`、Dropzone 提示文字與單元測試；同步更新 `frontend-contract.md`，並標記後端權威規格文件尚待同步此欄位 | Dante (Copilot CLI) |
+| 2026-10-30 | #45 | 📋 新增待辦 #45：提出「刪除 Fail Sample Import 批次」API 需求草案（`DELETE /api/v1/data/fail-sample-import/{batch_id}`），含權限、錯誤碼、快取一致性（analysis 快取 + rows Redis 快取）、稽核與前端配套行為；核對後端規格文件確認目前尚未提供此端點，草案已補進 `frontend-contract.md` 第四節請後端評估 | Dante (Copilot CLI) |

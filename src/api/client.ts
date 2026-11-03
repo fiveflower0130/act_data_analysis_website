@@ -14,6 +14,58 @@ const apiClient = axios.create({
   headers: { 'Content-Type': 'application/json' },
 });
 
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null;
+
+/**
+ * 讀取後端錯誤的業務碼。
+ *
+ * 後端一般錯誤可能是 `response.data.code`，HTTPException（例如 1011/1012）
+ * 則放在 `response.data.detail.code`；兩種格式都在此統一解析。
+ */
+export const getApiErrorCode = (error: unknown): number | undefined => {
+  if (!isRecord(error)) return undefined;
+  const response = error.response;
+  if (!isRecord(response)) return undefined;
+  const body = response.data;
+  if (!isRecord(body)) return undefined;
+
+  if (typeof body.code === 'number') return body.code;
+  const detail = body.detail;
+  if (isRecord(detail) && typeof detail.code === 'number') return detail.code;
+  return undefined;
+};
+
+/**
+ * 讀取後端錯誤訊息，支援統一回應、巢狀 detail 與 FastAPI 驗證陣列。
+ */
+export const getApiErrorMessage = (error: unknown, fallback = '請求失敗'): string => {
+  if (!isRecord(error)) return fallback;
+
+  const response = error.response;
+  const body = isRecord(response) ? response.data : undefined;
+  if (typeof body === 'string' && body) return body;
+
+  if (isRecord(body)) {
+    if (typeof body.message === 'string' && body.message) return body.message;
+
+    const detail = body.detail;
+    if (typeof detail === 'string' && detail) return detail;
+    if (isRecord(detail) && typeof detail.message === 'string' && detail.message) {
+      return detail.message;
+    }
+    if (Array.isArray(detail)) {
+      const messages = detail
+        .map((item) => (isRecord(item) && typeof item.msg === 'string' ? item.msg : ''))
+        .filter(Boolean);
+      if (messages.length > 0) return messages.join('；');
+    }
+  }
+
+  if (typeof error.message === 'string' && error.message) return error.message;
+  return fallback;
+};
+
 // ─── Refresh Token 並發控制 ────────────────────────────────────────────────────
 
 let isRefreshing = false;

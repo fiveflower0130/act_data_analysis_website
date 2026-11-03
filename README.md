@@ -2,6 +2,15 @@
 
 ACT 測試資料分析平台前端（React 19 + TypeScript + Vite + Zustand + Ant Design + ECharts + Cytoscape.js）。
 
+## 目前功能
+
+- Dashboard：LOT／HBIN 查詢與 Fail Sample、Fail Die、Fail Die Rate、Fail Ball、Tray 分析
+- 資料上傳（`/upload`）：File Upload v7 以右側 Drawer 支援 Netlist `.xlsx` 與 Fail Sample `.json` 雙主題上傳、每主題獨立佇列、檔案驗證與逐筆狀態
+- 上傳清單直接顯示 `uploaded_by` 工號；Fail Sample 上傳成功後會清除 Dashboard 對應 Lot 快取
+- 已上傳 Netlist 支援六個 Sheet 列數 metadata、懶加載預覽、搜尋、排序與分頁；Fail Sample 提供批次資訊與 rows 明細預覽，以及 engineer/admin CSV 匯出
+- `/upload` 僅開放 `engineer`／`admin`；`viewer` 不顯示入口且存取時導向 Dashboard
+- Fail Sample 已支援 rows 明細預覽（Site／搜尋／排序／後端分頁）與 engineer/admin CSV 匯出；完整歷史紀錄查詢規劃於 to-do-list #12
+
 ## 測試（Testing）
 
 本專案使用 [Vitest](https://vitest.dev/) + [Testing Library](https://testing-library.com/) 撰寫單元測試，測試檔案統一放在根目錄 `tests/`（`tests/unit/` 純邏輯測試、`tests/components/` 元件測試）。

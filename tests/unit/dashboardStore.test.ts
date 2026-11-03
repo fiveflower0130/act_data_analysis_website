@@ -365,6 +365,55 @@ describe('dashboardStore', () => {
     });
   });
 
+  // ─── invalidateFailSampleCache ──────────────────────────────────────────────
+
+  describe('invalidateFailSampleCache()', () => {
+    beforeEach(() => {
+      useDashboardStore.setState({
+        failSampleCache: {
+          LOT001: {
+            2: mkResult(2, 1),
+            3: mkResult(3, 2),
+            4: mkResult(4, 3),
+          },
+          LOT002: { 3: mkResult(3, 4) },
+        },
+        failSamplePowerCache: {
+          LOT001: {
+            2: mkResult(2, 5),
+            3: mkResult(3, 6),
+            4: mkResult(4, 7),
+          },
+          LOT002: { 3: mkResult(3, 8) },
+        },
+      });
+    });
+
+    it('帶入 hbin 時只清除指定 Lot 的指定 HBIN，IO 與 POWER 其餘快取保留', () => {
+      useDashboardStore.getState().invalidateFailSampleCache('LOT001', 3);
+
+      const state = useDashboardStore.getState();
+      expect(state.failSampleCache.LOT001[3]).toBeUndefined();
+      expect(state.failSampleCache.LOT001[2]).toBeDefined();
+      expect(state.failSampleCache.LOT001[4]).toBeDefined();
+      expect(state.failSamplePowerCache.LOT001[3]).toBeUndefined();
+      expect(state.failSamplePowerCache.LOT001[2]).toBeDefined();
+      expect(state.failSamplePowerCache.LOT001[4]).toBeDefined();
+      expect(state.failSampleCache.LOT002[3]).toBeDefined();
+      expect(state.failSamplePowerCache.LOT002[3]).toBeDefined();
+    });
+
+    it('未帶入 hbin 時清除指定 Lot 的全部 IO 與 POWER 快取', () => {
+      useDashboardStore.getState().invalidateFailSampleCache('LOT001');
+
+      const state = useDashboardStore.getState();
+      expect(state.failSampleCache.LOT001).toBeUndefined();
+      expect(state.failSamplePowerCache.LOT001).toBeUndefined();
+      expect(state.failSampleCache.LOT002).toBeDefined();
+      expect(state.failSamplePowerCache.LOT002).toBeDefined();
+    });
+  });
+
   // ─── fetchTraySpec / getTraySpec ─────────────────────────────────────────────
 
   describe('fetchTraySpec() / getTraySpec()', () => {
@@ -407,5 +456,58 @@ describe('dashboardStore', () => {
 
       expect(useDashboardStore.getState().getTraySpec('PGM_B')).toBeNull();
     });
+  });
+});
+
+// ─── 暫時性錯誤不快取 / 快取修剪 ──────────────────────────────────────────────
+
+describe('dashboardStore 暫時性錯誤與快取修剪', () => {
+  beforeEach(() => {
+    useDashboardStore.setState({
+      searchHistory: [], failSampleCache: {}, failSamplePowerCache: {}, traySpecCache: {},
+      currentLotId: null, currentHbin: 3, isSearching: false, searchError: null,
+    });
+    vi.clearAllMocks();
+    vi.mocked(mockGetFailSamplePower).mockResolvedValue(
+      { data: { code: 200, message: 'OK', data: null } } as never,
+    );
+  });
+
+  it('5xx 錯誤 → 不寫入快取與歷史，設定 searchError，下次可重試', async () => {
+    vi.mocked(mockGetFailSample).mockImplementation(() =>
+      Promise.reject(Object.assign(new Error('boom'), { response: { status: 500 } })) as never);
+    await act(async () => { await useDashboardStore.getState().search('LOTERR'); });
+    const s = useDashboardStore.getState();
+    expect(s.failSampleCache.LOTERR).toBeUndefined();
+    expect(s.searchHistory).toHaveLength(0);
+    expect(s.searchError).toBeTruthy();
+    expect(s.isSearching).toBe(false);
+
+    vi.mocked(mockGetFailSample).mockImplementation(((_l: string, hbin: HBinValue) => apiOk(mkResult(hbin, 1))) as never);
+    await act(async () => { await useDashboardStore.getState().search('LOTERR'); });
+    expect(useDashboardStore.getState().failSampleCache.LOTERR?.[3]?.total_duts).toBe(1);
+    expect(useDashboardStore.getState().searchError).toBeNull();
+  });
+
+  it('無 response 的網路錯誤同樣不快取', async () => {
+    vi.mocked(mockGetFailSample).mockImplementation(() => Promise.reject(new Error('Network Error')) as never);
+    await act(async () => { await useDashboardStore.getState().search('LOTNET'); });
+    expect(useDashboardStore.getState().failSampleCache.LOTNET).toBeUndefined();
+  });
+
+  it('歷史超過上限 → 被擠出的 Lot 快取一併移除', async () => {
+    const history = Array.from({ length: 30 }, (_, i) => ({
+      lotId: `OLD${i}`, searchedAt: '2026-01-01T00:00:00Z', hasAnyFail: false,
+    }));
+    const cache = Object.fromEntries(history.map((h) => [h.lotId, { 3: null }]));
+    useDashboardStore.setState({ searchHistory: history, failSampleCache: cache, failSamplePowerCache: cache });
+    vi.mocked(mockGetFailSample).mockImplementation(((_l: string, hbin: HBinValue) => apiOk(mkResult(hbin, 1))) as never);
+    await act(async () => { await useDashboardStore.getState().search('NEWLOT'); });
+    const s = useDashboardStore.getState();
+    expect(s.searchHistory).toHaveLength(30);
+    expect(s.failSampleCache.OLD29).toBeUndefined();
+    expect(s.failSamplePowerCache.OLD29).toBeUndefined();
+    expect(s.failSampleCache.NEWLOT).toBeDefined();
+    expect(Object.keys(s.failSampleCache)).toHaveLength(30);
   });
 });

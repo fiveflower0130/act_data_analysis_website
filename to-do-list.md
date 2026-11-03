@@ -1,6 +1,6 @@
 # ACT Failure Analysis System Frontend — 待辦事項清單
 
-> 最後更新：2026-10-28
+> 最後更新：2026-11
 > 分析工具：GitHub Copilot / Claude Code Fable
 > 說明：本文件記錄前端專案的待辦事項，**依模組分類**（依專案實際功能領域劃分），每個模組獨立一個區塊，優先級（P0~P3）改為表格欄位而非區塊標題；模組結構比照 Backend `to-do-list.md`，模組命名盡量對齊，方便兩邊對照。
 
@@ -30,7 +30,7 @@
 
 | 版本 | 內容 | 對應項目 | 狀態 |
 |------|------|----------|------|
-| v1.6.0 | 資料上傳頁（純上傳功能） | #11 | 🔄 待後端 `uploaded_by_name` 欄位到位後開始 |
+| v1.6.0 | 資料上傳頁（Netlist + Fail Sample 雙主題） | #11 | ✅ |
 | v1.7.0 | 歷史紀錄頁（登入/上傳/使用狀況三主題查詢） | #12 | 🔄 待後端全新歷史紀錄查詢 API |
 | v2.0.0 | ACT Dashboard 移植（Histogram + HW Bin List） | #29~#42 | ⬜ 待後端 `/api/v1/filters\|histogram\|hw-bin-list` 端點；範圍可能伴隨主頁改版整合，待後續確認 |
 
@@ -110,8 +110,10 @@
 
 | # | 優先級 | 狀態 | 問題描述 | 位置 |
 |---|--------|------|----------|------|
-| 11 | P2 | 🔄 | 資料上傳頁 — 範疇收斂為單純上傳功能（原規劃的歷史紀錄子功能已拆分至 #12）。版面 v2 已確認（見 design-decisions-qa.md 條目 19）：左欄上傳主題下拉＋已上傳檔案清單（依檔名搜尋＋上傳者資訊），右欄上傳區＋覆蓋警示＋佇列（全部上傳批次送出，失敗不重試）。待後端 `uploaded_by_name` 欄位到位後開始實作 | `src/features/netlist/` |
+| 11 | P2 | ✅ | 資料上傳頁 — 完成 Netlist 與 Fail Sample 雙主題、左欄清單與 client-side 搜尋、複選佇列、逐筆上傳狀態、JSON 解析與錯誤處理、主題切換清空佇列、engineer/admin 角色守衛及 Navbar 導覽。同步後端 `uploaded_by` 工號欄位並直接顯示工號；Fail Sample 上傳成功後清除 Dashboard 對應 Lot 的 IO／POWER 快取。Fail Sample 詳情與 CSV 匯出移至歷史紀錄頁 #12 | `src/features/netlist/`、`src/stores/uploadStore.ts`、`src/stores/dashboardStore.ts` |
+| 44 | P2 | ✅ | File Upload v7 重設計與後端整合 — 左欄主題與已上傳清單、右側預覽區、440px Drawer、每主題獨立佇列、檔名／副檔名／2MB 驗證；同步後端 1011／1012 巢狀錯誤訊息、Fail Sample `q` 搜尋與 rows 明細（Site／搜尋／排序／後端分頁／快取）、Netlist 六 Sheet 列數 metadata 與懶加載預覽 | `src/features/netlist/`、`src/stores/uploadStore.ts`、`src/api/`、`src/types/api.ts` |
 | 12 | P2 | 🔄 | 歷史紀錄頁 — 範疇擴大為登入/上傳/使用狀況三主題通用查詢頁（原規劃在 Netlist 內的上傳歷史子功能已併入本項，見 design-decisions-qa.md 條目 19）。版面 v2 已確認：左欄主題下拉＋查詢對象（全部+可複選使用者搜尋／只看自己）＋時間區間（快速選項+自訂）＋其他搜尋條件（依主題動態），右欄上表格+匯出、下統計圖表（構思中）。**待後端全新歷史紀錄查詢 API 開發**，使用狀況主題另待埋點方案討論定案（見 frontend-contract.md 第四節） | `src/features/history/` |
+| 45 | P2 | ✅ | 資料上傳頁 — Fail Sample Import 批次刪除功能：`UploadedReferenceList.tsx` 每筆 Fail Sample 項目新增刪除按鈕，供 `engineer`／`admin` 自行刪除誤傳批次（上傳邏輯為不覆蓋、另存一筆，無法用重新上傳覆蓋修正）。後端已提供 `DELETE /api/v1/data/fail-sample-import/{batch_id}`（詳見 frontend-contract.md 2.18 節），前端已完成 API wrapper、store action（含 `invalidateFailSampleCache()` 與清單重新整理）、單元/元件測試。UI 依使用者提供的手稿改版為**卡片內就地展開確認區**（取代初版 `Modal.confirm`）＋底部 toast 通知，新增共用元件 `src/components/Toast.tsx` | `src/features/netlist/components/UploadedReferenceList.tsx`、`src/api/data.ts`、`src/stores/uploadStore.ts`、`src/features/netlist/NetlistUploadPage.tsx`、`src/components/Toast.tsx` |
 
 ---
 
@@ -184,4 +186,19 @@
 | 2026-08-05 | 版本 | ✅ 版本號升級 1.5.0 → 1.5.1（package.json/package-lock.json），發布本次 API 合約修正 patch 版本 | Dante |
 | 2026-08-17 | 文件 | 導入 graphify 程式碼知識圖譜工具（與 Backend 共用父目錄 `D:\ACT\Failure Analysis System\graphify-out\` 的跨 repo 圖譜）；`CLAUDE.md` 與 `.github/copilot-instructions.md` 新增「程式碼關聯查詢（graphify）」使用規範與全域規則「跨檔案關聯先查圖譜」；repo 內建立 `graphify-out` junction 指向父目錄共用圖譜（已加入 `.gitignore`），查詢指令免帶 `--graph` 即可解析，詳細安裝紀錄見 Backend `to-do-list.md` 2026-08-17 條目 | Dante (Claude Fable 5) |
 | 2026-08-17 | 版控 | `git-workflow.instructions.md` 新增「AI 指示文件備份機制」一節：本 repo 的 `.github/`、`CLAUDE.md`、`.claude/` 已納入獨立備份 repo `..\ai-config-backup\`（僅推私人 GitHub private，嚴禁加入公司 GitLab），大幅修改指示文件後執行該 repo 的 `sync.ps1` 同步 | Dante (Claude Fable 5) |
+| 2026-09-01 | #11 | ✅ 完成資料上傳頁：Netlist／Fail Sample 雙主題、清單查詢、檔案佇列與狀態、API 串接、`/users` 姓名對照表預留、`/upload` 角色守衛、Navbar 導覽與測試；Fail Sample 詳情與 CSV 匯出留待 #12 歷史紀錄頁 | Dante (GitHub Copilot) |
+| 2026-09-01 | #11 | 依使用者實測修正資料上傳頁 UI：Navbar 使用 `File Upload`、左右欄改為 27:73 比例、左欄清單改為填滿選擇器與說明欄之間的剩餘空間並於區塊內捲動、清單補上傳者「—」佔位、識別資訊允許換行、移除右欄重複標題，並建立穩定視窗高度鏈 | Dante (GitHub Copilot) |
+| 2026-09-02 | #11 | 同步後端 `uploaded_by` 規格：Netlist／Fail Sample 清單以工號回傳，前端改用 `/users` 對照顯示姓名並支援工號 fallback；新增 Fail Sample 上傳成功後清除 Dashboard 對應 Lot 的 IO／POWER 快取（格式 A/B payload 均支援） | Dante (GitHub Copilot) |
+| 2026-09-03 | #11 | 依使用者確認將 Netlist／Fail Sample 清單的上傳者欄位改為直接顯示 `uploaded_by` 工號；移除資料上傳頁 `/users` 姓名對照邏輯，保留 `getUsers()` API wrapper 與使用者型別供未來歷史紀錄／使用者管理功能使用 | Dante (GitHub Copilot) |
+| 2026-09-03 | 文件 | 導入 diagram-design 圖表工具（安裝與測試紀錄見 Backend `to-do-list.md` 同日條目）；`CLAUDE.md` 與 `.github/copilot-instructions.md` 新增「圖表繪製（mermaid vs diagram-design）」規範：日常文件（to-do-list／週報／QA 紀錄／instructions）維持 mermaid，`docs/reports/` 對外報告與簡報用圖改用 diagram-design，圖檔置於 `docs/reports/assets/` | Dante (Claude Opus 5) |
+| 2026-09-16 | #11 | 修正 `Upload.Dragger` 的 `accept` 過濾不對稱：改用 `{ format, filter: 'native' }`，讓拖曳與點選都統一由 `beforeUpload` 驗證副檔名；新增多檔拖曳回歸測試 | Dante (GitHub Copilot) |
+| 2026-10-22 | #44 | 🔄 完成 File Upload v7 前端重設計：改用右側 Drawer、每主題獨立佇列、檔名／大小驗證、Netlist 六 Sheet 預覽與 Fail Sample 預覽 shell；新增 API wrapper、純函式 helpers、單元與頁面測試，文件同步更新 | Dante (GitHub Copilot) |
+| 2026-10-22 | #44 | ✅ 完成後端整合：支援 `detail.code/message` 的 1011／1012 錯誤顯示、Fail Sample `q` 搜尋與 rows 明細表（Site／debounce／排序／後端分頁／查詢快取）、Netlist `/sheets` 列數 metadata；更新檔名驗證、`source_file` 必填、測試與 API/決策/週報文件 | Dante (GitHub Copilot) |
+| 2026-10-27 | #44 | ✅ Site 篩選改為 Checkbox Popover：首次載入預設全選、全選省略 `sites`、全部清除不發 API 並顯示空狀態；同步後端必有的 `site_stats` 真實統計，異常缺漏個別 Site 時以「—」容錯，更新測試及文件 | Dante (GitHub Copilot) |
 | 2026-10-28 | #24, #43 | ✅ 修正 `computeAnalysis()` 的 die/ball 索引配對：只統計 `die_no[k] === die` 的 `ball_name[k]`，避免跨 die DUT 污染 ResultsPanel；補充跨 die、22 顆 U14 ball 與既有平局／空值／`ioFailCount` 測試 | Dante |
+| 2026-10-29 | #44 | 🔧 依後端契約修正通知同步：上傳大小上限 2 MiB→5 MiB（`MAX_UPLOAD_FILE_SIZE`、驗證訊息、Dropzone 提示、`ApiErrorCode.FileTooLarge` 註解、相關單元測試同步調整）；rows API `sites` 空字串視為不篩選／`site`+`serial_no` 改數值排序／缺 `source_file` 回 422（皆為後端行為修正，前端呼叫方式不變，無需程式變更）；同步更新 `frontend-contract.md`、`api-contract-structure.instructions.md` | Dante (Copilot CLI) |
+| 2026-10-30 | #44 | 🔧 經使用者（產線）確認，Fail Sample Import 檔名實際含 `Wafer_ID` 欄位（`{Test_Program}_{Lot_ID}_{Wafer_ID}_{AT|RT}_{14位數字}.json`），過去因 `Wafer_ID` 幾乎皆為空值才誤判為固定雙底線分隔符；放寬 `matchesUploadFilename` 正則同時接受空值與有值 `Wafer_ID`，更新 `getFilenameRule()`、Dropzone 提示文字與單元測試；同步更新 `frontend-contract.md`，並標記後端權威規格文件尚待同步此欄位 | Dante (Copilot CLI) |
+| 2026-10-30 | #45 | 📋 新增待辦 #45：提出「刪除 Fail Sample Import 批次」API 需求草案（`DELETE /api/v1/data/fail-sample-import/{batch_id}`），含權限、錯誤碼、快取一致性（analysis 快取 + rows Redis 快取）、稽核與前端配套行為；核對後端規格文件確認目前尚未提供此端點，草案已補進 `frontend-contract.md` 第四節請後端評估 | Dante (Copilot CLI) |
+| 2026-11 | #45 | ✅ 後端提供正式 API 規格（與草案主要差異：404 為純字串 `detail`，不含 `code:1003`）。前端完成實作：`src/api/data.ts` 新增 `deleteFailSampleImport`；`uploadStore.ts` 新增 `deletingBatchIds` 狀態與對應 action（刪除成功後呼叫 `invalidateFailSampleCache` 並重新整理清單）；`UploadedReferenceList.tsx` 新增刪除按鈕與 `Modal.confirm` 二次確認（`onOk` 不回傳 Promise 避免阻塞 Modal）；`NetlistUploadPage.tsx` 串接並於刪除項目正在預覽時清空預覽面板；新增/更新單元與元件測試（155/155 通過）；同步更新 `frontend-contract.md`（2.18 節）與本文件 | Dante (Copilot CLI) |
+| 2026-11 | #45 | 🎨 使用者提供刪除功能 UI/UX 手稿（`reference/UI Design/Delete_feature_UIUX_example.jpg` + `Fail-Sample-Delete-handoff.md`），要求將 `Modal.confirm` 改為卡片內就地展開確認區＋底部 toast。前端重新實作：`uploadStore.deleteFailSampleImport` 改回傳 `FailSampleImportDeleteOutcome`（失敗訊息不寫入全域 `error`）；`UploadedReferenceList.tsx` 刪除按鈕恆常顯示＋`grid-template-rows` 展開/收合動畫（支援再次點擊、取消、`Esc` 收合）＋就地錯誤顯示＋成功滑出動畫；新增共用元件 `src/components/Toast.tsx`；`NetlistUploadPage.tsx` 補上刪除後頁面退回邏輯（避免停在空頁）；重寫對應單元/元件測試（158/158 通過），並修正 2 處 `react-hooks/set-state-in-effect` lint 錯誤；同步更新 `frontend-contract.md`（2.18 節）與本文件。**依使用者指示暫不 push，待其 review 新版 UI 後再定案** | Dante (Copilot CLI) |
+| 2026-11-03 | 版控 | 合併 `Dante-feat-file-upload` 回 `Dante`（已確認與 v1.5.1 的 `computeAnalysis()` die/ball 修正無檔案重疊，僅本檔 changelog 文字衝突，已手動合併排序）；`reference/UI Design/` 納入 `.gitignore`（agent 開發參考用 mockup，非專案產出物）；`docs/decisions/refactor-plan-2026-10-30.md`（外部架構稽核報告）暫不納入版控 | Dante (Copilot CLI) |

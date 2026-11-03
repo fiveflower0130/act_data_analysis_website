@@ -5,6 +5,7 @@ import useUploadStore, { type UploadTheme } from '../../stores/uploadStore';
 import type { FailSampleImportBatchSummary } from '../../types/api';
 import { useResponsiveTokens } from '../../hooks/useResponsiveTokens';
 import { useThemeColors } from '../../hooks/useThemeColors';
+import Toast from '../../components/Toast';
 import UploadThemeSelector from './components/UploadThemeSelector';
 import UploadedReferenceList, {
   type SelectedUpload,
@@ -47,6 +48,7 @@ const NetlistUploadPage = () => {
   const [selection, setSelection] = useState<SelectedUpload | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [listPage, setListPage] = useState(1);
+  const [toast, setToast] = useState<{ key: number; message: string } | null>(null);
 
   useEffect(() => {
     void fetchNetlistPrograms();
@@ -128,10 +130,21 @@ const NetlistUploadPage = () => {
   };
 
   const handleDeleteBatch = async (batch: FailSampleImportBatchSummary) => {
-    const success = await deleteFailSampleImport(batch.batch_id);
-    if (success && selection?.theme === 'fail-sample' && selection.item.batch_id === batch.batch_id) {
-      setSelection(null);
+    const outcome = await deleteFailSampleImport(batch.batch_id);
+    if (outcome.success) {
+      if (selection?.theme === 'fail-sample' && selection.item.batch_id === batch.batch_id) {
+        setSelection(null);
+      }
+      setToast({ key: Date.now(), message: `已刪除批次 ${batch.lot_id}` });
+
+      // 刪除後若目前頁因此變空（例如最後一頁僅剩一筆被刪除），自動退回前一頁重新整理。
+      // `deleteFailSampleImport` 內部已 await 重新整理清單，此處讀取的是刪除後的最新狀態。
+      const latest = useUploadStore.getState();
+      if (listPage > 1 && latest.failSampleImports.length === 0 && latest.failSampleTotal <= (listPage - 1) * PAGE_SIZE) {
+        setListPage((prev) => Math.max(1, prev - 1));
+      }
     }
+    return outcome;
   };
 
   return (
@@ -148,11 +161,12 @@ const NetlistUploadPage = () => {
     >
       <aside
         style={{
+          // flex 簡寫（'0 0 280px'/'0 0 400px'）已內含 flex-shrink:0，故不再額外疊加
+          // flexShrink，避免與 React 19 的 shorthand/非 shorthand 混用警告衝突
           flex: responsive.isMobile ? '0 0 280px' : '0 0 400px',
           height: '100%',
           minWidth: 0,
           minHeight: 0,
-          flexShrink: 0,
           display: 'flex',
           flexDirection: 'column',
           gap: 12,
@@ -163,7 +177,6 @@ const NetlistUploadPage = () => {
           borderRight: `1px solid ${colorMode.border}`,
         }}
       >
-
         <UploadThemeSelector
           value={activeTheme}
           onChange={handleThemeChange}
@@ -241,6 +254,14 @@ const NetlistUploadPage = () => {
         onUploadAll={() => void uploadAll()}
         onClearError={clearError}
       />
+
+      {toast && (
+        <Toast
+          key={toast.key}
+          message={toast.message}
+          onClose={() => setToast(null)}
+        />
+      )}
     </div>
   );
 };

@@ -3,7 +3,7 @@
 > **文件說明**：本文件為前端視角的 API 使用合約，記錄前端目前實際呼叫的 API 端點、TypeScript 介面定義、
 > 發現的問題，以及待後端提供的新 API 需求。供前後端 agent 協作時快速對齊。
 >
-> **最後更新**：2026-11（`DELETE /api/v1/data/fail-sample-import/{batch_id}` 刪除批次 API 已由後端提供並完成前端實作，見 2.18 節）
+> **最後更新**：2026-11（`DELETE /api/v1/data/fail-sample-import/{batch_id}` 刪除批次 API 已由後端提供並完成前端實作，並依使用者提供的 UI/UX 手稿重新設計為卡片內就地展開確認區，見 2.18 節）
 > **對應後端規格文件**：`.github/instructions/api-contract-structure.instructions.md`（後端 Agent 維護，唯一的 API 規格來源）
 > **本文件性質**：前端視角的「實作對照報告」——記錄前端目前實際使用哪些端點、與上述規格文件的落差、以及前端專屬型別；**本身不是規格來源**，若內容有疑義請一律以 `api-contract-structure.instructions.md` 為準
 > **前端 API 層位置**：`src/api/`、`src/types/api.ts`
@@ -723,15 +723,32 @@ interface FailSampleImportDeleteResult {
 - `src/stores/uploadStore.ts` 新增 `deletingBatchIds: string[]` 狀態與 `deleteFailSampleImport(batchId)` action：
   刪除前先從既有 `failSampleImports` 找出該批次的 `lot_id`／`hbin`（刪除後該筆會從清單消失，須先取得）
   → 呼叫 API → 成功後呼叫 `invalidateFailSampleCache` 並 `fetchFailSampleImports()` 重新整理清單
-  → `finally` 清除 `deletingBatchIds` 的 loading 狀態
-- `src/features/netlist/components/UploadedReferenceList.tsx`：每筆 Fail Sample 項目新增
-  `Trash2` 刪除按鈕，點擊以 `Modal.confirm` 二次確認（`onOk` 不回傳 Promise，Modal 立即關閉，
-  刪除中狀態改由按鈕本身的 `deletingBatchIds` loading 樣式呈現，而非阻塞 Modal）；
-  刪除成功若該批次正在預覽中則清空右側預覽面板（`NetlistUploadPage.tsx` 的 `handleDeleteBatch`）
+  → `finally` 清除 `deletingBatchIds` 的 loading 狀態。action 回傳
+  `FailSampleImportDeleteOutcome`（`{ success: true } | { success: false; message: string }`），
+  失敗訊息**只回傳給呼叫端就地顯示，不寫入全域 `error`**，避免與頁面主要區塊的 Alert 重複出現
+- **2026-11 UX 改版**（依使用者提供的 Figma 手稿與 handoff 文件重新設計，取代初版的
+  `Modal.confirm` 二次確認）：`src/features/netlist/components/UploadedReferenceList.tsx`
+  每筆 Fail Sample 項目的 `Trash2` 刪除按鈕恆常顯示（不需 hover），點擊後改為**卡片內就地展開的
+  確認區**（`grid-template-rows` 0fr→1fr 動畫），取代跳出式 Modal：
+  - 確認區包含警示圖示（`TriangleAlert`）+ 標題「確定要刪除此 Fail Sample 批次？」+ 說明文字 +
+    取消／確定刪除兩個按鈕；同一時間僅允許一張卡片展開（`confirmingBatchId` 狀態控制）
+  - 再次點擊同一刪除按鈕、點擊「取消」、或按 `Esc` 鍵皆可收合確認區；切換主題／分頁／搜尋時
+    確認區狀態自動重置
+  - 展開動畫結束後自動捲動列表使卡片完整可見，並將焦點移至「取消」按鈕（鍵盤操作友善）
+  - 刪除失敗時錯誤訊息**直接顯示在確認區內**（不收合、不彈出頁面層級 Alert），對應前端不再
+    將刪除錯誤寫入全域 `error` 的設計
+  - 刪除成功時：卡片播放滑出＋淡出動畫（約 320ms）後才從清單移除；頁面底部置中彈出一次性
+    toast「已刪除批次 {lot_id}」（新增共用元件 `src/components/Toast.tsx`，~2.6 秒後自動消失）；
+    若該批次正在預覽中則清空右側預覽面板；若刪除後目前頁變空（例如最後一頁僅剩一筆）則自動
+    退回前一頁重新整理（`NetlistUploadPage.tsx` 的 `handleDeleteBatch`）
+  - `onDeleteBatch` prop 型別由「回傳 boolean」改為「回傳 `Promise<FailSampleImportDeleteOutcome>`」，
+    讓子元件能自行決定錯誤要顯示在確認區內，而非由父層以 Modal 或頁面 Alert 呈現
 - 因刪除按鈕巢狀於可點擊卡片內，Fail Sample 卡片由 `<button>` 改為 `<div role="button" tabIndex={0}>`
-  並手動處理 `Enter`／`Space` 鍵盤觸發，以符合合法 HTML 巢狀結構並維持無障礙互動
+  並手動處理 `Enter`／`Space` 鍵盤觸發，以符合合法 HTML 巢狀結構並維持無障礙互動；確認區本身以
+  `stopPropagation` 阻擋點擊事件冒泡到卡片，避免誤觸預覽
 
-**狀態**：✅ 後端已提供（契約已更新 `api-contract-structure.instructions.md`）、✅ 前端已實作（#45）。
+**狀態**：✅ 後端已提供（契約已更新 `api-contract-structure.instructions.md`）、✅ 前端已實作（#45，
+含 2026-11 UX 改版）。
 
 ---
 
@@ -797,6 +814,7 @@ const ApiErrorCode = {
 | 2026-10-27 | Fail Sample Site 篩選改為 Checkbox Popover；預設全選、全選省略 `sites`、全部清除不發請求；同步後端必有的 `site_stats` 統計，異常缺漏 Site 時以「—」容錯 | ✅ 前後端已完成 |
 | 2026-10-30 | 使用者反映產線誤傳 Fail Sample 批次時需要能自行刪除（上傳邏輯為不覆蓋、另存一筆，無法透過重新上傳覆蓋修正）。核對 `api-contract-structure.instructions.md` 當下並無刪除批次端點，前端已提出規格草案（見第四節）請後端評估 | ✅ 後端已提供正式 API（見下方 2026-11 條目） |
 | 2026-11 | 後端提供 `DELETE /api/v1/data/fail-sample-import/{batch_id}` 正式規格，與前端草案主要差異為 **404 回應為純字串 `detail`，不含 `code:1003` 包裝**（與同路由 GET 系列端點一致）。前端已實作：API wrapper、`uploadStore` 的 `deletingBatchIds`／`deleteFailSampleImport` action（含刪除後 `invalidateFailSampleCache` 與清單重新整理）、`UploadedReferenceList.tsx` 刪除按鈕 + `Modal.confirm` 二次確認（`onOk` 不回傳 Promise，避免阻塞 Modal，刪除中狀態改由按鈕 loading 樣式呈現）。詳見 2.18 節 | ✅ 前後端已完成（#45） |
+| 2026-11 | 使用者提供刪除功能 UI/UX 手稿（`reference/UI Design/Delete_feature_UIUX_example.jpg` + `Fail-Sample-Delete-handoff.md`），要求將初版的 `Modal.confirm` 二次確認改為**卡片內就地展開的確認區**＋底部 toast 通知。前端已依手稿重新實作：`uploadStore.deleteFailSampleImport` 改回傳 `FailSampleImportDeleteOutcome`（失敗訊息不寫入全域 `error`，改由呼叫端就地顯示）、`UploadedReferenceList.tsx` 刪除按鈕恆常顯示＋`grid-template-rows` 展開動畫＋`Esc`/再次點擊收合＋失敗訊息就地顯示＋成功滑出動畫、新增共用元件 `src/components/Toast.tsx`。詳見 2.18 節 | ✅ 前端已完成（#45，待使用者 review 後再 push） |
 
 ---
 

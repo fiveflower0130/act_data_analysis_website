@@ -373,12 +373,12 @@ describe('uploadStore', () => {
       data: { code: 0, message: '刪除成功', data: { batch_id: 'batch-001', deleted: true } },
     } as never);
 
-    let result: boolean | undefined;
+    let result: { success: boolean; message?: string } | undefined;
     await act(async () => {
       result = await useUploadStore.getState().deleteFailSampleImport('batch-001');
     });
 
-    expect(result).toBe(true);
+    expect(result).toEqual({ success: true });
     expect(deleteFailSampleImport).toHaveBeenCalledWith('batch-001');
     expect(invalidateCacheSpy).toHaveBeenCalledWith('LOT-001', 3);
     expect(getFailSampleImportList).toHaveBeenCalled();
@@ -387,7 +387,7 @@ describe('uploadStore', () => {
     invalidateCacheSpy.mockRestore();
   });
 
-  it('刪除 Fail Sample 批次失敗時設定錯誤訊息，並移除 deletingBatchIds 標記', async () => {
+  it('刪除 Fail Sample 批次失敗時回傳失敗訊息，不寫入全域 error，並移除 deletingBatchIds 標記', async () => {
     useUploadStore.setState({
       failSampleImports: [
         {
@@ -412,13 +412,13 @@ describe('uploadStore', () => {
       response: { status: 404, data: 'batch not found' },
     });
 
-    let result: boolean | undefined;
+    let result: { success: boolean; message?: string } | undefined;
     await act(async () => {
       result = await useUploadStore.getState().deleteFailSampleImport('batch-002');
     });
 
-    expect(result).toBe(false);
-    expect(useUploadStore.getState().error).toBe('batch not found');
+    expect(result).toEqual({ success: false, message: 'batch not found' });
+    expect(useUploadStore.getState().error).toBeNull();
     expect(useUploadStore.getState().deletingBatchIds).toEqual([]);
   });
 });

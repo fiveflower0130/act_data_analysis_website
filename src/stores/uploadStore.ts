@@ -44,6 +44,12 @@ import { resolveDieUnity } from '../features/netlist/utils/previewHelpers';
 export type UploadTheme = 'netlist' | 'fail-sample';
 export type UploadQueueStatus = 'pending' | 'uploading' | 'success' | 'failed';
 
+/** 刪除結果：成功 / 失敗（含失敗原因，供呼叫端就地顯示） */
+export interface FailSampleImportDeleteOutcome {
+  success: boolean;
+  message?: string;
+}
+
 export type NetlistSheetRow = Record<string, unknown>;
 
 export interface NetlistSheetPayload {
@@ -96,8 +102,11 @@ export interface UploadActions {
   uploadAll: () => Promise<void>;
   fetchNetlistPrograms: () => Promise<void>;
   fetchFailSampleImports: (params?: FailSampleImportListParams) => Promise<void>;
-  /** 刪除指定 Fail Sample Import 批次；成功會刷新清單並清除 Dashboard 對應 Lot/HBIN 快取 */
-  deleteFailSampleImport: (batchId: string) => Promise<boolean>;
+  /**
+   * 刪除指定 Fail Sample Import 批次；成功會刷新清單並清除 Dashboard 對應 Lot/HBIN 快取。
+   * 失敗訊息僅透過回傳值提供給呼叫端就地顯示，不寫入全域 `error`（避免與卡片內錯誤文字重複）。
+   */
+  deleteFailSampleImport: (batchId: string) => Promise<FailSampleImportDeleteOutcome>;
   fetchFailSampleRows: (
     batchId: string,
     params?: FailSampleImportRowsParams,
@@ -474,7 +483,6 @@ const useUploadStore = create<UploadState & UploadActions>()((set, get) => ({
 
     set((state) => ({
       deletingBatchIds: [...state.deletingBatchIds, batchId],
-      error: null,
     }));
 
     try {
@@ -495,17 +503,18 @@ const useUploadStore = create<UploadState & UploadActions>()((set, get) => ({
       });
 
       await get().fetchFailSampleImports(get().failSampleQuery);
-      return true;
+      return { success: true };
     } catch (error) {
+      // 失敗訊息只回傳給呼叫端就地顯示（卡片內確認區），不寫入全域 error，
+      // 避免與頁面主要區塊的 Alert 重複出現。
       const message = getApiErrorMessage(error, '刪除 Fail Sample 批次失敗');
-      set({ error: message });
       addLog({
         level: 'error',
         module: 'uploadStore',
         stack: ['deleteFailSampleImport'],
         msg: message,
       });
-      return false;
+      return { success: false, message };
     } finally {
       set((state) => ({
         deletingBatchIds: state.deletingBatchIds.filter((id) => id !== batchId),

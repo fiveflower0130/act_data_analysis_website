@@ -1,7 +1,7 @@
-import { ConfigProvider, Modal } from 'antd';
-import { render, screen, waitFor, within } from '@testing-library/react';
+import { ConfigProvider } from 'antd';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('../../src/api/data', () => ({
   deleteFailSampleImport: vi.fn(),
@@ -57,6 +57,41 @@ const resetStore = () => {
   });
 };
 
+const singleFailSampleItem = (overrides: Record<string, unknown> = {}) => ({
+  batch_id: 'batch-001',
+  customer: 'MICRON',
+  test_program: 'TP-001',
+  lot_id: 'LOT-001',
+  wafer_id: null,
+  hbin: 3,
+  execution_mode: 'RT',
+  tester: 'ASE07-5070-001',
+  date: '2026-10-22 10:00:00',
+  qty: 1,
+  imported_at: '2026-10-22T10:00:01+08:00',
+  source_file: 'TP-001_LOT-001__RT_20261022100000.json',
+  uploaded_by: '12345',
+  ...overrides,
+});
+
+const mockSingleFailSampleList = (overrides: Record<string, unknown> = {}) => {
+  vi.mocked(getFailSampleImportList).mockResolvedValue({
+    data: {
+      code: 0,
+      message: 'OK',
+      data: { items: [singleFailSampleItem(overrides)], total: 1, limit: 10, offset: 0 },
+    },
+  } as never);
+};
+
+// 確認區收合時採用 grid-template-rows 動畫而非移除 DOM 節點，故以 style 斷言取代
+// `not.toBeInTheDocument()`。
+const expectConfirmPanelCollapsed = () => {
+  const title = screen.getByText('確定要刪除此 Fail Sample 批次？');
+  const panel = title.closest('[role="presentation"]');
+  expect(panel).toHaveStyle({ gridTemplateRows: '0fr' });
+};
+
 describe('NetlistUploadPage v7', () => {
   beforeEach(() => {
     resetStore();
@@ -96,12 +131,6 @@ describe('NetlistUploadPage v7', () => {
     } as never);
   });
 
-  afterEach(() => {
-    Modal.destroyAll();
-    // jsdom 不會觸發 CSS transitionend，Modal.confirm 的 afterClose（實際卸載節點）永遠不會被呼叫，
-    // 因此需直接移除殘留的 dialog 節點，避免下一個測試誤抓到前一個測試關閉中的 Modal
-    document.body.querySelectorAll('[role="dialog"]').forEach((node) => node.remove());
-  });
 
   it('預設顯示 Fail Sample，切換主題後顯示各自的上傳設定', async () => {
     const user = userEvent.setup();
@@ -221,35 +250,8 @@ describe('NetlistUploadPage v7', () => {
     }, { timeout: 1000 });
   });
 
-  it('點擊刪除並確認後會呼叫刪除 API 並重新整理清單', async () => {
-    vi.mocked(getFailSampleImportList).mockResolvedValue({
-      data: {
-        code: 0,
-        message: 'OK',
-        data: {
-          items: [
-            {
-              batch_id: 'batch-001',
-              customer: 'MICRON',
-              test_program: 'TP-001',
-              lot_id: 'LOT-001',
-              wafer_id: null,
-              hbin: 3,
-              execution_mode: 'RT',
-              tester: 'ASE07-5070-001',
-              date: '2026-10-22 10:00:00',
-              qty: 1,
-              imported_at: '2026-10-22T10:00:01+08:00',
-              source_file: 'TP-001_LOT-001__RT_20261022100000.json',
-              uploaded_by: '12345',
-            },
-          ],
-          total: 1,
-          limit: 10,
-          offset: 0,
-        },
-      },
-    } as never);
+  it('點擊刪除按鈕會展開確認區，確認後呼叫刪除 API 並重新整理清單', async () => {
+    mockSingleFailSampleList();
     vi.mocked(deleteFailSampleImport).mockResolvedValue({
       data: { code: 0, message: '刪除成功', data: { batch_id: 'batch-001', deleted: true } },
     } as never);
@@ -260,45 +262,18 @@ describe('NetlistUploadPage v7', () => {
     const deleteButton = await screen.findByRole('button', { name: '刪除 LOT-001 批次' });
     await user.click(deleteButton);
 
-    const dialog = await screen.findByRole('dialog');
-    expect(await screen.findAllByText('確定要刪除此 Fail Sample 批次？')).not.toHaveLength(0);
-    await user.click(await within(dialog).findByRole('button', { name: /刪\s?除/ }));
+    expect(await screen.findByText('確定要刪除此 Fail Sample 批次？')).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: '確定刪除' }));
 
     await waitFor(() => {
       expect(deleteFailSampleImport).toHaveBeenCalledWith('batch-001');
     });
     expect(getFailSampleImportList).toHaveBeenCalledTimes(2);
+    expect(await screen.findByText('已刪除批次 LOT-001')).toBeInTheDocument();
   });
 
-  it('取消刪除確認對話框不會呼叫刪除 API', async () => {
-    vi.mocked(getFailSampleImportList).mockResolvedValue({
-      data: {
-        code: 0,
-        message: 'OK',
-        data: {
-          items: [
-            {
-              batch_id: 'batch-001',
-              customer: 'MICRON',
-              test_program: 'TP-001',
-              lot_id: 'LOT-001',
-              wafer_id: null,
-              hbin: 3,
-              execution_mode: 'RT',
-              tester: 'ASE07-5070-001',
-              date: '2026-10-22 10:00:00',
-              qty: 1,
-              imported_at: '2026-10-22T10:00:01+08:00',
-              source_file: 'TP-001_LOT-001__RT_20261022100000.json',
-              uploaded_by: '12345',
-            },
-          ],
-          total: 1,
-          limit: 10,
-          offset: 0,
-        },
-      },
-    } as never);
+  it('取消刪除確認區不會呼叫刪除 API，且確認區會收合', async () => {
+    mockSingleFailSampleList();
 
     const user = userEvent.setup();
     renderPage();
@@ -306,10 +281,64 @@ describe('NetlistUploadPage v7', () => {
     const deleteButton = await screen.findByRole('button', { name: '刪除 LOT-001 批次' });
     await user.click(deleteButton);
 
-    const dialog = await screen.findByRole('dialog');
-    expect(await screen.findAllByText('確定要刪除此 Fail Sample 批次？')).not.toHaveLength(0);
-    await user.click(await within(dialog).findByRole('button', { name: /取\s?消/ }));
+    expect(await screen.findByText('確定要刪除此 Fail Sample 批次？')).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: '取消' }));
 
     expect(deleteFailSampleImport).not.toHaveBeenCalled();
+    await waitFor(() => {
+      expectConfirmPanelCollapsed();
+    });
+  });
+
+  it('再次點擊刪除按鈕可收合已展開的確認區', async () => {
+    mockSingleFailSampleList();
+
+    const user = userEvent.setup();
+    renderPage();
+
+    const deleteButton = await screen.findByRole('button', { name: '刪除 LOT-001 批次' });
+    await user.click(deleteButton);
+    expect(await screen.findByText('確定要刪除此 Fail Sample 批次？')).toBeInTheDocument();
+
+    await user.click(deleteButton);
+    await waitFor(() => {
+      expectConfirmPanelCollapsed();
+    });
+  });
+
+  it('展開確認區後按下 Esc 可收合', async () => {
+    mockSingleFailSampleList();
+
+    const user = userEvent.setup();
+    renderPage();
+
+    const deleteButton = await screen.findByRole('button', { name: '刪除 LOT-001 批次' });
+    await user.click(deleteButton);
+    expect(await screen.findByText('確定要刪除此 Fail Sample 批次？')).toBeInTheDocument();
+
+    await user.keyboard('{Escape}');
+    await waitFor(() => {
+      expectConfirmPanelCollapsed();
+    });
+  });
+
+  it('刪除失敗時在確認區內顯示錯誤訊息，且不出現頁面層級 Alert', async () => {
+    mockSingleFailSampleList();
+    vi.mocked(deleteFailSampleImport).mockRejectedValue({
+      response: { status: 404, data: 'batch not found' },
+    });
+
+    const user = userEvent.setup();
+    renderPage();
+
+    const deleteButton = await screen.findByRole('button', { name: '刪除 LOT-001 批次' });
+    await user.click(deleteButton);
+    await user.click(screen.getByRole('button', { name: '確定刪除' }));
+
+    expect(await screen.findByText('batch not found')).toBeInTheDocument();
+    // 確認區仍維持展開（刪除失敗不應自動收合），且錯誤只顯示一次（不應同時出現在頁面 Alert）
+    expect(screen.getByText('確定要刪除此 Fail Sample 批次？')).toBeInTheDocument();
+    expect(screen.getAllByText('batch not found')).toHaveLength(1);
+    expect(useUploadStore.getState().error).toBeNull();
   });
 });

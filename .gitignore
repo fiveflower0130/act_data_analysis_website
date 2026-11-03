@@ -53,3 +53,6 @@ __pycache__/
 
 # graphify 知識圖譜（junction 指向父目錄共用圖譜，不進版控）
 graphify-out/
+
+# UI/UX 設計參考檔（給 agent 開發時參考的 mockup/HTML 草稿，非專案產出物，不進版控）
+reference/UI Design/

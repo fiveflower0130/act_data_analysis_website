@@ -852,5 +852,69 @@ Netlist `sheets` metadata。這些端點已納入權威 API contract，前端不
 `src/types/api.ts`、`src/stores/uploadStore.ts`、`FailSamplePreview.tsx`、
 `NetlistPreview.tsx` 及其測試。
 
+## 24. Fail Sample Import 刪除功能最終定案
+
+**Q：刪除批次功能要串接草案還是後端正式 API？UI 要用 `Modal.confirm` 還是使用者提供的手稿版本？**
+
+**背景**：2026-10-30（本文件條目 23 之後）前端先提出刪除 API 需求草案
+（`DELETE /api/v1/data/fail-sample-import/{batch_id}`）並以 `Modal.confirm` 完成
+第一版實作。後端正式提供的規格與草案有差異（404 為純字串 `detail`，不含
+`code:1003`）。使用者隨後提供手稿
+（`reference/UI Design/Delete_feature_UIUX_example.jpg` + `Fail-Sample-Delete-handoff.md`），
+要求將彈窗式二次確認改為卡片內就地展開確認區＋底部 toast。
+
+**決策**：
+
+| 議題 | 決策 | 理由 |
+|------|------|------|
+| API 來源 | ✅ 採用後端已實作的真正端點，捨棄草案的 404 `code:1003` 假設，改以純字串 `detail` 判斷 | 草案僅為需求提議，後端正式規格以實作為準 |
+| 權限範圍 | ✅ `engineer`／`admin` 皆可刪除**任一**批次，不限定上傳者本人 | 沿用使用者確認：「遵循後端已明確『engineer/admin 皆可刪任一批次』」 |
+| 復原機制 | ✅ 不提供復原（undo）按鈕 | 使用者確認：「若已刪除或誤刪產線人員會自行再補上（重新上傳）」，與上傳不重試/不覆蓋的既有邏輯一致 |
+| 錯誤呈現方式 | ✅ 刪除失敗時錯誤原因顯示在展開區塊下方（就地顯示），不彈出 Modal 或跳轉 | 遵循手稿第 4 節流程「警示文字下方顯示錯誤原因」 |
+| 互動形式 | ✅ `Modal.confirm` 改為卡片內 `grid-template-rows` 展開/收合動畫（支援再次點擊、取消、`Esc` 收合）＋刪除成功後底部 toast 提示＋項目滑出動畫 | 比起跳出式 Modal，就地展開更符合清單操作的上下文，且不中斷使用者對其他項目的操作 |
+| 快取一致性 | ✅ 刪除成功後呼叫 `invalidateFailSampleCache(lot_id, hbin)` 並重新整理清單；不仰賴後端清快取後前端自動感知 | 後端僅清 rows／analysis 快取，Dashboard 端的快取失效仍須前端主動觸發 |
+
+**與既有條目的關係**：延續條目 21 的雙主題清單架構、條目 23 的錯誤碼解析慣例；
+草案（2026-10-30）提出的 API 需求經本條目的正式實作與 UI 改版後定案，草案本身
+不再視為現行規格。
+
+**實作位置**：`src/api/data.ts`（`deleteFailSampleImport`）、
+`src/stores/uploadStore.ts`（`deletingBatchIds`、`deleteFailSampleImport` action，
+回傳 `FailSampleImportDeleteOutcome`）、
+`src/features/netlist/components/UploadedReferenceList.tsx`、
+`src/features/netlist/NetlistUploadPage.tsx`、`src/components/Toast.tsx`
+及對應單元／元件測試。
+
+## 25. 測試覆蓋率未達門檻時的判斷原則
+
+**Q：`npm run test:report` 因覆蓋率未達 `vite.config.ts` 門檻而未產出 HTML 報告時，
+應該補測試還是調整門檻？**
+
+**背景**：使用者發現前端測試報告與覆蓋率數字停留在 2026-07（`#43` 建立覆蓋率門檻
+當時的狀態），詢問為何沒有隨開發自動更新。盤點後發現 `src/api/client.ts` 與
+`src/stores/uploadStore.ts` 在條目 22／23 的 File Upload v7 開發過程中新增了多個
+分支（並發刷新佇列、`fetchNetlistSheet` 各 Sheet 的欄位轉換分支、FileReader
+fallback 等），但對應測試未同步補齊，導致兩檔案覆蓋率低於門檻。
+
+**決策**：採逐項判斷，而非單純為了衝數字調整門檻或補無意義測試：
+
+| 情境 | 處理方式 |
+|------|---------|
+| 未覆蓋分支為**真實業務邏輯**（例：422 陣列 detail 解析、並發 401 刷新佇列、`fetchNetlistSheet` 各 Sheet 轉換、錯誤路徑） | ✅ 補測試，確保該邏輯確實被驗證過 |
+| 未覆蓋分支為**純防禦性或理論不可達程式碼** | 可考慮排除或接受較低覆蓋率，但需在 PR／文件中說明原因 |
+| 覆蓋率門檻本身不合理（過高導致持續補無意義測試、或過低使有效性存疑） | 另行與使用者討論調整 `vite.config.ts` 門檻數值 |
+
+本次盤點確認 `client.ts`／`uploadStore.ts` 的未覆蓋分支**皆屬第一類**（真實未測試
+的業務邏輯，非防禦性或不可達程式碼），因此決定補測試而非調整門檻或排除。補齊後
+兩檔案覆蓋率回升至 93.49/88.76/93.75/98.18（`client.ts`）與
+94.69/70/94.91/98.4（`uploadStore.ts`，statements/branches/functions/lines），
+均高於門檻 85/65/75/85，`test:report` 恢復正常產出 HTML 報告。
+
+**與既有決策的關係**：延續 `to-do-list.md` #43（2026-07-29 建立覆蓋率門檻與
+`test:report` 工具時的初衷：盡量達到測試完整度，而非僅衝刺門檻數字），本條目
+為該初衷首次因「覆蓋率回落」情境被重新檢視並補上明確判斷原則的紀錄。
+
+**實作位置**：`tests/unit/client.test.ts`、`tests/unit/uploadStore.test.ts`
+（僅新增測試，未變更 `vite.config.ts` 門檻設定與任何產品程式碼）。
 
 *本文件持續更新，每次有重要技術討論或架構決策時補充新條目。*

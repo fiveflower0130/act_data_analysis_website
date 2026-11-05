@@ -173,6 +173,48 @@ describe('api/client.ts — apiClient 攔截器', () => {
       expect(getApiErrorMessage(invalidName)).toBe('檔名格式錯誤');
     });
 
+    it('可將 FastAPI 422 detail 陣列的 msg 組合為錯誤訊息', async () => {
+      const { getApiErrorMessage } = await import('../../src/api/client');
+      const error = {
+        response: {
+          data: {
+            detail: [{ msg: 'field required' }, { msg: 'invalid type' }],
+          },
+        },
+      };
+
+      expect(getApiErrorMessage(error)).toBe('field required；invalid type');
+    });
+
+    it('422 detail 陣列沒有有效 msg 時回退至預設錯誤訊息', async () => {
+      const { getApiErrorMessage } = await import('../../src/api/client');
+      const error = {
+        response: {
+          data: {
+            detail: [{ loc: ['body', 'lot_id'] }, { msg: 422 }],
+          },
+        },
+        message: 422,
+      };
+
+      expect(getApiErrorMessage(error)).toBe('請求失敗');
+    });
+
+    it('錯誤回應沒有業務碼時回傳 undefined，沒有訊息時使用呼叫端 fallback', async () => {
+      const { getApiErrorCode, getApiErrorMessage } = await import('../../src/api/client');
+      const error = {
+        response: {
+          data: {
+            detail: { message: 123 },
+          },
+        },
+        message: 123,
+      };
+
+      expect(getApiErrorCode(error)).toBeUndefined();
+      expect(getApiErrorMessage(error, '自訂錯誤訊息')).toBe('自訂錯誤訊息');
+    });
+
     it('成功回應：原樣回傳', async () => {
       const response = { status: 200, config: { url: '/api/v1/data/search' }, data: { ok: true } };
       const result = await responseHandlers[0].fulfilled(response);
@@ -206,6 +248,81 @@ describe('api/client.ts — apiClient 攔截器', () => {
       expect((config.headers as Record<string, string>).Authorization).toBe(`Bearer ${newToken}`);
       expect(apiClient).toHaveBeenCalledWith(config);
       expect(result).toEqual({ status: 200, data: { retried: true } });
+    });
+
+    it('並發 401 共用一次 refresh，成功後所有請求都使用新 token 重試', async () => {
+      localStorage.setItem('refresh_token', 'valid-refresh-token');
+      const newToken = makeJwt(60 * 60);
+      let resolveRefresh!: (value: unknown) => void;
+      mockAxiosPost.mockImplementation(
+        () =>
+          new Promise((resolve) => {
+            resolveRefresh = resolve;
+          }),
+      );
+      vi.mocked(apiClient).mockImplementation((config) =>
+        Promise.resolve({ status: 200, config }),
+      );
+
+      const config1: Record<string, unknown> = {
+        url: '/api/v1/data/search?lot=1',
+        headers: {},
+        _retry: false,
+      };
+      const config2: Record<string, unknown> = {
+        url: '/api/v1/data/search?lot=2',
+        headers: {},
+        _retry: false,
+      };
+      const error1 = { response: { status: 401 }, config: config1 };
+      const error2 = { response: { status: 401 }, config: config2 };
+
+      const firstRetry = responseHandlers[0].rejected!(error1);
+      await vi.waitFor(() => expect(mockAxiosPost).toHaveBeenCalledTimes(1));
+      const secondRetry = responseHandlers[0].rejected!(error2);
+
+      expect(mockAxiosPost).toHaveBeenCalledTimes(1);
+      resolveRefresh({
+        data: {
+          code: 0,
+          message: 'OK',
+          data: { access_token: newToken, refresh_token: 'new-refresh-token' },
+        },
+      });
+
+      const [firstResult, secondResult] = await Promise.all([firstRetry, secondRetry]);
+      expect((config1.headers as Record<string, string>).Authorization).toBe(`Bearer ${newToken}`);
+      expect((config2.headers as Record<string, string>).Authorization).toBe(`Bearer ${newToken}`);
+      expect(firstResult).toEqual({ status: 200, config: config1 });
+      expect(secondResult).toEqual({ status: 200, config: config2 });
+    });
+
+    it('並發 401 共用的 refresh 失敗時，所有等待中的請求都被拒絕', async () => {
+      localStorage.setItem('refresh_token', 'expired-refresh-token');
+      const refreshError = new Error('refresh token expired');
+      let rejectRefresh!: (reason?: unknown) => void;
+      mockAxiosPost.mockImplementation(
+        () =>
+          new Promise((_resolve, reject) => {
+            rejectRefresh = reject;
+          }),
+      );
+      vi.mocked(apiClient).mockResolvedValue({ status: 200 });
+
+      const config1: Record<string, unknown> = { url: '/api/v1/data/1', headers: {}, _retry: false };
+      const config2: Record<string, unknown> = { url: '/api/v1/data/2', headers: {}, _retry: false };
+      const error1 = { response: { status: 401 }, config: config1 };
+      const error2 = { response: { status: 401 }, config: config2 };
+
+      const firstRetry = responseHandlers[0].rejected!(error1);
+      await vi.waitFor(() => expect(mockAxiosPost).toHaveBeenCalledTimes(1));
+      const secondRetry = responseHandlers[0].rejected!(error2);
+
+      expect(mockAxiosPost).toHaveBeenCalledTimes(1);
+      rejectRefresh(refreshError);
+
+      await expect(firstRetry).rejects.toBe(error1);
+      await expect(secondRetry).rejects.toBe(error2);
     });
 
     it('401 + refresh 失敗：強制登出並拒絕原請求', async () => {
@@ -247,6 +364,17 @@ describe('api/client.ts — apiClient 攔截器', () => {
     it('500：不觸發 refresh/logout，僅記錄並拒絕', async () => {
       const config: Record<string, unknown> = { url: '/api/v1/data/search', headers: {} };
       const error = { response: { status: 500 }, config };
+
+      await expect(responseHandlers[0].rejected!(error)).rejects.toBe(error);
+      expect(mockAxiosPost).not.toHaveBeenCalled();
+      expect(mockLogout).not.toHaveBeenCalled();
+    });
+
+    it('沒有 response 的網路錯誤：直接拒絕，不觸發 refresh 或強制登出', async () => {
+      const error = {
+        message: 'Network Error',
+        config: { url: '/api/v1/data/search', headers: {} },
+      };
 
       await expect(responseHandlers[0].rejected!(error)).rejects.toBe(error);
       expect(mockAxiosPost).not.toHaveBeenCalled();

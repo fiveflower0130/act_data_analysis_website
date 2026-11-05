@@ -33,9 +33,19 @@ import {
   getFailSampleImportRows,
   uploadFailSampleImport,
 } from '../../src/api/data';
-import { getNetlistPrograms, getNetlistSheets, uploadNetlist } from '../../src/api/netlist';
+import {
+  getBinName,
+  getBinPriority,
+  getNetlistPrograms,
+  getNetlistSheets,
+  getStackingDie,
+  getTestSpec,
+  getTray,
+  uploadNetlist,
+} from '../../src/api/netlist';
 import useDashboardStore from '../../src/stores/dashboardStore';
 import useUploadStore from '../../src/stores/uploadStore';
+import addLog from '../../src/utils/logging';
 
 const netlistResult = {
   test_program: 'TP-001',
@@ -211,6 +221,28 @@ describe('uploadStore', () => {
     expect(uploadNetlist).toHaveBeenCalledWith(queue[0].file, expect.any(Function));
   });
 
+  it('上傳進度回呼忽略缺少 total 的事件並更新有效進度', async () => {
+    vi.mocked(uploadNetlist).mockImplementation(async (_file, onProgress) => {
+      onProgress?.({ loaded: 50 } as never);
+      onProgress?.({ loaded: 50, total: 100 } as never);
+      return {
+        data: { code: 0, message: 'OK', data: netlistResult },
+      } as never;
+    });
+
+    act(() => {
+      useUploadStore.getState().addFiles([validNetlistFile()]);
+    });
+
+    await act(async () => {
+      await useUploadStore.getState().uploadAll();
+    });
+
+    const [item] = useUploadStore.getState().queues.netlist;
+    expect(item).toMatchObject({ status: 'success', progress: 100, result: netlistResult });
+    expect(uploadNetlist).toHaveBeenCalledWith(item.file, expect.any(Function));
+  });
+
   it('Fail Sample JSON 解析失敗不呼叫 API，解析成功則帶入 source_file', async () => {
     vi.mocked(uploadFailSampleImport).mockResolvedValue({
       data: { code: 0, message: 'OK', data: failSampleResult },
@@ -235,6 +267,31 @@ describe('uploadStore', () => {
     expect(uploadFailSampleImport).toHaveBeenCalledWith(
       { lot_id: 'LOT-001', hbin: 3, sites: [{}] },
       'TP-001_LOT-001__RT_20261022123456.json',
+      expect.any(Function),
+    );
+  });
+
+  it('File 沒有 text 方法時仍可透過 FileReader 解析並上傳 Fail Sample', async () => {
+    vi.mocked(uploadFailSampleImport).mockResolvedValue({
+      data: { code: 0, message: 'OK', data: failSampleResult },
+    } as never);
+    const file = validFailSampleFile();
+    Object.defineProperty(file, 'text', { value: undefined });
+
+    act(() => {
+      useUploadStore.getState().setActiveTheme('fail-sample');
+      useUploadStore.getState().addFiles([file]);
+    });
+
+    await act(async () => {
+      await useUploadStore.getState().uploadAll();
+    });
+
+    const [item] = useUploadStore.getState().queues['fail-sample'];
+    expect(item).toMatchObject({ status: 'success', result: failSampleResult });
+    expect(uploadFailSampleImport).toHaveBeenCalledWith(
+      { lot_id: 'LOT-001', hbin: 3, sites: [{}] },
+      file.name,
       expect.any(Function),
     );
   });
@@ -294,6 +351,150 @@ describe('uploadStore', () => {
     expect(second).toEqual(first);
     expect(getNetlistSheets).toHaveBeenCalledTimes(1);
     expect(useUploadStore.getState().netlistSheetMetaCache['TP-001']).toHaveLength(6);
+  });
+
+  it('fetchNetlistPrograms 失敗時清除 loading、設定錯誤訊息並記錄 log', async () => {
+    vi.mocked(getNetlistPrograms).mockRejectedValue({
+      response: { data: { detail: 'Netlist 清單服務暫時無法使用' } },
+    });
+
+    await useUploadStore.getState().fetchNetlistPrograms();
+
+    expect(useUploadStore.getState()).toMatchObject({
+      isLoading: false,
+      error: 'Netlist 清單服務暫時無法使用',
+    });
+    expect(addLog).toHaveBeenCalledWith(
+      expect.objectContaining({
+        level: 'error',
+        module: 'uploadStore',
+        stack: ['fetchNetlistPrograms'],
+        msg: 'Netlist 清單服務暫時無法使用',
+      }),
+    );
+  });
+
+  it('fetchFailSampleImports 失敗時清除 loading、設定錯誤訊息並記錄 log', async () => {
+    vi.mocked(getFailSampleImportList).mockRejectedValue({
+      response: { data: { message: 'Fail Sample 清單查詢失敗' } },
+    });
+
+    await useUploadStore.getState().fetchFailSampleImports({ q: 'LOT-001' });
+
+    expect(useUploadStore.getState()).toMatchObject({
+      isLoading: false,
+      error: 'Fail Sample 清單查詢失敗',
+      failSampleQuery: { limit: 10, offset: 0, q: 'LOT-001' },
+    });
+    expect(addLog).toHaveBeenCalledWith(
+      expect.objectContaining({
+        level: 'error',
+        module: 'uploadStore',
+        stack: ['fetchFailSampleImports'],
+        msg: 'Fail Sample 清單查詢失敗',
+      }),
+    );
+  });
+
+  it('fetchNetlistSheet 的 Test_Spec 直接回傳 rows 與 total，並使用快取', async () => {
+    const rows = [
+      { item_name: 'Leak_H', fail_bin_code_min: null, fail_bin_code_max: 3 },
+      { item_name: 'SHORT_IO', fail_bin_code_min: 1, fail_bin_code_max: 3 },
+    ];
+    vi.mocked(getTestSpec).mockResolvedValue({
+      data: { code: 0, message: 'OK', data: rows },
+    } as never);
+
+    const first = await useUploadStore.getState().fetchNetlistSheet('TP-001', 'Test_Spec');
+    const second = await useUploadStore.getState().fetchNetlistSheet('TP-001', 'Test_Spec');
+
+    expect(first).toEqual({ rows, total: 2 });
+    expect(second).toEqual(first);
+    expect(getTestSpec).toHaveBeenCalledTimes(1);
+    expect(getTestSpec).toHaveBeenCalledWith('TP-001');
+  });
+
+  it('fetchNetlistSheet 的 Bin_Priority 直接回傳 rows 與 total', async () => {
+    const rows = [
+      { hw_bin_no: 3, hw_bin_name: 'Short', priority_no: 1 },
+      { hw_bin_no: 4, hw_bin_name: 'Leak', priority_no: 2 },
+    ];
+    vi.mocked(getBinPriority).mockResolvedValue({
+      data: { code: 0, message: 'OK', data: rows },
+    } as never);
+
+    const result = await useUploadStore.getState().fetchNetlistSheet('TP-001', 'Bin_Priority');
+
+    expect(result).toEqual({ rows, total: 2 });
+    expect(getBinPriority).toHaveBeenCalledTimes(1);
+    expect(getBinPriority).toHaveBeenCalledWith('TP-001');
+  });
+
+  it('fetchNetlistSheet 的 Bin_Name 直接回傳 rows 與 total', async () => {
+    const rows = [
+      { sw_bin_no: 3, sw_bin_name: 'Short_Fail', hw_bin_no: 3, hw_bin_name: 'Short' },
+    ];
+    vi.mocked(getBinName).mockResolvedValue({
+      data: { code: 0, message: 'OK', data: rows },
+    } as never);
+
+    const result = await useUploadStore.getState().fetchNetlistSheet('TP-001', 'Bin_Name');
+
+    expect(result).toEqual({ rows, total: 1 });
+    expect(getBinName).toHaveBeenCalledTimes(1);
+    expect(getBinName).toHaveBeenCalledWith('TP-001');
+  });
+
+  it('fetchNetlistSheet 的 Stacking_Die 會轉換 layer 與 unity 欄位', async () => {
+    vi.mocked(getStackingDie).mockResolvedValue({
+      data: {
+        code: 0,
+        message: 'OK',
+        data: [
+          { layer_no: 1, unity_no: 'U1', is_substrate: false },
+          { layer_no: 2, unity_no: 'U2', is_substrate: true },
+        ],
+      },
+    } as never);
+
+    const result = await useUploadStore.getState().fetchNetlistSheet('TP-001', 'Stacking_Die');
+
+    expect(result).toEqual({
+      rows: [
+        { layer: 1, unity: 'U1', is_substrate: false },
+        { layer: 2, unity: 'U2', is_substrate: true },
+      ],
+      total: 2,
+    });
+    expect(getStackingDie).toHaveBeenCalledTimes(1);
+    expect(getStackingDie).toHaveBeenCalledWith('TP-001');
+  });
+
+  it('fetchNetlistSheet 的 Tray 會將單筆規格轉成 rows 陣列', async () => {
+    vi.mocked(getTray).mockResolvedValue({
+      data: { code: 0, message: 'OK', data: { col_count: 8, row_count: 10 } },
+    } as never);
+
+    const result = await useUploadStore.getState().fetchNetlistSheet('TP-001', 'Tray');
+
+    expect(result).toEqual({
+      rows: [{ column: 8, row: 10 }],
+      total: 1,
+    });
+    expect(getTray).toHaveBeenCalledTimes(1);
+    expect(getTray).toHaveBeenCalledWith('TP-001');
+  });
+
+  it('fetchNetlistSheet 的 Tray 沒有資料時回傳空 rows', async () => {
+    vi.mocked(getTray).mockResolvedValue({
+      data: { code: 0, message: 'OK', data: null },
+    } as never);
+
+    const result = await useUploadStore.getState().fetchNetlistSheet('TP-001', 'Tray');
+
+    expect(result).toEqual({ rows: [], total: 0 });
+    expect(getTray).toHaveBeenCalledTimes(1);
+    expect(getTray).toHaveBeenCalledWith('TP-001');
   });
 
   it('Fail Sample 上傳成功後清除 Dashboard 對應 Lot 與 HBIN 快取', async () => {

@@ -334,9 +334,17 @@ hbin: number            // >= 1
 execution_mode: string  // "RT" | "AT"
 date_from: string
 date_to: string
+sort_by: string          // "imported_at"（預設）| "date"，其他值回 422
+sort_order: string       // "asc" | "desc"，預設 "desc"，其他值回 422
 limit: number            // 預設 50，範圍 1~200
 offset: number            // 預設 0
 ```
+
+> **排序行為（2026-11-05 變更）**：預設排序由原本依測試時間 `date` 由新到舊，改為依
+> 匯入時間 `imported_at` 由新到舊，以符合「已上傳檔案」清單的最新上傳優先需求；
+> `date_from`／`date_to` 仍篩選測試時間 `date` 不受影響。指定 `sort_by=date` 可改回依
+> 測試時間排序。`imported_at` 無法解析時固定排最後；同排序值以 `batch_id` 作同方向次
+> 排序，確保分頁順序穩定。**前端無需改動程式即可套用新預設排序**，重新載入清單即可。
 
 **Response `data`**：
 ```typescript
@@ -347,6 +355,8 @@ interface FailSampleImportListParams {
   date_from?: string;
   date_to?: string;
   q?: string;       // 對 lot_id／test_program／source_file 做模糊 OR 搜尋
+  sort_by?: 'imported_at' | 'date';   // 預設 'imported_at'
+  sort_order?: 'asc' | 'desc';        // 預設 'desc'
   limit?: number;   // File Upload v7 傳 10；後端預設 50，範圍 1~200
   offset?: number;  // 預設 0
 }
@@ -378,9 +388,10 @@ interface FailSampleImportBatchSummary {
 **前端處理**：
 - `src/api/data.ts` 的 `getFailSampleImportList(params?)`
 - `src/stores/uploadStore.ts` 的 `fetchFailSampleImports()` 傳入 `{ limit: 10, offset, q }`；
-  搜尋由頁面以 300ms debounce 觸發，回應的 `total` 反映套用 `q` 後的筆數
+  搜尋由頁面以 300ms debounce 觸發，回應的 `total` 反映套用 `q` 後的筆數；目前不帶
+  `sort_by`／`sort_order`，直接沿用後端預設（`imported_at` 由新到舊）
 - `src/features/netlist/components/UploadedReferenceList.tsx` 顯示 `lot_id`、
-  `execution_mode`、`test_program`、`imported_at`、`source_file`
+  `execution_mode`、`test_program`、`imported_at`（標示為「上傳時間」）、`source_file`
   （`null` 顯示「—」）與上傳者工號，並使用回應的 `total` 做分頁
 - `uploaded_by` 是後端回傳的上傳者工號（`user_no`，不是 UUID，也不提供
   `uploaded_by_name`）；前端直接顯示 `uploaded_by`，不查詢 `/users`；`null` 時顯示「—」

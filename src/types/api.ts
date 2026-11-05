@@ -157,6 +157,10 @@ export interface FailSampleImportListParams {
   date_to?: string;
   /** 對 lot_id／test_program／source_file 做不分大小寫的模糊 OR 搜尋 */
   q?: string;
+  /** 排序欄位，預設 'imported_at'（匯入時間）；'date' 為測試時間 */
+  sort_by?: 'imported_at' | 'date';
+  /** 排序方向，預設 'desc' */
+  sort_order?: 'asc' | 'desc';
   limit?: number;
   offset?: number;
 }

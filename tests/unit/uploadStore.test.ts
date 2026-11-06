@@ -1,0 +1,625 @@
+import { act } from '@testing-library/react';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+
+vi.mock('../../src/api/data', () => ({
+  deleteFailSampleImport: vi.fn(),
+  getFailSampleImportList: vi.fn(),
+  getFailSampleImportRows: vi.fn(),
+  uploadFailSampleImport: vi.fn(),
+}));
+vi.mock('../../src/api/netlist', () => ({
+  getNetlistPrograms: vi.fn(),
+  getNetlistSheets: vi.fn(),
+  uploadNetlist: vi.fn(),
+  getNetlistConnections: vi.fn(),
+  getTestSpec: vi.fn(),
+  getDieMapping: vi.fn(),
+  getBinName: vi.fn(),
+  getBinPriority: vi.fn(),
+  getStackingDie: vi.fn(),
+  getTray: vi.fn(),
+}));
+vi.mock('../../src/api/analysis', () => ({
+  getFailSample: vi.fn(),
+  getFailSamplePower: vi.fn(),
+}));
+vi.mock('../../src/utils/logging', () => ({
+  default: vi.fn(),
+}));
+
+import {
+  deleteFailSampleImport,
+  getFailSampleImportList,
+  getFailSampleImportRows,
+  uploadFailSampleImport,
+} from '../../src/api/data';
+import {
+  getBinName,
+  getBinPriority,
+  getNetlistPrograms,
+  getNetlistSheets,
+  getStackingDie,
+  getTestSpec,
+  getTray,
+  uploadNetlist,
+} from '../../src/api/netlist';
+import useDashboardStore from '../../src/stores/dashboardStore';
+import useUploadStore from '../../src/stores/uploadStore';
+import addLog from '../../src/utils/logging';
+
+const netlistResult = {
+  test_program: 'TP-001',
+  filename: 'NL-TP-001_(C).xlsx',
+  security_level: 'C',
+  action: 'created' as const,
+};
+
+const failSampleResult = {
+  batch_id: 'batch-001',
+  chunk_count: 1,
+  site_count: 1,
+  test_result_value_count: 1,
+};
+
+const validNetlistFile = (name = 'NL-TP-001_(C).xlsx') =>
+  new File(['xlsx'], name, {
+    type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  });
+
+const validFailSampleFile = (
+  content = '{"lot_id":"LOT-001","hbin":3,"sites":[{}]}',
+  name = 'TP-001_LOT-001__RT_20261022123456.json',
+) => new File([content], name, { type: 'application/json' });
+
+const resetStore = () => {
+  useUploadStore.setState({
+    activeTheme: 'netlist',
+    queues: { netlist: [], 'fail-sample': [] },
+    netlistPrograms: [],
+    failSampleImports: [],
+    failSampleTotal: 0,
+    failSampleQuery: { limit: 10, offset: 0 },
+    netlistSheetCache: {},
+    netlistSheetMetaCache: {},
+    failSampleRowsCache: {},
+    isLoading: false,
+    isUploading: false,
+    uploadingByTopic: { netlist: false, 'fail-sample': false },
+    deletingBatchIds: [],
+    error: null,
+  });
+};
+
+describe('uploadStore', () => {
+  beforeEach(() => {
+    resetStore();
+    vi.clearAllMocks();
+    vi.mocked(getNetlistPrograms).mockResolvedValue({
+      data: { code: 0, message: 'OK', data: [] },
+    } as never);
+    vi.mocked(getFailSampleImportList).mockResolvedValue({
+      data: { code: 0, message: 'OK', data: { items: [], total: 0, limit: 10, offset: 0 } },
+    } as never);
+    vi.mocked(getNetlistSheets).mockResolvedValue({
+      data: {
+        code: 0,
+        message: 'OK',
+        data: [
+          { name: 'Netlist', row_count: 10 },
+          { name: 'Test_Spec', row_count: 20 },
+          { name: 'Bin_Priority', row_count: 3 },
+          { name: 'Bin_Name', row_count: 4 },
+          { name: 'Stacking_Die', row_count: 5 },
+          { name: 'Tray', row_count: 1 },
+        ],
+      },
+    } as never);
+  });
+
+  it('依主題保留佇列，切換主題不會清空檔案', () => {
+    act(() => {
+      useUploadStore.getState().addFiles([validNetlistFile()]);
+      useUploadStore.getState().setActiveTheme('fail-sample');
+      useUploadStore.getState().addFiles([validFailSampleFile()]);
+    });
+
+    expect(useUploadStore.getState().queues.netlist).toHaveLength(1);
+    expect(useUploadStore.getState().queues['fail-sample']).toHaveLength(1);
+    expect(useUploadStore.getState().activeTheme).toBe('fail-sample');
+
+    act(() => {
+      useUploadStore.getState().setActiveTheme('netlist');
+      useUploadStore.getState().removeQueueItem(useUploadStore.getState().queues.netlist[0].id);
+    });
+    expect(useUploadStore.getState().queues.netlist).toHaveLength(0);
+    expect(useUploadStore.getState().queues['fail-sample']).toHaveLength(1);
+  });
+
+  it('錯誤副檔名不入佇列，檔名錯誤與超大檔案則保留為失敗項目', () => {
+    const tooLarge = new File(['x'], 'NL-TP-001_(C).xlsx');
+    Object.defineProperty(tooLarge, 'size', { value: 5 * 1024 * 1024 + 1 });
+
+    act(() => {
+      useUploadStore.getState().addFiles([
+        new File(['x'], 'not-netlist.json'),
+        new File(['x'], 'wrong-name.xlsx'),
+        tooLarge,
+      ]);
+    });
+
+    const queue = useUploadStore.getState().queues.netlist;
+    expect(queue).toHaveLength(2);
+    expect(queue.every((item) => item.status === 'failed')).toBe(true);
+    expect(queue[0].errorMessage).toContain('檔名格式不符');
+    expect(queue[1].errorMessage).toContain('檔案超過 5MB');
+  });
+
+  it('清空佇列會移除成功與失敗項目', () => {
+    act(() => {
+      useUploadStore.getState().addFiles([
+        validNetlistFile(),
+        validNetlistFile('wrong-name.xlsx'),
+      ]);
+    });
+    const queue = useUploadStore.getState().queues.netlist;
+    expect(queue).toHaveLength(2);
+    useUploadStore.setState({
+      queues: {
+        netlist: queue.map((item, index) => ({
+          ...item,
+          status: index === 0 ? 'success' : item.status,
+        })),
+        'fail-sample': [],
+      },
+    });
+
+    act(() => {
+      useUploadStore.getState().clearQueue();
+    });
+    expect(useUploadStore.getState().queues.netlist).toHaveLength(0);
+  });
+
+  it('Netlist 上傳成功與 HTTP 失敗時更新每筆狀態', async () => {
+    vi.mocked(uploadNetlist)
+      .mockResolvedValueOnce({
+        data: { code: 0, message: 'OK', data: netlistResult },
+      } as never)
+      .mockRejectedValueOnce({
+        response: {
+          status: 400,
+          data: {
+            detail: {
+              code: 1011,
+              message: '檔案超過 5 MB',
+            },
+          },
+        },
+      });
+
+    act(() => {
+      useUploadStore.getState().addFiles([
+        validNetlistFile(),
+        validNetlistFile('NL-TP-002_(C).xlsx'),
+      ]);
+    });
+
+    await act(async () => {
+      await useUploadStore.getState().uploadAll();
+    });
+
+    const queue = useUploadStore.getState().queues.netlist;
+    expect(queue[0]).toMatchObject({ fileName: 'NL-TP-001_(C).xlsx', status: 'success', result: netlistResult });
+    expect(queue[1]).toMatchObject({
+      fileName: 'NL-TP-002_(C).xlsx',
+      status: 'failed',
+      statusCode: 400,
+      apiCode: 1011,
+      errorMessage: '失敗：檔案超過 5 MB',
+    });
+    expect(useUploadStore.getState().isUploading).toBe(false);
+    expect(uploadNetlist).toHaveBeenCalledTimes(2);
+    expect(uploadNetlist).toHaveBeenCalledWith(queue[0].file, expect.any(Function));
+  });
+
+  it('上傳進度回呼忽略缺少 total 的事件並更新有效進度', async () => {
+    vi.mocked(uploadNetlist).mockImplementation(async (_file, onProgress) => {
+      onProgress?.({ loaded: 50 } as never);
+      onProgress?.({ loaded: 50, total: 100 } as never);
+      return {
+        data: { code: 0, message: 'OK', data: netlistResult },
+      } as never;
+    });
+
+    act(() => {
+      useUploadStore.getState().addFiles([validNetlistFile()]);
+    });
+
+    await act(async () => {
+      await useUploadStore.getState().uploadAll();
+    });
+
+    const [item] = useUploadStore.getState().queues.netlist;
+    expect(item).toMatchObject({ status: 'success', progress: 100, result: netlistResult });
+    expect(uploadNetlist).toHaveBeenCalledWith(item.file, expect.any(Function));
+  });
+
+  it('Fail Sample JSON 解析失敗不呼叫 API，解析成功則帶入 source_file', async () => {
+    vi.mocked(uploadFailSampleImport).mockResolvedValue({
+      data: { code: 0, message: 'OK', data: failSampleResult },
+    } as never);
+
+    act(() => {
+      useUploadStore.getState().setActiveTheme('fail-sample');
+      useUploadStore.getState().addFiles([
+        validFailSampleFile('{invalid', 'TP-001_LOT-001__RT_20261022123456.json'),
+        validFailSampleFile(),
+      ]);
+    });
+
+    await act(async () => {
+      await useUploadStore.getState().uploadAll();
+    });
+
+    const queue = useUploadStore.getState().queues['fail-sample'];
+    expect(queue[0]).toMatchObject({ status: 'failed' });
+    expect(queue[0].statusCode).toBeUndefined();
+    expect(queue[1]).toMatchObject({ status: 'success', result: failSampleResult });
+    expect(uploadFailSampleImport).toHaveBeenCalledWith(
+      { lot_id: 'LOT-001', hbin: 3, sites: [{}] },
+      'TP-001_LOT-001__RT_20261022123456.json',
+      expect.any(Function),
+    );
+  });
+
+  it('File 沒有 text 方法時仍可透過 FileReader 解析並上傳 Fail Sample', async () => {
+    vi.mocked(uploadFailSampleImport).mockResolvedValue({
+      data: { code: 0, message: 'OK', data: failSampleResult },
+    } as never);
+    const file = validFailSampleFile();
+    Object.defineProperty(file, 'text', { value: undefined });
+
+    act(() => {
+      useUploadStore.getState().setActiveTheme('fail-sample');
+      useUploadStore.getState().addFiles([file]);
+    });
+
+    await act(async () => {
+      await useUploadStore.getState().uploadAll();
+    });
+
+    const [item] = useUploadStore.getState().queues['fail-sample'];
+    expect(item).toMatchObject({ status: 'success', result: failSampleResult });
+    expect(uploadFailSampleImport).toHaveBeenCalledWith(
+      { lot_id: 'LOT-001', hbin: 3, sites: [{}] },
+      file.name,
+      expect.any(Function),
+    );
+  });
+
+  it('Fail Sample rows 依查詢條件快取，重複查看不重新呼叫 API', async () => {
+    vi.mocked(getFailSampleImportRows).mockResolvedValue({
+      data: {
+        code: 0,
+        message: 'OK',
+        data: {
+          total: 1,
+          filtered_total: 1,
+          sites: ['1'],
+          items: [
+            {
+              site: '1',
+              serial_no: '1',
+              real_time: '2026-10-22 10:00:00',
+              test_item: 'SHORT',
+              value: '-0.5',
+              spec_min: '-0.7',
+              spec_max: '-0.3',
+              unit: 'V',
+              pin_1: '',
+              pin_2: '',
+              fail_reason: '>spec_max',
+              ihbin: '3',
+            },
+          ],
+          page: 1,
+          page_size: 100,
+        },
+      },
+    } as never);
+
+    const params = {
+      sites: ['1'],
+      q: 'short',
+      sort_by: 'value' as const,
+      sort_order: 'desc' as const,
+      page: 1,
+      page_size: 100,
+    };
+    const first = await useUploadStore.getState().fetchFailSampleRows('batch-001', params);
+    const second = await useUploadStore.getState().fetchFailSampleRows('batch-001', params);
+
+    expect(first).toEqual(second);
+    expect(getFailSampleImportRows).toHaveBeenCalledTimes(1);
+    expect(getFailSampleImportRows).toHaveBeenCalledWith('batch-001', params);
+  });
+
+  it('Netlist Sheet metadata 依 test_program 快取', async () => {
+    const first = await useUploadStore.getState().fetchNetlistSheets('TP-001');
+    const second = await useUploadStore.getState().fetchNetlistSheets('TP-001');
+
+    expect(first).toHaveLength(6);
+    expect(second).toEqual(first);
+    expect(getNetlistSheets).toHaveBeenCalledTimes(1);
+    expect(useUploadStore.getState().netlistSheetMetaCache['TP-001']).toHaveLength(6);
+  });
+
+  it('fetchNetlistPrograms 失敗時清除 loading、設定錯誤訊息並記錄 log', async () => {
+    vi.mocked(getNetlistPrograms).mockRejectedValue({
+      response: { data: { detail: 'Netlist 清單服務暫時無法使用' } },
+    });
+
+    await useUploadStore.getState().fetchNetlistPrograms();
+
+    expect(useUploadStore.getState()).toMatchObject({
+      isLoading: false,
+      error: 'Netlist 清單服務暫時無法使用',
+    });
+    expect(addLog).toHaveBeenCalledWith(
+      expect.objectContaining({
+        level: 'error',
+        module: 'uploadStore',
+        stack: ['fetchNetlistPrograms'],
+        msg: 'Netlist 清單服務暫時無法使用',
+      }),
+    );
+  });
+
+  it('fetchFailSampleImports 失敗時清除 loading、設定錯誤訊息並記錄 log', async () => {
+    vi.mocked(getFailSampleImportList).mockRejectedValue({
+      response: { data: { message: 'Fail Sample 清單查詢失敗' } },
+    });
+
+    await useUploadStore.getState().fetchFailSampleImports({ q: 'LOT-001' });
+
+    expect(useUploadStore.getState()).toMatchObject({
+      isLoading: false,
+      error: 'Fail Sample 清單查詢失敗',
+      failSampleQuery: { limit: 10, offset: 0, q: 'LOT-001' },
+    });
+    expect(addLog).toHaveBeenCalledWith(
+      expect.objectContaining({
+        level: 'error',
+        module: 'uploadStore',
+        stack: ['fetchFailSampleImports'],
+        msg: 'Fail Sample 清單查詢失敗',
+      }),
+    );
+  });
+
+  it('fetchNetlistSheet 的 Test_Spec 直接回傳 rows 與 total，並使用快取', async () => {
+    const rows = [
+      { item_name: 'Leak_H', fail_bin_code_min: null, fail_bin_code_max: 3 },
+      { item_name: 'SHORT_IO', fail_bin_code_min: 1, fail_bin_code_max: 3 },
+    ];
+    vi.mocked(getTestSpec).mockResolvedValue({
+      data: { code: 0, message: 'OK', data: rows },
+    } as never);
+
+    const first = await useUploadStore.getState().fetchNetlistSheet('TP-001', 'Test_Spec');
+    const second = await useUploadStore.getState().fetchNetlistSheet('TP-001', 'Test_Spec');
+
+    expect(first).toEqual({ rows, total: 2 });
+    expect(second).toEqual(first);
+    expect(getTestSpec).toHaveBeenCalledTimes(1);
+    expect(getTestSpec).toHaveBeenCalledWith('TP-001');
+  });
+
+  it('fetchNetlistSheet 的 Bin_Priority 直接回傳 rows 與 total', async () => {
+    const rows = [
+      { hw_bin_no: 3, hw_bin_name: 'Short', priority_no: 1 },
+      { hw_bin_no: 4, hw_bin_name: 'Leak', priority_no: 2 },
+    ];
+    vi.mocked(getBinPriority).mockResolvedValue({
+      data: { code: 0, message: 'OK', data: rows },
+    } as never);
+
+    const result = await useUploadStore.getState().fetchNetlistSheet('TP-001', 'Bin_Priority');
+
+    expect(result).toEqual({ rows, total: 2 });
+    expect(getBinPriority).toHaveBeenCalledTimes(1);
+    expect(getBinPriority).toHaveBeenCalledWith('TP-001');
+  });
+
+  it('fetchNetlistSheet 的 Bin_Name 直接回傳 rows 與 total', async () => {
+    const rows = [
+      { sw_bin_no: 3, sw_bin_name: 'Short_Fail', hw_bin_no: 3, hw_bin_name: 'Short' },
+    ];
+    vi.mocked(getBinName).mockResolvedValue({
+      data: { code: 0, message: 'OK', data: rows },
+    } as never);
+
+    const result = await useUploadStore.getState().fetchNetlistSheet('TP-001', 'Bin_Name');
+
+    expect(result).toEqual({ rows, total: 1 });
+    expect(getBinName).toHaveBeenCalledTimes(1);
+    expect(getBinName).toHaveBeenCalledWith('TP-001');
+  });
+
+  it('fetchNetlistSheet 的 Stacking_Die 會轉換 layer 與 unity 欄位', async () => {
+    vi.mocked(getStackingDie).mockResolvedValue({
+      data: {
+        code: 0,
+        message: 'OK',
+        data: [
+          { layer_no: 1, unity_no: 'U1', is_substrate: false },
+          { layer_no: 2, unity_no: 'U2', is_substrate: true },
+        ],
+      },
+    } as never);
+
+    const result = await useUploadStore.getState().fetchNetlistSheet('TP-001', 'Stacking_Die');
+
+    expect(result).toEqual({
+      rows: [
+        { layer: 1, unity: 'U1', is_substrate: false },
+        { layer: 2, unity: 'U2', is_substrate: true },
+      ],
+      total: 2,
+    });
+    expect(getStackingDie).toHaveBeenCalledTimes(1);
+    expect(getStackingDie).toHaveBeenCalledWith('TP-001');
+  });
+
+  it('fetchNetlistSheet 的 Tray 會將單筆規格轉成 rows 陣列', async () => {
+    vi.mocked(getTray).mockResolvedValue({
+      data: { code: 0, message: 'OK', data: { col_count: 8, row_count: 10 } },
+    } as never);
+
+    const result = await useUploadStore.getState().fetchNetlistSheet('TP-001', 'Tray');
+
+    expect(result).toEqual({
+      rows: [{ column: 8, row: 10 }],
+      total: 1,
+    });
+    expect(getTray).toHaveBeenCalledTimes(1);
+    expect(getTray).toHaveBeenCalledWith('TP-001');
+  });
+
+  it('fetchNetlistSheet 的 Tray 沒有資料時回傳空 rows', async () => {
+    vi.mocked(getTray).mockResolvedValue({
+      data: { code: 0, message: 'OK', data: null },
+    } as never);
+
+    const result = await useUploadStore.getState().fetchNetlistSheet('TP-001', 'Tray');
+
+    expect(result).toEqual({ rows: [], total: 0 });
+    expect(getTray).toHaveBeenCalledTimes(1);
+    expect(getTray).toHaveBeenCalledWith('TP-001');
+  });
+
+  it('Fail Sample 上傳成功後清除 Dashboard 對應 Lot 與 HBIN 快取', async () => {
+    const invalidateCacheSpy = vi.spyOn(
+      useDashboardStore.getState(),
+      'invalidateFailSampleCache',
+    );
+    vi.mocked(uploadFailSampleImport).mockResolvedValue({
+      data: { code: 0, message: 'OK', data: failSampleResult },
+    } as never);
+
+    act(() => {
+      useUploadStore.getState().setActiveTheme('fail-sample');
+      useUploadStore.getState().addFiles([
+        validFailSampleFile('{"lot_id":"LOT-001","hbin":4,"sites":[{}]}'),
+      ]);
+    });
+
+    await act(async () => {
+      await useUploadStore.getState().uploadAll();
+    });
+
+    expect(invalidateCacheSpy).toHaveBeenCalledWith('LOT-001', 4);
+    invalidateCacheSpy.mockRestore();
+  });
+
+  it('Fail Sample 外層 data 包裝格式也能清除 Dashboard 快取', async () => {
+    const invalidateCacheSpy = vi.spyOn(
+      useDashboardStore.getState(),
+      'invalidateFailSampleCache',
+    );
+    vi.mocked(uploadFailSampleImport).mockResolvedValue({
+      data: { code: 0, message: 'OK', data: failSampleResult },
+    } as never);
+
+    act(() => {
+      useUploadStore.getState().setActiveTheme('fail-sample');
+      useUploadStore.getState().addFiles([
+        validFailSampleFile(
+          '{"data":{"lot_id":"LOT-002","hbin":3,"sites":[{}]}}',
+          'TP-001_LOT-002__RT_20261022123456.json',
+        ),
+      ]);
+    });
+
+    await act(async () => {
+      await useUploadStore.getState().uploadAll();
+    });
+
+    expect(invalidateCacheSpy).toHaveBeenCalledWith('LOT-002', 3);
+    invalidateCacheSpy.mockRestore();
+  });
+
+  it('刪除 Fail Sample 批次成功後清除 Dashboard 快取並重新整理清單', async () => {
+    const batch = {
+      batch_id: 'batch-001',
+      customer: 'MICRON',
+      test_program: 'TP-001',
+      lot_id: 'LOT-001',
+      wafer_id: null,
+      hbin: 3,
+      execution_mode: 'RT',
+      tester: 'ASE07-5070-001',
+      date: '2026-10-22 10:00:00',
+      qty: 1,
+      imported_at: '2026-10-22T10:00:01+08:00',
+      source_file: 'TP-001_LOT-001__RT_20261022100000.json',
+      uploaded_by: '12345',
+    };
+    useUploadStore.setState({ failSampleImports: [batch] });
+
+    const invalidateCacheSpy = vi.spyOn(
+      useDashboardStore.getState(),
+      'invalidateFailSampleCache',
+    );
+    vi.mocked(deleteFailSampleImport).mockResolvedValue({
+      data: { code: 0, message: '刪除成功', data: { batch_id: 'batch-001', deleted: true } },
+    } as never);
+
+    let result: { success: boolean; message?: string } | undefined;
+    await act(async () => {
+      result = await useUploadStore.getState().deleteFailSampleImport('batch-001');
+    });
+
+    expect(result).toEqual({ success: true });
+    expect(deleteFailSampleImport).toHaveBeenCalledWith('batch-001');
+    expect(invalidateCacheSpy).toHaveBeenCalledWith('LOT-001', 3);
+    expect(getFailSampleImportList).toHaveBeenCalled();
+    expect(useUploadStore.getState().deletingBatchIds).toEqual([]);
+    expect(useUploadStore.getState().error).toBeNull();
+    invalidateCacheSpy.mockRestore();
+  });
+
+  it('刪除 Fail Sample 批次失敗時回傳失敗訊息，不寫入全域 error，並移除 deletingBatchIds 標記', async () => {
+    useUploadStore.setState({
+      failSampleImports: [
+        {
+          batch_id: 'batch-002',
+          customer: 'MICRON',
+          test_program: 'TP-001',
+          lot_id: 'LOT-002',
+          wafer_id: null,
+          hbin: 4,
+          execution_mode: 'RT',
+          tester: 'ASE07-5070-001',
+          date: '2026-10-22 10:00:00',
+          qty: 1,
+          imported_at: '2026-10-22T10:00:01+08:00',
+          source_file: 'TP-001_LOT-002__RT_20261022100000.json',
+          uploaded_by: '12345',
+        },
+      ],
+    });
+
+    vi.mocked(deleteFailSampleImport).mockRejectedValue({
+      response: { status: 404, data: 'batch not found' },
+    });
+
+    let result: { success: boolean; message?: string } | undefined;
+    await act(async () => {
+      result = await useUploadStore.getState().deleteFailSampleImport('batch-002');
+    });
+
+    expect(result).toEqual({ success: false, message: 'batch not found' });
+    expect(useUploadStore.getState().error).toBeNull();
+    expect(useUploadStore.getState().deletingBatchIds).toEqual([]);
+  });
+});

@@ -3,7 +3,7 @@
 > **文件說明**：本文件為前端視角的 API 使用合約，記錄前端目前實際呼叫的 API 端點、TypeScript 介面定義、
 > 發現的問題，以及待後端提供的新 API 需求。供前後端 agent 協作時快速對齊。
 >
-> **最後更新**：2026-08-05（後端 `GET /data/search` 回應格式 Breaking Change 同步、新增模組六 Fail Sample Import 查詢/匯出端點記載，詳見第五節）
+> **最後更新**：2026-11（`DELETE /api/v1/data/fail-sample-import/{batch_id}` 刪除批次 API 已由後端提供並完成前端實作，並依使用者提供的 UI/UX 手稿重新設計為卡片內就地展開確認區，見 2.18 節）
 > **對應後端規格文件**：`.github/instructions/api-contract-structure.instructions.md`（後端 Agent 維護，唯一的 API 規格來源）
 > **本文件性質**：前端視角的「實作對照報告」——記錄前端目前實際使用哪些端點、與上述規格文件的落差、以及前端專屬型別；**本身不是規格來源**，若內容有疑義請一律以 `api-contract-structure.instructions.md` 為準
 > **前端 API 層位置**：`src/api/`、`src/types/api.ts`
@@ -321,10 +321,11 @@ interface TestItemResult {
 
 ---
 
-### 2.9 `GET /api/v1/data/fail-sample-import`（新增，2026-08-05，已定義，尚未使用）
+### 2.9 `GET /api/v1/data/fail-sample-import`（新增，2026-08-05）
 
 **用途**：查詢已匯入的 Fail Sample 批次清單（僅 metadata，不含 `sites` 明細），供未來
-「已匯入批次」查詢/管理頁面使用。
+「資料上傳」頁左欄清單與後續「歷史紀錄」頁使用。File Upload v7 每頁查詢 10 筆，
+以 `offset` 分頁；搜尋文字以 `q` 傳給後端。
 
 **Query Parameters（皆選填）**：
 ```
@@ -333,20 +334,41 @@ hbin: number            // >= 1
 execution_mode: string  // "RT" | "AT"
 date_from: string
 date_to: string
+sort_by: string          // "imported_at"（預設）| "date"，其他值回 422
+sort_order: string       // "asc" | "desc"，預設 "desc"，其他值回 422
 limit: number            // 預設 50，範圍 1~200
 offset: number            // 預設 0
 ```
 
+> **排序行為（2026-11-05 變更）**：預設排序由原本依測試時間 `date` 由新到舊，改為依
+> 匯入時間 `imported_at` 由新到舊，以符合「已上傳檔案」清單的最新上傳優先需求；
+> `date_from`／`date_to` 仍篩選測試時間 `date` 不受影響。指定 `sort_by=date` 可改回依
+> 測試時間排序。`imported_at` 無法解析時固定排最後；同排序值以 `batch_id` 作同方向次
+> 排序，確保分頁順序穩定。**前端無需改動程式即可套用新預設排序**，重新載入清單即可。
+
 **Response `data`**：
 ```typescript
-interface FailSampleImportListResult {
-  items: FailSampleImportListItem[];
+interface FailSampleImportListParams {
+  lot_id?: string;
+  hbin?: number;
+  execution_mode?: string;
+  date_from?: string;
+  date_to?: string;
+  q?: string;       // 對 lot_id／test_program／source_file 做模糊 OR 搜尋
+  sort_by?: 'imported_at' | 'date';   // 預設 'imported_at'
+  sort_order?: 'asc' | 'desc';        // 預設 'desc'
+  limit?: number;   // File Upload v7 傳 10；後端預設 50，範圍 1~200
+  offset?: number;  // 預設 0
+}
+
+interface FailSampleImportListResponse {
+  items: FailSampleImportBatchSummary[];
   total: number;
   limit: number;
   offset: number;
 }
 
-interface FailSampleImportListItem {
+interface FailSampleImportBatchSummary {
   batch_id: string;
   customer: string;
   test_program: string;
@@ -359,15 +381,26 @@ interface FailSampleImportListItem {
   qty: number;
   imported_at: string;
   source_file: string | null;
+  uploaded_by: string | null; // 上傳者工號（user_no）
 }
 ```
 
-**狀態**：後端已提供，前端尚未定義型別或串接，屬未來 Phase II 待評估功能（非本次資料
-上傳頁 #11 範疇，是否/何時開發待與使用者確認）。
+**前端處理**：
+- `src/api/data.ts` 的 `getFailSampleImportList(params?)`
+- `src/stores/uploadStore.ts` 的 `fetchFailSampleImports()` 傳入 `{ limit: 10, offset, q }`；
+  搜尋由頁面以 300ms debounce 觸發，回應的 `total` 反映套用 `q` 後的筆數；目前不帶
+  `sort_by`／`sort_order`，直接沿用後端預設（`imported_at` 由新到舊）
+- `src/features/netlist/components/UploadedReferenceList.tsx` 顯示 `lot_id`、
+  `execution_mode`、`test_program`、`imported_at`（標示為「上傳時間」）、`source_file`
+  （`null` 顯示「—」）與上傳者工號，並使用回應的 `total` 做分頁
+- `uploaded_by` 是後端回傳的上傳者工號（`user_no`，不是 UUID，也不提供
+  `uploaded_by_name`）；前端直接顯示 `uploaded_by`，不查詢 `/users`；`null` 時顯示「—」
+
+**狀態**：✅ 後端已提供、✅ 前端已實作（資料上傳頁 #11／File Upload v7 #44）。
 
 ---
 
-### 2.10 `GET /api/v1/data/fail-sample-import/{batch_id}`（新增，2026-08-05，已定義，尚未使用）
+### 2.10 `GET /api/v1/data/fail-sample-import/{batch_id}`（新增，2026-08-05）
 
 **用途**：查詢單一匯入批次的完整內容，格式與 2.8 節 `SearchResult` 完全一致，額外附上
 `batch_id`／`imported_at`／`source_file` 三個欄位。
@@ -378,21 +411,355 @@ interface FailSampleImportDetail extends SearchResult {
   batch_id: string;
   imported_at: string;
   source_file: string | null;
+  uploaded_by: string | null;
 }
 ```
 
 **常見錯誤**：`batch_id` 不存在時回傳 `404`（`data: null`）。
 
-**狀態**：後端已提供，前端尚未使用。
+**前端處理**：`src/api/data.ts` 已提供 `getFailSampleImportDetail()` wrapper；
+File Upload v7 的明細表改由下方 rows endpoint 以後端搜尋／排序／分頁提供，本 endpoint
+保留供需要完整批次內容的情境使用。
+
+**狀態**：✅ 後端已提供、✅ 前端 wrapper 已完成（File Upload v7 #44）。
 
 ---
 
-### 2.11 `GET /api/v1/data/fail-sample-import/{batch_id}/csv`（新增，2026-08-05，已定義，尚未使用）
+### 2.10a `GET /api/v1/data/fail-sample-import/{batch_id}/rows`（2026-10-22 新增）
+
+**用途**：將指定批次的測試結果攤平成一列一個測項，供 File Upload v7
+Fail Sample 預覽明細表使用。
+
+**Query Parameters**：
+```typescript
+interface FailSampleImportRowsParams {
+  sites?: string[];       // 前端 wrapper 送為逗號分隔字串，例如 "1,2"
+  q?: string;             // 比對 12 個欄位
+  sort_by?: 'site' | 'serial_no' | 'real_time' | 'test_item' | 'value'
+    | 'spec_min' | 'spec_max' | 'unit' | 'pin_1' | 'pin_2'
+    | 'fail_reason' | 'ihbin';
+  sort_order?: 'asc' | 'desc';
+  page?: number;          // 預設 1
+  page_size?: number;     // 預設 100，上限 500
+}
+```
+
+`site`／`serial_no`／`value`／`spec_min`／`spec_max` 由後端採數值感知排序（純數字
+字串按數值比較，如 1、2、10；非數字字串按字串排序），其餘欄位採字串排序；
+缺值回傳空字串。`sites` 可複選，傳空字串或清理後無有效 ID 時等同未傳、不套用篩選；
+`q` 對所有 12 欄位做不分大小寫比對。
+
+**Response `data`**：
+```typescript
+interface FailSampleImportSiteStat {
+  site: string;
+  dut_count: number;
+  row_count: number;
+}
+
+interface FailSampleImportRowsResponse {
+  total: number;
+  filtered_total: number;
+  sites: string[];
+  items: FailSampleImportRow[];
+  page: number;
+  page_size: number;
+  /** 各 Site 的整批統計，順序與 sites 一致 */
+  site_stats: FailSampleImportSiteStat[];
+}
+```
+
+**前端處理**：
+- `src/api/data.ts` 的 `getFailSampleImportRows(batchId, params?)`。
+- `src/stores/uploadStore.ts` 依批次、Site、搜尋、排序與頁碼快取查詢結果。
+- `src/features/netlist/components/FailSamplePreview.tsx` 使用後端分頁／搜尋／排序，
+  每頁 100 列；Site 篩選預設全選，全選時不傳 `sites`，全部清除時顯示空狀態且不發請求；
+  條件變動時回到第 1 頁，`fail_reason` 使用 danger token 顯示。
+- 批次不存在回傳 404；載入中、錯誤與空結果皆由預覽元件處理。
+
+> `site_stats` 為後端必有欄位，順序與 `sites` 一致且涵蓋整批所有 Site；
+> `dut_count` 與 `row_count` 不受 `q`、`sites` 或分頁影響。若前端遇到
+> 異常缺漏的 Site，篩選面板以「—」容錯；前端不自行計算顆數或列數。
+
+**狀態**：✅ rows 端點與前端型別／wrapper／預覽明細表及 `site_stats` 統計已完成（#44）。
+
+---
+
+### 2.11 `GET /api/v1/data/fail-sample-import/{batch_id}/csv`（新增，2026-08-05）
 
 **用途**：將指定批次原始資料匯出為 CSV 檔案下載（`Content-Type: text/csv`，非統一 JSON
 格式）。需 `engineer` 或 `admin` 角色（權限比一般查詢更嚴格）。
 
-**狀態**：後端已提供，前端尚未使用。
+**前端處理**：`src/api/data.ts` 的 `downloadFailSampleImportCsv()` 使用既有
+`apiClient` 與 `responseType: 'blob'`，解析 `Content-Disposition` 檔名；若無檔名則回退
+為 `{batch_id}.csv`。File Upload v7 的 Fail Sample 預覽只對 `engineer`／`admin` 顯示
+「輸出 CSV」按鈕。
+
+**狀態**：✅ 後端已提供、✅ 前端已接入 File Upload v7 #44。
+
+---
+
+### 2.12 `GET /api/v1/netlist/programs`
+
+**用途**：取得所有已上傳 Netlist Program，供資料上傳頁左欄參考清單使用。
+
+**Response `data`**：
+```typescript
+interface NetlistProgram {
+  id: number;
+  test_program: string;
+  filename: string;
+  security_level: string | null;
+  uploaded_by: string | null;
+  uploaded_at: string;
+  updated_at: string;
+}
+// data: NetlistProgram[]
+```
+
+> **上傳者欄位（2026-09-02）**：`uploaded_by` 為後端回傳的上傳者工號
+> （`user_no`，不是 UUID）；找不到對應使用者時為 `null`，且不再提供
+> `uploaded_by_name`。前端直接顯示 `uploaded_by` 工號，不查詢 `/users`；
+> `null` 顯示「—」。
+
+**前端處理**：
+- `src/api/netlist.ts` 的 `getNetlistPrograms()`
+- `src/stores/uploadStore.ts` 的 `fetchNetlistPrograms()`
+- `src/features/netlist/components/UploadedReferenceList.tsx` 以
+  `test_program`／`filename` 做 client-side 搜尋，顯示上傳時間 `uploaded_at` 與
+  `uploaded_by` 對應的上傳者
+
+**狀態**：✅ 後端已提供、✅ 前端已實作（資料上傳頁 #11）。
+
+---
+
+### 2.13 `POST /api/v1/netlist/upload`
+
+**用途**：上傳 Netlist Excel；同一 `test_program` 會覆蓋舊版本並清除相關快取。
+
+**Request**：`multipart/form-data`
+```typescript
+interface NetlistUploadRequest {
+  file: File; // .xlsx，檔名需符合 NL-{Test_Program}_({Security}).xlsx
+}
+```
+
+後端接受 `NL-{Test_Program}_C.xlsx`、`NL-{Test_Program}_(C).xlsx`，
+以及 `NL-{Test_Program}_(Security C).xlsx` 等等價括號寫法。非 `.xlsx` 回 `1007`，
+檔名不符回 `1012`，超過 5 MiB 回 `1011`；錯誤業務碼與訊息位於
+`response.data.detail.code`／`response.data.detail.message`。
+
+**Response `data`**：
+```typescript
+interface NetlistUploadResult {
+  test_program: string;
+  filename: string;
+  security_level: string | null;
+  action: 'created' | 'updated';
+}
+```
+
+**前端處理**：
+- `src/api/netlist.ts` 的 `uploadNetlist(file)`，以 `FormData` 欄位 `file` 傳送
+- `src/stores/uploadStore.ts` 逐筆處理佇列；成功標記為 `success`，HTTP 錯誤標記為
+  `failed` 並保留 status code；失敗項目不重試
+
+**狀態**：✅ 後端已提供、✅ 前端已實作（資料上傳頁 #11）。
+
+---
+
+### 2.14 `POST /api/v1/data/fail-sample-import/upload`
+
+**用途**：手動匯入產線 Fail Sample JSON 批次。
+
+**Request**：`application/json`，直接傳送 JSON 檔案解析後的物件；必填 query parameter
+`source_file` 帶入使用者選擇的原始檔名。檔名格式為
+`{Test_Program}_{Lot_ID}_{Wafer_ID}_{AT|RT}_{YYYYMMDDHHMMSS}.json`，`Wafer_ID`
+目前產線幾乎皆為空值（呈現為連續兩個底線 `__`），例如
+`AAH@A321320006-0_28NFFQB006__AT_20260724011913.json`；有 wafer 值時例如
+`AAH@A342810004-0_23NFF3B001_W01_RT_20260611182800.json`（2026-10-30 經使用者／
+產線確認，`api-contract-structure.instructions.md` 已同步補上此欄位說明與兩組
+官方範例，前端 `matchesUploadFilename` 已同步放寬以同時接受空值與有值的
+`Wafer_ID`，詳見下方「已發現的問題」）。前端使用 `File.name`，由 axios 進行 URL
+encode。
+
+後端驗證：request body 超過 5 MiB 回 `400`／`1011`；`source_file` 缺少時回 `422`
+（FastAPI 預設格式，無 `code` 欄位），格式不符回 `400`／`1012`。前端固定以
+`File.name` 帶入 `source_file`，故缺少情境不會實際發生；前端將後端
+`detail.message`（1012）或 FastAPI 驗證陣列訊息（422）作為佇列失敗原因。
+
+**Response `data`**：
+```typescript
+interface FailSampleImportUploadResult {
+  batch_id: string;
+  chunk_count: number;
+  site_count: number;
+  test_result_value_count: number;
+}
+```
+
+> `sites` 不可為空，測項名稱與內容為動態欄位；前端只負責讀取檔案、`JSON.parse()`，
+> 不另行限制 payload 結構。解析失敗時直接將佇列項目標記為失敗，不呼叫 API。
+
+**前端處理**：
+- `src/api/data.ts` 的 `uploadFailSampleImport(payload, sourceFile)`
+- `src/stores/uploadStore.ts` 逐筆讀取 `.json` 檔案、解析並傳送；`source_file` 由
+  `File.name` 自動帶入。前端採官方建議的裸資料物件格式送出；後端亦相容
+  `{"data": {...}}` 包裝格式。API 成功後，前端從格式 A/B payload 取出
+  `lot_id`／`hbin`，清除 `dashboardStore` 對應 Lot 的 IO／POWER 快取（有 hbin
+  時只清該 hbin）
+
+**狀態**：✅ 後端已提供、✅ 前端已實作（資料上傳頁 #11）。
+
+### 2.15 `GET /api/v1/users`（後端已提供，資料上傳頁目前未使用）
+
+**用途**：後端提供使用者清單，保留供未來歷史紀錄頁的使用者篩選或使用者管理功能使用；
+資料上傳頁的上傳者欄位直接顯示 `uploaded_by` 工號，不會呼叫此端點。
+`getUsers()` API 函式則保留供後續歷史紀錄頁（#12）使用。
+
+**Query Parameters**：
+```typescript
+interface UserListParams {
+  skip?: number;   // 預設 0
+  limit?: number;  // 預設 20
+}
+```
+
+**Response `data`**：
+```typescript
+interface UserListItem {
+  id: string; // 注意：此欄位不是 UserInfo.user_id
+  user_no: string;
+  display_name: string;
+  email: string;
+  department: string;
+  division: string;
+  role: 'viewer' | 'engineer' | 'admin';
+  is_active: boolean;
+  last_login_at: string;
+}
+```
+
+**前端處理**：
+- `src/api/users.ts` 的 `getUsers(params?)` API 函式保留，但資料上傳頁目前不呼叫
+- `UserListItem`／`UserListParams` 型別保留於 `src/types/api.ts`，供後續歷史紀錄或
+  使用者管理功能重用
+
+**狀態**：✅ 後端已提供、✅ API wrapper 已保留、⬜ 資料上傳頁目前不使用。
+
+---
+
+### 2.16 `GET /api/v1/netlist/programs/{test_program}/sheets`（2026-10-22 新增）
+
+**用途**：取得固定六個 Netlist Sheet 的列數，供 File Upload v7 Sheet 下拉與資訊區
+顯示；Sheet 內容仍沿用各既有端點，由前端每頁 100 列。
+
+**Response `data`**：
+```typescript
+interface NetlistSheetInfo {
+  name: 'Netlist' | 'Test_Spec' | 'Bin_Priority' | 'Bin_Name' | 'Stacking_Die' | 'Tray';
+  row_count: number;
+}
+// 固定順序：Netlist、Test_Spec、Bin_Priority、Bin_Name、Stacking_Die、Tray
+```
+
+**前端處理**：`src/api/netlist.ts` 的 `getNetlistSheets()`；
+`uploadStore` 依 `test_program` 快取 metadata，Test Program 不存在時顯示 API 錯誤。
+
+**狀態**：✅ 後端已提供、✅ 前端 wrapper／列數顯示／快取已完成（#44）。
+
+---
+
+### 2.17 Netlist 預覽資料端點（File Upload v7 #44）
+
+File Upload v7 的 Netlist 預覽依選取的 Sheet 懶加載資料，`test_program` 一律先以
+`encodeURIComponent()` 編碼；`uploadStore` 依 `test_program` 快取已取得的 Sheet，
+重複查看時不重新呼叫 API。下列 wrapper 位於 `src/api/netlist.ts`：
+
+| Sheet | 方法／路徑 | 回應型別與前端欄位 |
+|-------|------------|--------------------|
+| Netlist | `GET /api/v1/netlist/programs/{test_program}/netlist` | `NetlistConnection[]`：`package_pin`、`bond_finger`、`die_pin`、`net_name`；UI 的 `die_unity` 由前端以 die mapping 補入 |
+| Test_Spec | `GET /api/v1/netlist/programs/{test_program}/test-spec` | `TestSpecItem[]`：`item_name`、`fail_bin_code_min/max`、`relax`、`relax_min/max` |
+| Die Mapping | `GET /api/v1/netlist/programs/{test_program}/die-mapping` | `DieMappingItem[]`，供 Netlist `die_unity` 對應 |
+| Bin_Priority | `GET /api/v1/netlist/programs/{test_program}/bin-priority` | `BinPriorityItem[]`，使用後端欄位 `hw_bin_name` |
+| Bin_Name | `GET /api/v1/netlist/programs/{test_program}/bin-name` | `BinNameItem[]` |
+| Stacking_Die | `GET /api/v1/netlist/programs/{test_program}/stacking-die` | `StackingDieLayer[]`，UI 顯示 `layer`／`unity` |
+| Tray | `GET /api/v1/netlist/programs/{test_program}/tray` | `TraySpec` 單一物件，UI 顯示 `column`／`row` |
+
+Netlist 表格由 `PreviewTable` 提供搜尋、排序與每頁 100 列；搜尋／排序／Sheet 切換
+會回到第 1 頁。`die_unity` 以 `die_pin_raw`（無值時使用 `die_pin`）去除最後一個
+`.` 後，對照 Die Mapping 的 `die_pin`；找不到時留白。
+
+**狀態**：✅ 後端端點已提供、✅ 前端型別／wrapper／懶加載預覽已完成（#44）。
+
+---
+
+### 2.18 `DELETE /api/v1/data/fail-sample-import/{batch_id}`（2026-11 新增，#45）
+
+**用途**：產線上傳邏輯為「不覆蓋既有資料，誤傳另存一筆」，故 `UploadedReferenceList.tsx`
+Fail Sample 清單每筆項目提供刪除按鈕，供 `engineer`／`admin` 自行刪除誤傳批次。
+
+**Path Param**：`batch_id`（同既有 detail／rows／csv 端點）
+
+**權限**：`engineer`／`admin`，皆可刪除任一批次（無擁有者限制）
+
+**Request Body**：無
+
+**成功 Response**（HTTP 200）：
+```json
+{ "code": 0, "message": "刪除成功", "data": { "batch_id": "...", "deleted": true } }
+```
+```typescript
+interface FailSampleImportDeleteResult {
+  batch_id: string;
+  deleted: boolean;
+}
+```
+
+**錯誤**：
+| HTTP | 說明 |
+|------|------|
+| 401 / 403 | 未登入或權限不足 |
+| 404 | `batch_id` 不存在（含重複刪除）。**注意**：回應為純字串 `detail`，**不含** `code:1003` 包裝，與同路由 `GET` 系列端點（detail／rows／csv）的 404 格式一致，但與前端原草案假設的 `1003` 包裝不同 |
+| 500 | 資料庫操作失敗，`detail.code = 1008` |
+
+**快取一致性**：後端刪除時已清除 `rows` 攤平快取；批次 `hbin=3` 時另清除 IO／POWER
+分析快取。**前端仍需主動呼叫** `useDashboardStore.getState().invalidateFailSampleCache(lot_id, hbin)`
+（後端清快取與前端呼叫此方法互不取代，雙重保險）。
+
+**Audit**：後端記錄 `batch_id`、`lot_id`、`hbin`、`test_program`、`source_file`。
+
+**前端處理**：
+- `src/api/data.ts` 新增 `deleteFailSampleImport(batchId)`
+- `src/stores/uploadStore.ts` 新增 `deletingBatchIds: string[]` 狀態與 `deleteFailSampleImport(batchId)` action：
+  刪除前先從既有 `failSampleImports` 找出該批次的 `lot_id`／`hbin`（刪除後該筆會從清單消失，須先取得）
+  → 呼叫 API → 成功後呼叫 `invalidateFailSampleCache` 並 `fetchFailSampleImports()` 重新整理清單
+  → `finally` 清除 `deletingBatchIds` 的 loading 狀態。action 回傳
+  `FailSampleImportDeleteOutcome`（`{ success: true } | { success: false; message: string }`），
+  失敗訊息**只回傳給呼叫端就地顯示，不寫入全域 `error`**，避免與頁面主要區塊的 Alert 重複出現
+- **2026-11 UX 改版**（依使用者提供的 Figma 手稿與 handoff 文件重新設計，取代初版的
+  `Modal.confirm` 二次確認）：`src/features/netlist/components/UploadedReferenceList.tsx`
+  每筆 Fail Sample 項目的 `Trash2` 刪除按鈕恆常顯示（不需 hover），點擊後改為**卡片內就地展開的
+  確認區**（`grid-template-rows` 0fr→1fr 動畫），取代跳出式 Modal：
+  - 確認區包含警示圖示（`TriangleAlert`）+ 標題「確定要刪除此 Fail Sample 批次？」+ 說明文字 +
+    取消／確定刪除兩個按鈕；同一時間僅允許一張卡片展開（`confirmingBatchId` 狀態控制）
+  - 再次點擊同一刪除按鈕、點擊「取消」、或按 `Esc` 鍵皆可收合確認區；切換主題／分頁／搜尋時
+    確認區狀態自動重置
+  - 展開動畫結束後自動捲動列表使卡片完整可見，並將焦點移至「取消」按鈕（鍵盤操作友善）
+  - 刪除失敗時錯誤訊息**直接顯示在確認區內**（不收合、不彈出頁面層級 Alert），對應前端不再
+    將刪除錯誤寫入全域 `error` 的設計
+  - 刪除成功時：卡片播放滑出＋淡出動畫（約 320ms）後才從清單移除；頁面底部置中彈出一次性
+    toast「已刪除批次 {lot_id}」（新增共用元件 `src/components/Toast.tsx`，~2.6 秒後自動消失）；
+    若該批次正在預覽中則清空右側預覽面板；若刪除後目前頁變空（例如最後一頁僅剩一筆）則自動
+    退回前一頁重新整理（`NetlistUploadPage.tsx` 的 `handleDeleteBatch`）
+  - `onDeleteBatch` prop 型別由「回傳 boolean」改為「回傳 `Promise<FailSampleImportDeleteOutcome>`」，
+    讓子元件能自行決定錯誤要顯示在確認區內，而非由父層以 Modal 或頁面 Alert 呈現
+- 因刪除按鈕巢狀於可點擊卡片內，Fail Sample 卡片由 `<button>` 改為 `<div role="button" tabIndex={0}>`
+  並手動處理 `Enter`／`Space` 鍵盤觸發，以符合合法 HTML 巢狀結構並維持無障礙互動；確認區本身以
+  `stopPropagation` 阻擋點擊事件冒泡到卡片，避免誤觸預覽
+
+**狀態**：✅ 後端已提供（契約已更新 `api-contract-structure.instructions.md`）、✅ 前端已實作（#45，
+含 2026-11 UX 改版）。
 
 ---
 
@@ -409,8 +776,15 @@ const ApiErrorCode = {
   FileFormatError: 1007,
   DatabaseError: 1008,
   LdapServiceError: 1009,   // ⬅ 新增（P1-1）：LDAP 服務不可用（HTTP 503），顯示「請稍後再試」，不跳轉登入頁
+  NetlistUnavailable: 1010,  // 查詢對象存在，但 Netlist 尚未上傳
+  FileTooLarge: 1011,        // HTTP 400；讀取 response.data.detail.code（上限 5 MiB）
+  FilenameFormatError: 1012, // HTTP 400；讀取 response.data.detail.code
 } as const;
 ```
+
+前端 `src/api/client.ts` 的 `getApiErrorCode()`／`getApiErrorMessage()` 同時支援
+統一回應的頂層 `code`／`message` 與 FastAPI `detail.code`／`detail.message`；
+因此 1011／1012 的訊息可直接顯示於上傳佇列失敗原因。
 
 ---
 
@@ -423,11 +797,12 @@ const ApiErrorCode = {
 | 🟡 P2 | **Fail Sample on Tray API** | 前端以 `GET /netlist/programs/{test_program}/tray` 取得 Tray 規格，DUT 位置由 `fail_sample.dut_no` 對應（詳見 2.7 節） | ✅ 後端完成，✅ **前端已實作**（2026-06-30） |
 | 🟡 P2 | **Fail Die Rate API** | 各層 Die 的失效率統計，前端目前依 2.6 節 `stacking-die` 資料自行計算比率，暫無獨立後端 API 需求 | ❌ 不適用（前端自行計算） |
 | 🟡 P2 | **Fail Ball API** | 失效 BGA Ball 的分佈資料，用於繪製分布圖 | ⬜ 待討論 |
-| 🟡 P2 | **Netlist 上傳者名稱** | `GET /api/v1/netlist/programs` 目前只回傳上傳時間與檔名，`uploaded_by`（UUID）未輸出。建議後端 JOIN `users` 表，回應新增 `uploaded_by_name` 欄位，供**資料上傳頁**左欄「已上傳檔案」清單、**歷史紀錄頁**「上傳紀錄」主題顯示（詳見設計決策 QA 條目 18） | ⬜ 待後端提供 |
+| 🟡 P2 | **上傳者工號（Netlist／Fail Sample）** | 後端已於 2026-09-02 在兩份清單回應提供 `uploaded_by` 工號字串（`user_no`，找不到使用者時為 `null`）；前端直接顯示工號，`null` 顯示「—」，不查詢 `/users` | ✅ 後端完成，✅ **前端已實作**（資料上傳頁 #11） |
 | 🟠 P1 | **上傳失敗紀錄的 test_program** | `audit_logs.request_body` 目前無論上傳成功或失敗皆為 `null`，無法得知失敗當下的 `test_program`。需後端於 upload API 將 `test_program` 寫入 `audit_logs.request_body`（或等效欄位），前端才能在**歷史紀錄頁「上傳紀錄」主題**的失敗紀錄顯示對應的 test_program（詳見設計決策 QA 條目 18，原記載於條目 17，顯示位置隨頁面拆分調整） | ⬜ 待後端提供，前端此欄位實作暫緩 |
 | 🟠 P1 | **歷史紀錄查詢 API（全新）** | `src/features/history/` 需要查詢端點，支援：① 主題切換 ② 依角色權限過濾可見範圍（`viewer` 完全無法存取；`engineer` 可見 `viewer`+`engineer` 範圍，並可指定「只看自己」或用使用者清單多選縮小範圍）③ 時間區間（含「最近7天／最近1個月」快速選項 + 自訂範圍）④ 依主題動態的其他搜尋條件（例：上傳紀錄→test_program、登入紀錄→IP/裝置、使用狀況→功能名稱）⑤ 分頁。**端點命名已確認**（見 Backend to-do-list.md #72~#75）：`GET /api/v1/history/login`、`GET /api/v1/history/uploads`、`GET /api/v1/history/usage`（詳見設計決策 QA 條目 18） | 🔄 後端已規劃端點路徑，尚未實作（`usage` 主題另待埋點方案定案） |
 | 🟡 P2 | **匯出 API（Excel/CSV）** | 歷史紀錄表格需支援匯出，尚未決定是「後端提供下載端點」或「前端直接用查詢結果在瀏覽器端產生檔案」。若前端產生，套件選型（`xlsx` / `exceljs`）建議與 to-do #34（ACT Dashboard HW Bin List 匯出）共用同一份決策，避免專案內安裝兩套不同的 Excel 產生套件 | ⬜ 待討論實作方式（前端 or 後端） |
 | 🟡 P2 | **使用狀況埋點方案（全新，範疇最大）** | 歷史紀錄頁「使用狀況」主題（滑鼠操作、點選頁面、停留時間、最常用功能）需要前端新增操作事件收集機制，以及後端對應的儲存與查詢 API。目前**完全沒有設計**，非單純畫面開發，需先有獨立一輪討論定案技術方案（前端收集哪些事件、如何節流/批次上送、後端如何儲存與查詢）後才能定義出具體 API 規格（詳見設計決策 QA 條目 18） | ⬜ 未設計，待專門討論 |
+| 🟠 P1 | **刪除 Fail Sample Import 批次 API（全新）** | 產線上傳邏輯為「不覆蓋既有資料，上傳錯誤另存一筆」，故需要讓 `engineer`／`admin` 可自行刪除誤傳的批次（`UploadedReferenceList.tsx` Fail Sample 清單每筆項目）。後端已提供並確認規格，詳見 2.18 節 | ✅ 後端已提供，✅ **前端已實作**（#45） |
 
 ---
 
@@ -441,6 +816,16 @@ const ApiErrorCode = {
 | 2026-06-25 | 本文件先前記載 `GET /data/search` 回應含 `qty`、`LotSiteInfo.site_qty` 欄位，但對照後端權威規格 `.github/instructions/api-contract-structure.instructions.md` 與 `src/types/api.ts` 實際定義，該端點並無此二欄位，屬本文件記載錯誤 | ✅ 已修正（移除錯誤欄位記載，2.7 節） |
 | 2026-06-25 | `fail-sample-power`、`stacking-die` 兩端點後端已提供且前端已實作（`src/api/analysis.ts`、`src/api/netlist.ts`），但本文件「二、已使用的 API 端點」遲未記載，且第四節仍將 Fail Die API 誤標為「待討論」 | ✅ 已修正（補上 2.5 / 2.6 節，更新第四節狀態） |
 | 2026-08-05 | 後端 API 規格更新：`GET /data/search` 回應格式調整為 Breaking Change（`customer`／`test_program`／`tester` 提升至最外層，`sites[].lot_info` 僅留 `site_id`／`site_qty`，新增最外層 `qty`／`wafer_id`）；新增模組六 Fail Sample Import 三個查詢/匯出端點；`fail-sample`／`fail-sample-power` 呼叫方式確認不變。前端 `src/types/api.ts` 的 `SearchResult`／`SiteSearchResult` 已同步更新，新增 `SiteSummaryInfo` 型別 | ✅ 已修正（2.4、2.8～2.11 節） |
+| 2026-09-01 | 資料上傳頁 #11 實作：新增 Netlist／Fail Sample 上傳與清單 API 串接、檔案佇列與狀態處理；當時 Fail Sample 清單固定抓最新 50 筆後做 client-side 過濾，批次詳情與 CSV 匯出留待後續頁面 | ✅ 已完成（2.9、2.12～2.15 節） |
+| 2026-09-02 | 後端 API 規格同步：Netlist／Fail Sample 清單新增 `uploaded_by` 工號欄位；Fail Sample 上傳成功後依 payload 格式 A/B 清除 Dashboard 對應 Lot 的 IO／POWER 快取 | ✅ 已修正（2.9、2.10、2.12、2.14、2.15 節） |
+| 2026-09-03 | 使用者確認上傳者欄位直接顯示 `uploaded_by` 工號；移除資料上傳頁的 `/users` 姓名對照 API 呼叫，但保留 `getUsers()` wrapper 與使用者 DTO 型別供後續歷史紀錄頁使用 | ✅ 已修正（2.9、2.12、2.15 節） |
+| 2026-10-22 | File Upload v7：Fail Sample 清單改為 `limit=10`／`offset` 分頁並以 `q` 傳送搜尋；接入 rows 明細 API 的 Site／搜尋／排序／後端分頁與快取；新增 Netlist sheets wrapper 顯示六個 Sheet 列數；同步 1011／1012 巢狀錯誤碼、`source_file` 必填與兩種 Netlist 括號檔名規則 | ✅ 已完成（2.9～2.17 節） |
+| 2026-10-29 | 後端通知契約修正 4 項：①上傳大小上限由 2 MiB 調整為 5 MiB（`1011`）②rows API `sites` 傳空字串視為不篩選（前端原本就只在非全選時才帶此參數，無需改動）③rows API `site`／`serial_no` 改為數值感知排序（後端處理，前端直接顯示 API 回傳順序，無需改動）④rows API 缺少 `source_file` 回 `422`（非原訂 `400`/`1012`；前端固定帶 `File.name`，此情境不會實際觸發）。前端已同步調整：`MAX_UPLOAD_FILE_SIZE`、上傳驗證錯誤訊息、Dropzone 提示文字、`ApiErrorCode.FileTooLarge` 註解、相關單元測試 | ✅ 已修正（size 限制同步至 5 MB；排序/篩選/source_file 為後端行為修正，前端無需程式變更） |
+| 2026-10-30 | 依使用者（產線）確認：Fail Sample Import 檔名實際格式為 `{Test_Program}_{Lot_ID}_{Wafer_ID}_{AT|RT}_{YYYYMMDDHHMMSS}.json`，`api-contract-structure.instructions.md` 當時記載的 `{Test_Program}_{Lot_ID}__{AT|RT}_{...}.json` 省略了 `Wafer_ID` 欄位；因產線目前 `Wafer_ID` 幾乎皆為空值才恰好呈現為雙底線 `__`，故過去未被發現。前端 `matchesUploadFilename` 原本將雙底線視為固定分隔符（僅接受空 `Wafer_ID`），已放寬為 `.*`，可同時接受空值與有值的 `Wafer_ID`；同步更新 Dropzone 提示文字與 `getFilenameRule()` | ✅ 前端已修正（`uploadValidation.ts`、`UploadDropzone.tsx`）；✅ 後端 `api-contract-structure.instructions.md`（第 770 行）已同步補上 `Wafer_ID` 欄位與空值／有值兩組官方範例，兩側規格已一致，已補測試鎖定行為（2026-10-30 確認）|
+| 2026-10-27 | Fail Sample Site 篩選改為 Checkbox Popover；預設全選、全選省略 `sites`、全部清除不發請求；同步後端必有的 `site_stats` 統計，異常缺漏 Site 時以「—」容錯 | ✅ 前後端已完成 |
+| 2026-10-30 | 使用者反映產線誤傳 Fail Sample 批次時需要能自行刪除（上傳邏輯為不覆蓋、另存一筆，無法透過重新上傳覆蓋修正）。核對 `api-contract-structure.instructions.md` 當下並無刪除批次端點，前端已提出規格草案（見第四節）請後端評估 | ✅ 後端已提供正式 API（見下方 2026-11 條目） |
+| 2026-11 | 後端提供 `DELETE /api/v1/data/fail-sample-import/{batch_id}` 正式規格，與前端草案主要差異為 **404 回應為純字串 `detail`，不含 `code:1003` 包裝**（與同路由 GET 系列端點一致）。前端已實作：API wrapper、`uploadStore` 的 `deletingBatchIds`／`deleteFailSampleImport` action（含刪除後 `invalidateFailSampleCache` 與清單重新整理）、`UploadedReferenceList.tsx` 刪除按鈕 + `Modal.confirm` 二次確認（`onOk` 不回傳 Promise，避免阻塞 Modal，刪除中狀態改由按鈕 loading 樣式呈現）。詳見 2.18 節 | ✅ 前後端已完成（#45） |
+| 2026-11 | 使用者提供刪除功能 UI/UX 手稿（`reference/UI Design/Delete_feature_UIUX_example.jpg` + `Fail-Sample-Delete-handoff.md`），要求將初版的 `Modal.confirm` 二次確認改為**卡片內就地展開的確認區**＋底部 toast 通知。前端已依手稿重新實作：`uploadStore.deleteFailSampleImport` 改回傳 `FailSampleImportDeleteOutcome`（失敗訊息不寫入全域 `error`，改由呼叫端就地顯示）、`UploadedReferenceList.tsx` 刪除按鈕恆常顯示＋`grid-template-rows` 展開動畫＋`Esc`/再次點擊收合＋失敗訊息就地顯示＋成功滑出動畫、新增共用元件 `src/components/Toast.tsx`。詳見 2.18 節 | ✅ 前端已完成（#45，待使用者 review 後再 push） |
 
 ---
 

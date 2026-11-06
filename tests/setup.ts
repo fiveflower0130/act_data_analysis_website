@@ -15,3 +15,19 @@ Object.defineProperty(window, 'matchMedia', {
     dispatchEvent: vi.fn(),
   })),
 });
+
+class ResizeObserverMock {
+  observe(): undefined {
+    return undefined;
+  }
+
+  unobserve(): undefined {
+    return undefined;
+  }
+
+  disconnect(): undefined {
+    return undefined;
+  }
+}
+
+vi.stubGlobal('ResizeObserver', ResizeObserverMock);

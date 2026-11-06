@@ -1,6 +1,6 @@
 # ACT Failure Analysis System Frontend — 待辦事項清單
 
-> 最後更新：2026-11-05
+> 最後更新：2026-11-06
 > 分析工具：GitHub Copilot / Claude Code Fable
 > 說明：本文件記錄前端專案的待辦事項，**依模組分類**（依專案實際功能領域劃分），每個模組獨立一個區塊，優先級（P0~P3）改為表格欄位而非區塊標題；模組結構比照 Backend `to-do-list.md`，模組命名盡量對齊，方便兩邊對照。
 
@@ -209,3 +209,4 @@
 | 2026-11-05 | 版控 | 建立發布分支 `Dante-release-v1.6.0`（fast-forward 對齊 `Dante` 最新 commit），同步推送 gitlab，準備後續 merge 回 `master` 正式上線 | Dante (Copilot CLI) |
 | 2026-11-05 | 版本 | ✅ 版本號升級 1.5.1 → 1.6.0（package.json/package-lock.json），對應 Phase II Roadmap 標記完成的資料上傳頁（#11/#44/#45）正式發布 | Dante (Copilot CLI) |
 | 2026-11-05 | 文件 | ✅ 補齊 v1.6.0 相關文件：新增 `docs/decisions/design-decisions-qa.md` 條目 24（刪除功能最終定案）、條目 25（測試覆蓋率門檻判斷原則）；新增週報 `docs/records/20261105_W45.md`；新增對外里程碑報告 `docs/reports/20261105_ACT-Frontend-Report-v1.6.0.md`（含上傳/刪除流程圖） | Dante (Copilot CLI) |
+| 2026-11-06 | 版控 | ✅ **v1.6.0 正式發布**：`Dante-release-v1.6.0` 合併回 `master`（merge commit `2ba79d0`，沿用 v1.5.1 的 `--no-ff` 慣例），合併前重跑 `npm run build`／`npm run test:run`（176/176 通過）／`npm run lint`（6 errors／8 warnings，確認為既有基線無新增），合併後於 `master` 再次執行測試確認無誤；推送 `gitlab master` 與 `github master` | Dante (Copilot CLI) |
